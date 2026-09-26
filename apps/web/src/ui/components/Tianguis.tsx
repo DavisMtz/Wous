@@ -84,6 +84,22 @@ export function Rotulo({ as: Tag = 'p', className = '' }: { as?: 'h1' | 'p'; cla
   );
 }
 
+/**
+ * Filtro SVG que le da al rótulo borde de brocha: un desplazamiento mínimo
+ * con ruido fijo (semilla), así la orilla de cada letra no es de pantalla.
+ * Se monta una sola vez en la app.
+ */
+export function FiltrosDelTianguis() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true" focusable="false">
+      <filter id="brocha" x="-5%" y="-5%" width="110%" height="115%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" />
+        <feDisplacementMap in="SourceGraphic" scale="2.4" />
+      </filter>
+    </svg>
+  );
+}
+
 // ─── Estrella de cartulina ───────────────────────────────────────────────
 
 function starPoints(seed: number, spikes = 17): string {
@@ -257,7 +273,7 @@ export function Hoja({
 
 // ─── Sello y aviso ───────────────────────────────────────────────────────
 
-/** Sello de goma de la nota de venta: aparece cuando algo queda hecho. */
+/** Cartulina fosforescente pegada con masking: aparece cuando algo queda hecho. */
 export function Sello({ children }: { children: ReactNode }) {
   return (
     <p className="sello" role="status">

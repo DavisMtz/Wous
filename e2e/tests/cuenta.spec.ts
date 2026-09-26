@@ -76,7 +76,23 @@ test('registro, verificación, sesión, reset y vuelta a entrar', async ({
   await page.getByRole('button', { name: 'Confirmar mi correo' }).click();
   await expect(page.getByRole('heading', { name: '¡Ya eres del barrio!' })).toBeVisible();
   await page.getByRole('button', { name: 'Armar mi personaje' }).click();
-  await expect(page.getByRole('heading', { name: `¡Qué onda, ${username}!` })).toBeVisible();
+
+  // 3b. El probador: nombre, un par de piezas y listo (Fase 3).
+  await expect(page.getByRole('heading', { name: 'Arma tu personaje' })).toBeVisible();
+  await page.getByLabel('Nombre de tu personaje').fill('Ana Lucía');
+  await page.getByRole('tab', { name: 'Pelo' }).click();
+  await page.getByRole('radio', { name: 'Coleta' }).check();
+  await page.getByRole('tab', { name: 'Arriba' }).click();
+  await page.getByRole('radio', { name: 'Sudadera' }).check();
+  // Lo que no está en el set inicial no se puede elegir.
+  await page.getByRole('tab', { name: 'Zapatos' }).click();
+  await expect(page.getByRole('radio', { name: 'Botas' })).toBeDisabled();
+  await page.getByRole('button', { name: '¡Listo, a la plaza!' }).click();
+  await expect(page.getByRole('heading', { name: '¡Qué onda, Ana Lucía!' })).toBeVisible();
+
+  // Recargar conserva el personaje.
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '¡Qué onda, Ana Lucía!' })).toBeVisible();
 
   // 4. Cerrar sesión y volver a entrar por nombre de usuario.
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
@@ -86,7 +102,7 @@ test('registro, verificación, sesión, reset y vuelta a entrar', async ({
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await turnstileReady(page);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: `¡Qué onda, ${username}!` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¡Qué onda, Ana Lucía!' })).toBeVisible();
 
   // 5. Desde OTRO navegador (sin sesión): olvidé mi contraseña → enlace → nueva.
   const otro = await browser.newContext();
@@ -114,7 +130,7 @@ test('registro, verificación, sesión, reset y vuelta a entrar', async ({
   await page.getByLabel('Contraseña', { exact: true }).fill(newPassword);
   await turnstileReady(page);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: `¡Qué onda, ${username}!` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¡Qué onda, Ana Lucía!' })).toBeVisible();
 });
 
 test('credenciales incorrectas muestran el error sin revelar si la cuenta existe', async ({

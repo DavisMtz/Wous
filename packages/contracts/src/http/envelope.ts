@@ -30,6 +30,11 @@ export const HttpErrorCode = z.enum([
   'WEAK_PASSWORD',
   'TERMS_NOT_ACCEPTED',
   'TOKEN_INVALID',
+  // Personaje
+  'CHARACTER_EXISTS',
+  'CHARACTER_REQUIRED',
+  'INVALID_APPEARANCE',
+  'INVALID_DISPLAY_NAME',
   // Webhooks
   'WEBHOOK_UNAUTHORIZED',
 ]);

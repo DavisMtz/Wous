@@ -16,6 +16,7 @@ import { registerAccount } from '../../auth/register.ts';
 import { clearSessionCookie, type SessionAccount, setSessionCookie } from '../../auth/sessions.ts';
 import { useCaseContext } from '../../auth/use-case.ts';
 import { resendVerification, verifyEmail } from '../../auth/verify-email.ts';
+import { findCharacterByAccount } from '../../characters/characters.ts';
 import { readJson } from '../json.ts';
 import { loadSession, requireSession } from '../middleware/session.ts';
 import { ok } from '../respond.ts';
@@ -33,9 +34,9 @@ function accountView(account: SessionAccount): AccountView {
   };
 }
 
-/** El personaje llega en la Fase 3; hasta entonces ninguna cuenta tiene. */
-async function sessionResponse(_env: Env, account: SessionAccount): Promise<SessionResponse> {
-  return { account: accountView(account), hasCharacter: false };
+async function sessionResponse(env: Env, account: SessionAccount): Promise<SessionResponse> {
+  const character = await findCharacterByAccount(env.DB, account.id);
+  return { account: accountView(account), hasCharacter: character !== null, character };
 }
 
 export const authRoutes = new Hono<AppHono>()

@@ -1,13 +1,14 @@
 import type { SessionResponse } from '@wous/contracts';
 import { useState } from 'react';
 import { Mostrador } from '../auth/Mostrador.tsx';
+import { lookFromAppearance } from '../game/rendering/appearance.ts';
 import { mensajeDeError } from '../ui/components/Formulario.tsx';
 import { Aviso, Cartulina, Hoja } from '../ui/components/Tianguis.tsx';
 import { useSession } from './session.tsx';
 
 /**
- * Con sesión iniciada. Hasta que llegue el creador de personaje (Fase 3) es
- * el vestíbulo de la cuenta: quién eres y cómo cerrar sesión.
+ * Con sesión iniciada y personaje armado: el vestíbulo antes de la plaza
+ * (Fase 4). Muestra tu personaje, tu cuenta y cómo cerrar sesión.
  */
 export function Casa({ session }: { session: SessionResponse }) {
   const { logout } = useSession();
@@ -26,11 +27,17 @@ export function Casa({ session }: { session: SessionResponse }) {
   };
 
   return (
-    <Mostrador etiqueta={`@${session.account.username}`}>
-      <Hoja titulo={`¡Qué onda, ${session.account.username}!`} id="casa-titulo">
+    <Mostrador
+      etiqueta={session.character?.displayName ?? `@${session.account.username}`}
+      {...(session.character ? { look: lookFromAppearance(session.character.appearance) } : {})}
+    >
+      <Hoja
+        titulo={`¡Qué onda, ${session.character?.displayName ?? session.account.username}!`}
+        id="casa-titulo"
+      >
         <p className="hoja__entrada">
-          Tu cuenta ya está lista. Muy pronto vas a poder armar tu personaje aquí mismo y salir a la
-          plaza.
+          Tu personaje ya está listo. La plaza abre muy pronto: ahí vas a poder caminar, platicar y
+          ver a los demás.
         </p>
         <dl className="hoja__datos">
           <div>

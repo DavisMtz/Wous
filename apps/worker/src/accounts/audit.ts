@@ -5,11 +5,11 @@ import type { IdGenerator } from '../lib/ids.ts';
 export type AuditAction =
   | 'ACCOUNT_REGISTERED'
   | 'EMAIL_VERIFIED'
-  | 'LOGIN_SUCCEEDED'
   | 'SESSIONS_REVOKED'
   | 'PASSWORD_RESET_REQUESTED'
   | 'PASSWORD_CHANGED'
-  | 'EMAIL_MARKED_UNDELIVERABLE';
+  | 'EMAIL_MARKED_UNDELIVERABLE'
+  | 'CHARACTER_CREATED';
 
 export type AuditEntry = {
   actorAccountId: string | null;

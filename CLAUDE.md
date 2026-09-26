@@ -10,8 +10,8 @@ cambies la arquitectura en silencio (§38).
 | --- | --- |
 | 0 · Bootstrap del monorepo | ✅ hecha |
 | 1 · Infra Cloudflare y D1 | ✅ hecha · staging en `wous-staging.logidma.workers.dev` |
-| 2 · Registro, login, Brevo | ⏳ |
-| 3 · Creación de personaje | ⏳ |
+| 2 · Registro, login, Brevo | ✅ hecha · correo real verificado en staging |
+| 3 · Creación de personaje | ✅ hecha · el probador |
 | 4 · Phaser + InputManager | ⏳ |
 | 5 · Realtime / RoomDO | ⏳ |
 | 6 · Portales, Café y reconexión | ⏳ |

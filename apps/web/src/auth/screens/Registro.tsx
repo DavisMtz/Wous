@@ -11,6 +11,7 @@ import {
   mensajeDeError,
   Verificacion,
 } from '../../ui/components/Formulario.tsx';
+import { Icono } from '../../ui/components/Icono.tsx';
 import { Aviso, Cartulina, Hoja } from '../../ui/components/Tianguis.tsx';
 import { fieldErrors, focusFirstError, Mostrador } from '../Mostrador.tsx';
 
@@ -116,7 +117,10 @@ export function Registro() {
             Tengo 16 años o más y acepto las reglas de convivencia de la alpha.
           </Casilla>
           <details className="reglas" id="reglas">
-            <summary>Leer las reglas</summary>
+            <summary>
+              <Icono name="flecha" size={18} />
+              Leer las reglas
+            </summary>
             <ul>
               <li>
                 Trata a todas las personas con respeto: nada de acoso, amenazas ni discriminación.

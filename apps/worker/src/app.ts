@@ -4,6 +4,7 @@ import { Errors, errorResponse, handleError } from './http/errors.ts';
 import { contextMiddleware } from './http/middleware/context.ts';
 import { apiSecurityHeaders, requireSameOrigin } from './http/middleware/security.ts';
 import { authRoutes } from './http/routes/auth.ts';
+import { characterRoutes } from './http/routes/characters.ts';
 import { configRoutes } from './http/routes/config.ts';
 import { devRoutes } from './http/routes/dev.ts';
 import { healthRoutes } from './http/routes/health.ts';
@@ -24,6 +25,7 @@ export function createApp(overrides: Partial<Deps> = {}) {
   app.route(`${API_PREFIX}/health`, healthRoutes);
   app.route(`${API_PREFIX}/config`, configRoutes);
   app.route(`${API_PREFIX}/auth`, authRoutes);
+  app.route(`${API_PREFIX}/characters`, characterRoutes);
   app.route(`${API_PREFIX}/webhooks`, webhookRoutes);
   app.route(`${API_PREFIX}/dev`, devRoutes);
 

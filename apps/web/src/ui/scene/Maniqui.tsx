@@ -6,8 +6,30 @@ import { pixelCanvas } from './pixel-canvas.ts';
 
 const ART_W = 36;
 const ART_H = 48;
+const COMPACTO_W = 20;
+const COMPACTO_H = 37;
 
-function draw(canvas: HTMLCanvasElement, look: Look, scale: number, blink: boolean) {
+function draw(
+  canvas: HTMLCanvasElement,
+  look: Look,
+  scale: number,
+  blink: boolean,
+  compacto: boolean,
+) {
+  if (compacto) {
+    // Versión chica para la cabecera del teléfono: persona sobre un huacal bajo.
+    const p = pixelCanvas(canvas, COMPACTO_W, COMPACTO_H, scale);
+    p.clear();
+    p.rect(0, 31, 20, 6, '#4a2716');
+    for (const y of [31, 34]) {
+      p.rect(0, y, 20, 2, '#cf8a4a');
+      p.rect(0, y + 1, 20, 1, '#8f5424');
+    }
+    p.rect(0, 31, 1, 6, '#8f5424');
+    p.rect(19, 31, 1, 6, '#8f5424');
+    p.sprite(frameCanvas(look, 'down', 0, { blink }), 0, 0, FRAME_W, FRAME_H, 2, 0);
+    return;
+  }
   const p = pixelCanvas(canvas, ART_W, ART_H, scale);
   p.clear();
   p.ctx.fillStyle = 'rgb(43 18 56 / 0.3)';
@@ -30,16 +52,24 @@ type Props = {
   scale?: number;
   etiqueta?: string | null;
   className?: string;
+  /** Variante chica para la cabecera en teléfono: sin huacal ni foco. */
+  compacto?: boolean;
 };
 
 /** Tu personaje en su huacal, con una etiqueta de cartulina colgando. */
-export function Maniqui({ look, scale = 6, etiqueta = null, className = '' }: Props) {
+export function Maniqui({
+  look,
+  scale = 6,
+  etiqueta = null,
+  className = '',
+  compacto = false,
+}: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [blink, setBlink] = useState(false);
 
   useLayoutEffect(() => {
-    if (ref.current) draw(ref.current, look, scale, blink);
-  }, [look, scale, blink]);
+    if (ref.current) draw(ref.current, look, scale, blink, compacto);
+  }, [look, scale, blink, compacto]);
 
   useEffect(() => {
     if (!canAnimate()) return;
@@ -60,12 +90,18 @@ export function Maniqui({ look, scale = 6, etiqueta = null, className = '' }: Pr
 
   return (
     <figure
-      className={`maniqui ${className}`}
-      style={{ width: ART_W * scale, '--px': `${scale}px` } as CSSProperties}
+      className={`maniqui ${compacto ? 'maniqui--compacto' : ''} ${className}`}
+      style={
+        { width: (compacto ? COMPACTO_W : ART_W) * scale, '--px': `${scale}px` } as CSSProperties
+      }
     >
-      <span className="maniqui__luz" aria-hidden="true" />
-      <span className="maniqui__cable" aria-hidden="true" />
-      <span className="maniqui__bombilla" aria-hidden="true" />
+      {compacto ? null : (
+        <>
+          <span className="maniqui__luz" aria-hidden="true" />
+          <span className="maniqui__cable" aria-hidden="true" />
+          <span className="maniqui__bombilla" aria-hidden="true" />
+        </>
+      )}
       <canvas
         ref={ref}
         className="pixel"

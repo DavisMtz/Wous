@@ -4,6 +4,7 @@ import '@fontsource/permanent-marker';
 import './ui/styles/tokens.css';
 import './ui/styles/base.css';
 import './ui/styles/tianguis.css';
+import './ui/styles/creador.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

@@ -7,8 +7,9 @@ import { RevisaCorreo } from '../auth/screens/RevisaCorreo.tsx';
 import { VerificarCorreo } from '../auth/screens/VerificarCorreo.tsx';
 import { CortinaDeLona } from '../ui/components/CortinaDeLona.tsx';
 import type { LonaColor } from '../ui/components/Puesto.tsx';
-import { OrillaDeLona, Rotulo } from '../ui/components/Tianguis.tsx';
+import { FiltrosDelTianguis, OrillaDeLona, Rotulo } from '../ui/components/Tianguis.tsx';
 import { Casa } from './Casa.tsx';
+import { Creador } from './creador/Creador.tsx';
 import { ROUTES, RouterProvider, useRouter } from './router.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
@@ -74,12 +75,15 @@ function Pantallas() {
         screen = <RestablecerContrasena />;
         break;
       default:
-        screen = state.status === 'authenticated' ? <Casa session={state.session} /> : <Portada />;
+        if (state.status !== 'authenticated') screen = <Portada />;
+        else if (!state.session.hasCharacter) screen = <Creador session={state.session} />;
+        else screen = <Casa session={state.session} />;
     }
   }
 
   return (
     <>
+      <FiltrosDelTianguis />
       {screen}
       <CortinaDeLona lona={lona} />
     </>

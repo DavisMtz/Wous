@@ -7,13 +7,13 @@ import { canAnimate } from '../motion.ts';
 import { fitScale, pixelCanvas } from './pixel-canvas.ts';
 
 /** Escena en pixeles de arte: foco, huacal con la persona y perchero. */
-const ART_W = 150;
-const ART_H = 104;
-const HANGER_X = [66, 88, 110, 132];
-const HOOK_Y = 34;
-const HANGER_BAR_Y = 46;
-const PERSON = { x: 12, y: 57 };
-const BULB = { x: 20, y: 23 };
+const ART_W = 122;
+const ART_H = 88;
+const HANGER_X = [51, 70, 89, 108];
+const HOOK_Y = 18;
+const HANGER_BAR_Y = 30;
+const PERSON = { x: 10, y: 41 };
+const BULB = { x: 18, y: 7 };
 
 const WIRE = '#dcd6df';
 const WIRE_SHADE = '#8d8594';
@@ -28,35 +28,35 @@ function drawBackdrop(canvas: HTMLCanvasElement, scale: number) {
   p.clear();
 
   // Socket y foco pelón (el cable y el halo van en CSS: no se recortan).
-  p.rect(19, 18, 3, 3, '#3b3340');
-  p.rect(18, 21, 5, 4, '#fff2b8');
-  p.rect(19, 25, 3, 1, '#ffd766');
-  p.rect(19, 22, 1, 2, '#ffffff');
+  p.rect(17, 2, 3, 3, '#3b3340');
+  p.rect(16, 5, 5, 4, '#fff2b8');
+  p.rect(17, 9, 3, 1, '#ffd766');
+  p.rect(17, 6, 1, 2, '#ffffff');
 
   // Sombra del huacal en el piso.
   p.ctx.fillStyle = 'rgb(43 18 56 / 0.28)';
   p.ctx.beginPath();
-  p.ctx.ellipse(20 * p.unit, 101 * p.unit, 18 * p.unit, 2.5 * p.unit, 0, 0, Math.PI * 2);
+  p.ctx.ellipse(18 * p.unit, 85 * p.unit, 17 * p.unit, 2.5 * p.unit, 0, 0, Math.PI * 2);
   p.ctx.fill();
 
   // Huacal de madera: tablas con rendijas.
-  p.rect(6, 88, 28, 12, WOOD_GAP);
-  for (const y of [88, 92, 96]) {
-    p.rect(6, y, 28, 3, WOOD);
-    p.rect(6, y + 2, 28, 1, WOOD_SHADE);
+  p.rect(4, 72, 28, 12, WOOD_GAP);
+  for (const y of [72, 76, 80]) {
+    p.rect(4, y, 28, 3, WOOD);
+    p.rect(4, y + 2, 28, 1, WOOD_SHADE);
   }
-  p.rect(6, 88, 2, 12, WOOD_SHADE);
-  p.rect(32, 88, 2, 12, WOOD_SHADE);
+  p.rect(4, 72, 2, 12, WOOD_SHADE);
+  p.rect(30, 72, 2, 12, WOOD_SHADE);
 
   // Perchero: dos postes, tubo y patas.
-  for (const x of [50, 146]) {
-    p.rect(x, 38, 2, 62, METAL);
-    p.rect(x + 1, 38, 1, 62, METAL_SHADE);
+  for (const x of [38, 118]) {
+    p.rect(x, 22, 2, 62, METAL);
+    p.rect(x + 1, 22, 1, 62, METAL_SHADE);
   }
-  p.rect(46, 100, 10, 2, METAL_SHADE);
-  p.rect(142, 100, 8, 2, METAL_SHADE);
-  p.rect(48, 38, 102, 2, METAL);
-  p.rect(48, 39, 102, 1, METAL_SHADE);
+  p.rect(34, 84, 10, 2, METAL_SHADE);
+  p.rect(114, 84, 8, 2, METAL_SHADE);
+  p.rect(36, 22, 86, 2, METAL);
+  p.rect(36, 23, 86, 1, METAL_SHADE);
 }
 
 function drawHanger(canvas: HTMLCanvasElement, outfit: Outfit, person: Look, scale: number) {
@@ -112,7 +112,7 @@ export function Perchero({ persona, outfits, onChange }: Props) {
     const wrap = wrapRef.current;
     if (!wrap) return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setScale(fitScale(entry.contentRect.width, ART_W, 2, 5));
+      if (entry) setScale(fitScale(entry.contentRect.width, ART_W, 2, 6));
     });
     observer.observe(wrap);
     return () => observer.disconnect();
@@ -202,7 +202,7 @@ export function Perchero({ persona, outfits, onChange }: Props) {
         <span
           className="perchero__cable"
           aria-hidden="true"
-          style={{ left: `calc(var(--px) * ${BULB.x})`, height: `calc(var(--px) * 18 + 60vh)` }}
+          style={{ left: `calc(var(--px) * ${BULB.x})`, height: `calc(var(--px) * 2 + 60vh)` }}
         />
         <canvas ref={backdropRef} className="pixel perchero__fondo" />
         <canvas

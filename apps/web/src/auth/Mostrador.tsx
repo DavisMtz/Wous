@@ -45,7 +45,11 @@ export function Mostrador({ children, etiqueta = null, look }: Props) {
   );
 
   return (
-    <Puesto>
+    <Puesto
+      acompanante={
+        persona ? <Maniqui look={look ?? persona} scale={3} etiqueta={etiqueta} compacto /> : null
+      }
+    >
       <div className="mostrador" ref={root}>
         <div className="mostrador__maniqui">
           {persona ? <Maniqui look={look ?? persona} etiqueta={etiqueta} /> : null}

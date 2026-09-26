@@ -7,6 +7,7 @@ import {
   TurnstileToken,
   UsernameInput,
 } from '../domain/identity.ts';
+import { CharacterView } from './characters.ts';
 import { AppEnv } from './health.ts';
 
 /** POST /api/v1/auth/register */
@@ -74,6 +75,8 @@ export type AccountView = z.infer<typeof AccountView>;
 export const SessionResponse = z.object({
   account: AccountView,
   hasCharacter: z.boolean(),
+  /** El personaje de la cuenta (uno por cuenta en el MVP), o null si aún no lo arma. */
+  character: CharacterView.nullable(),
 });
 export type SessionResponse = z.infer<typeof SessionResponse>;
 

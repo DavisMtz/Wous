@@ -14,7 +14,7 @@ const OUT = path.join(ROOT, 'apps/worker/email-templates');
 const SENDER = { name: 'Wous', email: 'wous@logidma.com' };
 
 const LONAS = {
-  rosa: { lona: '#e8267f', hondo: '#a10f57' },
+  rosa: { lona: '#d81b72', hondo: '#a10f57' },
   azul: { lona: '#1e4bd2', hondo: '#0f2c86' },
   verde: { lona: '#0f8a4a', hondo: '#075a2f' },
   amarilla: { lona: '#f5c518', hondo: '#b98a00' },

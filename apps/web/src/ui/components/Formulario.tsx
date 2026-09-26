@@ -153,6 +153,7 @@ export function Verificacion({ accion, onToken, reinicio }: VerificacionProps) {
           action: accion,
           theme: 'light',
           size: 'flexible',
+          appearance: 'interaction-only',
           language: 'es',
           callback: (token) => tokenRef.current(token),
           'expired-callback': () => tokenRef.current(null),
