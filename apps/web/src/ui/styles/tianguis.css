@@ -1,0 +1,1189 @@
+/* ─── Tela de lona: trama, luz que la atraviesa y pliegues de tensión ─── */
+
+.tela-lona,
+.puesto,
+.cortina {
+  background-color: var(--lona);
+  background-image:
+    radial-gradient(
+      120% 70% at 20% -12%,
+      color-mix(in oklab, var(--lona-luz) 78%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      80% 60% at 104% 108%,
+      color-mix(in oklab, var(--lona-hondo) 60%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      163deg,
+      transparent 0 28%,
+      rgb(255 255 255 / 0.07) 30%,
+      transparent 35%,
+      transparent 57%,
+      rgb(23 16 27 / 0.07) 60%,
+      transparent 67%
+    ),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(-45deg, rgb(23 16 27 / 0.05) 0 1px, transparent 1px 4px);
+}
+
+/* ─── Puesto (estructura de cada pantalla) ─── */
+
+.puesto {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: respaldo; sin dvh la regla se descarta entera */
+  min-height: 100dvh;
+  color: var(--sobre-lona);
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.puesto__firma {
+  position: relative;
+  z-index: 3;
+  padding: 0 clamp(16px, 4vw, 56px);
+}
+
+.puesto__inicio {
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.puesto__contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cargando {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* ─── Orilla de la lona ─── */
+
+.orilla {
+  position: relative;
+  z-index: 2;
+  height: 56px;
+  margin-bottom: -14px;
+  filter: drop-shadow(0 7px 8px rgb(43 18 56 / 0.32));
+}
+
+.orilla svg {
+  width: 100%;
+  height: 56px;
+}
+
+.orilla__tela {
+  fill: var(--lona-hondo);
+}
+
+.orilla__costura {
+  fill: none;
+  stroke: color-mix(in oklab, var(--lona-luz) 60%, white);
+  stroke-width: 1.6;
+  stroke-dasharray: 7 5;
+  opacity: 0.75;
+}
+
+.orilla__ojillo {
+  fill: #dcd6ca;
+  stroke: #8d8679;
+  stroke-width: 1.3;
+}
+
+.orilla__ojillo-hueco {
+  fill: var(--ciruela);
+}
+
+/* ─── Rótulo pintado a mano ─── */
+
+.rotulo {
+  margin: 0;
+  font-family: var(--font-cartel);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: 0.012em;
+  text-transform: uppercase;
+  color: var(--sobre-lona);
+}
+
+.rotulo__letras {
+  display: inline-block;
+  padding: 0 0.1em 0.08em 0;
+  text-shadow:
+    1px 1px 0 var(--lona-hondo),
+    2px 2px 0 var(--lona-hondo),
+    3px 3px 0 var(--lona-hondo),
+    4px 4px 0 var(--lona-hondo),
+    5px 5px 0 var(--lona-hondo),
+    6px 6px 0 var(--lona-hondo),
+    7px 7px 0 var(--lona-hondo),
+    0 18px 26px rgb(43 18 56 / 0.32);
+}
+
+.rotulo--grande {
+  font-size: clamp(4.4rem, 3rem + 7vw, 6rem);
+}
+
+.rotulo--chico {
+  font-size: 2.3rem;
+}
+
+.rotulo--chico .rotulo__letras {
+  text-shadow:
+    1px 1px 0 var(--lona-hondo),
+    2px 2px 0 var(--lona-hondo),
+    3px 3px 0 var(--lona-hondo),
+    0 6px 12px rgb(43 18 56 / 0.3);
+}
+
+/* ─── Portada ─── */
+
+.portada {
+  flex: 1;
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 64px);
+  padding: clamp(40px, 8vh, 96px) clamp(16px, 5vw, 72px) var(--s-6);
+}
+
+.portada__lema {
+  margin-top: var(--s-6);
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: var(--step-3);
+  line-height: 0.92;
+  text-transform: uppercase;
+  color: var(--sobre-lona);
+}
+
+.portada__texto {
+  margin-top: var(--s-4);
+  max-width: 30ch;
+  font-size: var(--step-1);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.portada__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-5) var(--s-7);
+  margin-top: var(--s-6);
+}
+
+.portada__escaparate {
+  min-width: 0;
+}
+
+.portada__pie {
+  align-self: center;
+  margin: 0 auto var(--s-4);
+  padding: 4px 12px;
+  background: var(--cartulina);
+  color: var(--plumon);
+  font-size: var(--step--1);
+  font-weight: 700;
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-cartulina);
+  rotate: -1.2deg;
+}
+
+@media (max-width: 860px) {
+  .portada {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--s-7) 12px var(--s-5);
+    gap: var(--s-6);
+  }
+
+  .portada__lema {
+    margin-top: var(--s-5);
+  }
+
+  /* En una columna el perchero va debajo del texto: el cable no lo cruza. */
+  .perchero__cable {
+    height: calc(var(--px) * 18 + 40px) !important;
+  }
+}
+
+/* ─── Estrella de cartulina fosforescente ─── */
+
+.estrella {
+  position: relative;
+  display: inline-grid;
+  width: clamp(168px, 17vw, 216px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--plumon);
+  text-decoration: none;
+  rotate: -7deg;
+  transform-origin: 50% 6%;
+  animation: vaiven-estrella 5.4s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.estrella__cuerpo {
+  grid-area: 1 / 1;
+  position: relative;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 2px 1px rgb(23 16 27 / 0.25)) drop-shadow(0 12px 14px rgb(43 18 56 / 0.42));
+  transition:
+    transform 120ms var(--ease-presion),
+    filter 120ms var(--ease-presion);
+}
+
+.estrella__forma {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.estrella__forma polygon {
+  fill: var(--fosfo-naranja);
+}
+
+.estrella--amarillo .estrella__forma polygon {
+  fill: var(--fosfo-amarillo);
+}
+
+.estrella--verde .estrella__forma polygon {
+  fill: var(--fosfo-verde);
+}
+
+.estrella--rosa .estrella__forma polygon {
+  fill: var(--fosfo-rosa);
+}
+
+.estrella__texto {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  rotate: 4deg;
+}
+
+.estrella__grande {
+  font-family: var(--font-plumon);
+  font-size: clamp(1.85rem, 1.2rem + 1.4vw, 2.45rem);
+  line-height: 1;
+}
+
+.estrella__chica {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.estrella__masking {
+  position: absolute;
+  top: -1%;
+  left: 50%;
+  z-index: 2;
+  width: 38%;
+  height: 12%;
+  translate: -50% 0;
+  rotate: 5deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+.estrella:active .estrella__cuerpo {
+  transform: translateY(4px) scale(0.97);
+  filter: drop-shadow(0 1px 0 rgb(23 16 27 / 0.2)) drop-shadow(0 4px 5px rgb(43 18 56 / 0.45));
+}
+
+.estrella:focus-visible {
+  outline: 4px dashed var(--plumon);
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+@media (hover: hover) {
+  .estrella:hover .estrella__cuerpo {
+    transform: rotate(-3deg) scale(1.04);
+  }
+}
+
+@keyframes vaiven-estrella {
+  0%,
+  100% {
+    rotate: -7deg;
+  }
+  50% {
+    rotate: -3.5deg;
+  }
+}
+
+/* ─── Botones de cartulina ─── */
+
+.cartulina {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: var(--trazo);
+  font-family: var(--font-plumon);
+  font-size: 1.32rem;
+  line-height: 1.1;
+  text-decoration: none;
+  color: var(--plumon);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 110ms var(--ease-presion),
+    box-shadow 110ms var(--ease-presion),
+    background-color 160ms ease;
+}
+
+.cartulina--fosfo {
+  width: 100%;
+  background-color: var(--fosfo-amarillo);
+  background-image: repeating-linear-gradient(
+    -12deg,
+    rgb(255 255 255 / 0.14) 0 2px,
+    transparent 2px 9px
+  );
+  box-shadow: var(--sombra-cartulina);
+}
+
+.cartulina--fosfo:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+.cartulina--trazo {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px currentColor;
+  font-size: 1.16rem;
+}
+
+.cartulina--trazo:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+@media (hover: hover) {
+  .cartulina--fosfo:hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--fosfo-amarillo) 86%, white);
+  }
+
+  .cartulina--trazo:hover:not(:disabled) {
+    background-color: color-mix(in oklab, currentColor 10%, transparent);
+  }
+}
+
+.cartulina:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cartulina[aria-busy="true"] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.cartulina[aria-busy="true"] .cartulina__texto {
+  opacity: 0.35;
+}
+
+.cartulina__puntos {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.cartulina__puntos span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50% 40% 55% 45%;
+  background: currentColor;
+  animation: punto-plumon 0.9s ease-in-out infinite;
+}
+
+.cartulina__puntos span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.cartulina__puntos span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes punto-plumon {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  45% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+.portada .cartulina--trazo {
+  color: var(--sobre-lona);
+}
+
+/* ─── Enlaces sobre papel ─── */
+
+.enlace {
+  font-weight: 700;
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--lona);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.2em;
+  border-radius: 3px;
+}
+
+@media (hover: hover) {
+  .enlace:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 70%, transparent);
+  }
+}
+
+/* ─── Mostrador: maniquí + hoja ─── */
+
+.mostrador {
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 80px);
+  padding: var(--s-6) clamp(16px, 4vw, 56px) var(--s-8);
+}
+
+.mostrador__maniqui {
+  display: grid;
+  justify-items: center;
+}
+
+.mostrador__hoja {
+  min-width: 0;
+}
+
+@media (max-width: 820px) {
+  .mostrador {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: var(--s-5);
+  }
+
+  .mostrador__maniqui {
+    display: none;
+  }
+}
+
+.maniqui {
+  --px: 6px;
+  position: relative;
+  margin: 0;
+}
+
+.maniqui canvas {
+  position: relative;
+}
+
+.maniqui__luz {
+  left: 50%;
+  top: calc(var(--px) * -5);
+}
+
+.maniqui__cable {
+  bottom: calc(100% + var(--px) * 11);
+  left: calc(50% - var(--px) / 2);
+  height: 60vh;
+}
+
+.maniqui__bombilla {
+  position: absolute;
+  top: calc(var(--px) * -9);
+  left: 50%;
+  width: calc(var(--px) * 3);
+  height: calc(var(--px) * 4);
+  translate: -50% 0;
+  background: #fff2b8;
+  border-radius: 40% 40% 45% 45%;
+  box-shadow:
+    0 calc(var(--px) * -2) 0 calc(var(--px) * -0.5) #3b3340,
+    0 0 calc(var(--px) * 3) #fff6c8;
+}
+
+.maniqui__etiqueta {
+  position: absolute;
+  top: 34%;
+  left: 70%;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transform-origin: 14px 0;
+  animation: vaiven-etiqueta 4.6s ease-in-out infinite;
+}
+
+.maniqui__hilo {
+  width: 2px;
+  height: 28px;
+  margin-left: 13px;
+  background: var(--cuerda-sombra);
+}
+
+.maniqui__carton {
+  position: relative;
+  max-width: 13rem;
+  padding: 7px 14px 7px 22px;
+  overflow-wrap: anywhere;
+  font-family: var(--font-plumon);
+  font-size: 1.1rem;
+  line-height: 1.15;
+  color: var(--plumon);
+  background: var(--fosfo-amarillo);
+  border-radius: 4px 9px 5px 10px;
+  box-shadow: var(--sombra-cartulina);
+}
+
+.maniqui__carton::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  width: 7px;
+  height: 7px;
+  translate: 0 -50%;
+  border-radius: 50%;
+  background: var(--lona-hondo);
+}
+
+@keyframes vaiven-etiqueta {
+  0%,
+  100% {
+    rotate: -3deg;
+  }
+  50% {
+    rotate: 3deg;
+  }
+}
+
+/* ─── Hoja colgada del tendedero ─── */
+
+.tendido {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin-inline: auto;
+  padding-top: 26px;
+}
+
+.tendido__cuerda {
+  position: absolute;
+  top: 0;
+  left: -12%;
+  width: 124%;
+  height: 40px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 1px rgb(43 18 56 / 0.35));
+}
+
+.tendido__cuerda path {
+  fill: none;
+  stroke: var(--cuerda);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.hoja {
+  position: relative;
+  padding: clamp(30px, 4vw, 44px) clamp(20px, 3.4vw, 40px) clamp(24px, 3vw, 34px);
+  color: var(--plumon);
+  background-color: var(--cartulina);
+  background-image:
+    radial-gradient(rgb(43 18 56 / 0.035) 1px, transparent 1.3px),
+    radial-gradient(rgb(43 18 56 / 0.025) 1px, transparent 1.3px);
+  background-size:
+    7px 7px,
+    11px 11px;
+  background-position:
+    0 0,
+    3px 5px;
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  rotate: -0.6deg;
+}
+
+.pinza {
+  position: absolute;
+  top: -36px;
+  z-index: 3;
+  width: 22px;
+  height: 58px;
+  filter: drop-shadow(0 2px 2px rgb(43 18 56 / 0.35));
+}
+
+.pinza--izq {
+  left: 16%;
+  rotate: -5deg;
+}
+
+.pinza--der {
+  right: 16%;
+  rotate: 6deg;
+}
+
+.pinza__madera {
+  fill: var(--madera);
+}
+
+.pinza__madera--atras {
+  fill: var(--madera-sombra);
+}
+
+.pinza__resorte {
+  fill: none;
+  stroke: #b7b0bc;
+  stroke-width: 2.2;
+}
+
+.hoja__titulo {
+  margin-bottom: var(--s-4);
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: clamp(2.05rem, 1.6rem + 1.6vw, 2.85rem);
+  line-height: 1.04;
+  text-transform: uppercase;
+}
+
+.hoja__subtitulo {
+  font-family: var(--font-cartel);
+  font-weight: 800;
+  font-size: var(--step-1);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.hoja__entrada {
+  max-width: 44ch;
+  margin-bottom: var(--s-5);
+  color: var(--plumon-suave);
+}
+
+.hoja__dato {
+  color: var(--plumon);
+  overflow-wrap: anywhere;
+}
+
+.hoja__pasos {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hoja__pasos li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.hoja__pasos svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--lona);
+}
+
+.hoja__datos {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0 0 var(--s-5);
+}
+
+.hoja__datos div {
+  display: grid;
+  gap: 2px;
+}
+
+.hoja__datos dt {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--plumon-suave);
+}
+
+.hoja__datos dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.hoja__acciones {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.hoja__pie {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+/* ─── Formulario ─── */
+
+.formulario {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.formulario--separado {
+  margin-top: var(--s-5);
+  padding-top: var(--s-5);
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.formulario__extra {
+  margin-top: calc(var(--s-2) * -1);
+  font-size: 0.96rem;
+  text-align: right;
+}
+
+.campo {
+  display: grid;
+  gap: 6px;
+}
+
+.campo__etiqueta {
+  font-weight: 750;
+  font-size: 0.98rem;
+}
+
+.campo__caja {
+  position: relative;
+  display: flex;
+}
+
+.campo__entrada {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  font-size: 1.06rem;
+  color: var(--plumon);
+  background: #fff;
+  border: 2.5px solid var(--plumon);
+  border-radius: var(--trazo-chico);
+  transition:
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+
+.campo__entrada:focus,
+.campo__entrada:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--fosfo-amarillo) 92%, transparent);
+}
+
+.campo--error .campo__entrada {
+  border-color: var(--rojo-plumon);
+}
+
+.campo__caja:has(.campo__ver) .campo__entrada {
+  padding-right: 54px;
+}
+
+.campo__ver {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  translate: 0 -50%;
+  color: var(--plumon-suave);
+  background: none;
+  border: 0;
+  border-radius: 10px;
+}
+
+@media (hover: hover) {
+  .campo__ver:hover {
+    color: var(--plumon);
+    background: color-mix(in oklab, var(--fosfo-amarillo) 55%, transparent);
+  }
+}
+
+.campo__error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--rojo-plumon);
+}
+
+.campo__error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.campo__ayuda {
+  font-size: 0.93rem;
+  line-height: 1.4;
+  color: var(--plumon-suave);
+}
+
+.casilla {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.casilla__entrada {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  opacity: 0;
+}
+
+.casilla__etiqueta {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.casilla__caja {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -2px;
+  border-radius: 6px;
+}
+
+.casilla__marco {
+  fill: #fff;
+  stroke: var(--plumon);
+  stroke-width: 2.4;
+}
+
+.casilla--error .casilla__marco {
+  stroke: var(--rojo-plumon);
+}
+
+.casilla__palomita {
+  fill: none;
+  stroke: var(--rojo-plumon);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 280ms var(--ease-salida);
+}
+
+.casilla__entrada:checked + .casilla__etiqueta .casilla__palomita {
+  stroke-dashoffset: 0;
+}
+
+.casilla__entrada:focus-visible + .casilla__etiqueta .casilla__caja {
+  outline: 3px solid var(--plumon);
+  outline-offset: 2px;
+  background: var(--fosfo-amarillo);
+}
+
+.reglas {
+  margin-top: calc(var(--s-2) * -1);
+  padding-left: 40px;
+  font-size: 0.95rem;
+}
+
+.reglas summary {
+  width: fit-content;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--lona);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.2em;
+  border-radius: 3px;
+}
+
+.reglas ul {
+  display: grid;
+  gap: 6px;
+  margin: var(--s-3) 0 0;
+  padding-left: 1.1em;
+  color: var(--plumon-suave);
+}
+
+.verificacion__widget {
+  min-height: 65px;
+}
+
+/* ─── Aviso y sello ─── */
+
+.aviso {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  border-radius: var(--trazo-chico);
+}
+
+.aviso svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.aviso--error {
+  color: #8c0a10;
+  background: color-mix(in oklab, var(--rojo-plumon) 8%, white);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon) 55%, white);
+}
+
+.aviso--ok {
+  color: #0a5328;
+  background: color-mix(in oklab, var(--fosfo-verde) 24%, white);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, #0f8a4a 50%, white);
+}
+
+.aviso .enlace {
+  text-decoration-color: currentColor;
+}
+
+.sello {
+  margin: 0 0 var(--s-4);
+}
+
+.sello__tinta {
+  display: inline-block;
+  padding: 3px 14px 1px;
+  font-family: var(--font-cartel);
+  font-weight: 900;
+  font-size: 2rem;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #c3121b;
+  border: 4px solid currentColor;
+  border-radius: 9px;
+  rotate: -7deg;
+  mix-blend-mode: multiply;
+  mask-image: repeating-radial-gradient(
+    circle at 28% 36%,
+    #000 0 2.2px,
+    rgb(0 0 0 / 0.72) 2.2px 3.1px
+  );
+  animation: golpe-sello 480ms var(--ease-salida) 180ms both;
+}
+
+@keyframes golpe-sello {
+  from {
+    scale: 1.7;
+    opacity: 0.15;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+/* ─── Perchero de la portada ─── */
+
+/* Sin recorte: el halo y el cable pueden salir de la escena; el puesto ya
+   recorta el desborde horizontal a nivel de página. */
+.perchero {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+
+.perchero__escena {
+  position: relative;
+  width: calc(var(--px) * 150);
+  height: calc(var(--px) * 104);
+}
+
+/* Halo del foco pelón: luz cálida que no se recorta en el lienzo. */
+.perchero__luz,
+.maniqui__luz {
+  position: absolute;
+  width: calc(var(--px) * 124);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(255 240 178 / 0.78) 0%,
+    rgb(255 228 150 / 0.36) 22%,
+    rgb(255 228 150 / 0.12) 46%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* El cable baja desde la lona hasta el socket. */
+.perchero__cable,
+.maniqui__cable {
+  position: absolute;
+  bottom: calc(100% - var(--px) * 18);
+  width: var(--px);
+  background: var(--ciruela);
+  pointer-events: none;
+}
+
+.perchero__fondo {
+  position: absolute;
+  inset: 0;
+}
+
+.perchero__persona {
+  position: absolute;
+  transform-origin: 50% 100%;
+}
+
+.perchero__gancho {
+  position: absolute;
+  width: calc(var(--px) * 18);
+  height: calc(var(--px) * 30);
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  transform-origin: 50% 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.perchero__gancho canvas {
+  transform-origin: 50% 0;
+  animation: vaiven-gancho 4.2s ease-in-out infinite;
+  animation-delay: var(--retraso, 0s);
+}
+
+.perchero__gancho:focus-visible {
+  outline: 3px solid var(--fosfo-amarillo);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .perchero__gancho:hover canvas {
+    filter: brightness(1.1) drop-shadow(0 0 7px rgb(255 240 170 / 0.85));
+  }
+}
+
+.perchero__letrero {
+  position: absolute;
+  top: calc(var(--px) * 72);
+  left: calc(var(--px) * 102);
+  padding: calc(var(--px) * 1.4) calc(var(--px) * 3);
+  font-family: var(--font-plumon);
+  font-size: calc(var(--px) * 5.2);
+  line-height: 1;
+  color: var(--plumon);
+  background: var(--fosfo-verde);
+  border-radius: 4px 8px 5px 9px;
+  box-shadow: var(--sombra-cartulina);
+  rotate: 7deg;
+  pointer-events: none;
+}
+
+@keyframes vaiven-gancho {
+  0%,
+  100% {
+    rotate: -1.8deg;
+  }
+  50% {
+    rotate: 1.8deg;
+  }
+}
+
+/* ─── Calle ─── */
+
+.calle {
+  position: relative;
+  height: var(--calle-alto);
+  margin-top: auto;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--fosfo-amarillo) 0 40px, transparent 40px 80px) 0 76% / 80px 4px
+    repeat-x,
+    radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1.4px) 0 0 / 6px 6px,
+    linear-gradient(
+      to bottom,
+      var(--banqueta) 0 12px,
+      #6c6167 12px 15px,
+      var(--asfalto-luz) 15px 30px,
+      var(--asfalto) 30px
+    );
+}
+
+.calle__gente {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+}
+
+/* ─── Cortina entre puestos ─── */
+
+.cortina {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  box-shadow: inset 0 -22px 0 var(--lona-hondo);
+}
+
+/* ─── Movimiento reducido: todo queda en su estado final ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Modo quieto (solo desarrollo, ?quieto): capturas del estado final sin movimiento. */
+[data-quieto] *,
+[data-quieto] *::before,
+[data-quieto] *::after {
+  animation: none !important;
+  transition: none !important;
+}

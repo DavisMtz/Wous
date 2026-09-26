@@ -1,0 +1,143 @@
+{
+  "title": "Wous · Elige el mundo visual",
+  "question": "El sorteo asignó «El tianguis de paca». Quédatelo, toma la alternativa o vuelve a sortear.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "El tianguis de paca",
+      "kicker": "THE ROLL",
+      "lineage": "Tianguis y pacas de ropa de barrio en México: lonas de color, ganchos y cartulinas rotuladas a mano",
+      "thesis": "Wous es un puesto bajo la lona donde tu personaje se prueba su look y sale a la calle.",
+      "palette": ["#E8267F", "#1E4BD2", "#F2F53A", "#FF7A1F", "#2B1238"],
+      "materials": [
+        "lona de polietileno que tiñe la luz",
+        "cartulina fosforescente rotulada con plumón",
+        "ganchos y ropa colgada",
+        "foco pelón"
+      ],
+      "viewport": "Bajo una lona rosa que tiñe todo, tu personaje en pixel art cuelga de un gancho entre la ropa; una estrella de cartulina fosforescente grita «¡Pásale!» y es el botón para crear tu cuenta.",
+      "risk": "Ilustrado con timidez parece folclor de souvenir; tiene que sentirse de calle, actual y hecho a mano.",
+      "raised": [
+        {
+          "from": "Hilera de maquinitas",
+          "raise": "El foco pelón es el estado activo: lo elegido está bajo la luz y lo demás queda en sombra de lona."
+        },
+        {
+          "from": "Consola de CD-ROM",
+          "raise": "Cada control tiene recorrido físico: los botones son cartulinas pegadas que se hunden al presionarlas."
+        },
+        {
+          "from": "Capa de seda con jaretas",
+          "raise": "Un solo gesto transforma el look entero: descolgar un gancho cambia el conjunto completo del personaje."
+        }
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "La tira del fotomatón",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Cabinas de foto instantánea de plazas y centros comerciales",
+      "thesis": "Cada personaje es una tira de cuatro fotos de cabina: posas, truena el flash y sale tu tira.",
+      "palette": ["#C4122F", "#121212", "#F7F7F2", "#FFF8C9"],
+      "materials": ["papel fotográfico brillante", "cortina de terciopelo", "destello de flash"],
+      "viewport": "La cortina se abre y tu personaje posa en cuatro cuadros; la ranura por donde sale la tira es el botón de registro.",
+      "risk": "Era mi primera opción y también la más familiar: el fotomatón ya lo usan muchas apps sociales."
+    },
+    {
+      "id": "challenger-arcade",
+      "label": "Hilera de maquinitas",
+      "verdict": "declined",
+      "lineage": "Pasillo oscuro de maquinitas con marquesinas iluminadas",
+      "thesis": "Cada sala del mundo es un gabinete con su marquesina encendida.",
+      "palette": ["#0B0B12", "#22D3EE", "#EC4899", "#FDE68A"],
+      "materials": ["marquesina retroiluminada", "arte aerografiado", "fósforo de CRT"],
+      "viewport": "Un pasillo de gabinetes; la marquesina de la Plaza brilla y su pantalla de demo invita a entrar.",
+      "risk": "Es el cliché de todo juego pixel: habla de jugar, no de expresarte.",
+      "case": "Pierde en identificación y en claridad: la esencia de Wous es tu personaje, no una partida.",
+      "kept": "Luz como estado activo.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-arcade-marquee-row-hero.webp"
+    },
+    {
+      "id": "challenger-cdrom",
+      "label": "Consola de CD-ROM",
+      "verdict": "declined",
+      "lineage": "Interfaces de CD-ROM de mediados de los noventa",
+      "thesis": "El juego como una máquina renderizada con una ventanita al mundo.",
+      "palette": ["#9AA3AD", "#2BA6A0", "#6D4AC4", "#F4F4F4"],
+      "materials": ["paneles biselados", "botones en relieve"],
+      "viewport": "Una consola gris con el mundo en una ventana chica al centro.",
+      "risk": "Nostalgia ajena a quien tiene 16 o 20 años.",
+      "case": "Pierde en ambos ejes: el público no se reconoce en una consola de los noventa.",
+      "kept": "Controles con recorrido físico.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-cdrom-chrome-navigation-hero.webp"
+    },
+    {
+      "id": "challenger-drawcord",
+      "label": "Capa de seda con jaretas",
+      "verdict": "declined",
+      "lineage": "Capas de diseñador que se transforman al jalar un cordón",
+      "thesis": "Un tirón y la prenda plana se vuelve volumen: el look como transformación.",
+      "palette": ["#0E0E10", "#C9A227", "#3A3A40", "#5B6770"],
+      "materials": ["seda negra mate", "cordón dorado", "costura grafito"],
+      "viewport": "Una capa negra que se pliega alrededor de los hombros al jalar el cordón.",
+      "risk": "Lujo frío: no es la calle ni el barrio de quien juega.",
+      "case": "Habla de moda pero pierde en identificación; el tianguis dice lo mismo con cercanía.",
+      "kept": "Un solo gesto transforma la silueta entera.",
+      "hero": "https://impeccable.style/worlds/cards/textiles-weave-drape-fashion-drawcord-transforming-cape-hero.webp"
+    },
+    {
+      "id": "challenger-detector",
+      "label": "Display de colisionador",
+      "verdict": "declined",
+      "lineage": "Visualización de eventos de física de partículas",
+      "thesis": "Cada encuentro entre jugadores como una colisión congelada.",
+      "palette": ["#05070D", "#4C6A92", "#F5D90A", "#E5484D"],
+      "materials": ["trazas de partículas", "anillos de detector"],
+      "viewport": "Un corte concéntrico con trazas saliendo del centro.",
+      "risk": "Frío y técnico para un lugar de convivencia.",
+      "case": "Pierde en ambos ejes: nada del público ni del producto vive ahí.",
+      "kept": "Aislar una cosa atenúa todo lo demás.",
+      "hero": "https://impeccable.style/worlds/cards/scientific-notation-particle-detector-event-display-hero.webp"
+    },
+    {
+      "id": "challenger-ink",
+      "label": "Estanque de tinta suminagashi",
+      "verdict": "declined",
+      "lineage": "Marmoleado japonés de tinta sobre agua",
+      "thesis": "La superficie como líquido que responde al dedo.",
+      "palette": ["#1B2A6B", "#1A1A1A", "#F4F4F0", "#8A8F99"],
+      "materials": ["tinta sumi", "agua quieta"],
+      "viewport": "Una gota de índigo cae y el dedo arrastra corrientes.",
+      "risk": "Contemplativo; nada de personajes ni de calle.",
+      "case": "Pierde en ambos ejes.",
+      "kept": "El medio mismo es la interacción.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-fluid-ink-basin-hero.webp"
+    },
+    {
+      "id": "challenger-glaze",
+      "label": "Repisa de horno con esmaltes",
+      "verdict": "declined",
+      "lineage": "Cerámica esmaltada que escurre en el horno",
+      "thesis": "Muestras en una sola fila, leídas por gravedad.",
+      "palette": ["#F2F0EA", "#1F4FA8", "#0F2F6E", "#B9B4A8"],
+      "materials": ["esmalte cobalto", "repisa de horno"],
+      "viewport": "Una fila de tazas con esmalte escurriendo hasta la repisa.",
+      "risk": "Artesanía serena, sin gente.",
+      "case": "Pierde en ambos ejes.",
+      "kept": "Una sola fila de muestras comparables.",
+      "hero": "https://impeccable.style/worlds/cards/clay-ceramics-fracture-glaze-river-shelf-hero.webp"
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "canon": true,
+  "canonCard": {
+    "label": "El estándar de la categoría",
+    "thesis": "La portada de juego pixel de siempre, hecha con oficio.",
+    "palette": ["#1A1033", "#7C3AED", "#22D3EE", "#F472B6"],
+    "materials": ["cielo nocturno degradado", "tipografía pixel", "brillo neón"],
+    "viewport": "Un cielo morado con el logo en fuente pixel y un gran botón JUGAR.",
+    "risk": "Indistinguible de cualquier otro juego pixel, por diseño."
+  },
+  "steer": true
+}

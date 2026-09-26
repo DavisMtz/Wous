@@ -1,0 +1,112 @@
+/*
+ * Wous · El tianguis de paca
+ * Cada puesto tiene su lona; la luz del día pasa por ella y tiñe todo.
+ * La tinta es plumón, los avisos son cartulina fosforescente, las hojas se
+ * cuelgan con pinzas de madera.
+ */
+
+:root {
+  /* Lonas: base, pliegue hondo y luz que la atraviesa */
+  --lona-rosa: #e8267f;
+  --lona-rosa-hondo: #a10f57;
+  --lona-rosa-luz: #ff72b4;
+  --lona-azul: #1e4bd2;
+  --lona-azul-hondo: #0f2c86;
+  --lona-azul-luz: #5a86ff;
+  --lona-verde: #0f8a4a;
+  --lona-verde-hondo: #075a2f;
+  --lona-verde-luz: #39c47a;
+  --lona-amarilla: #f5c518;
+  --lona-amarilla-hondo: #b98a00;
+  --lona-amarilla-luz: #ffe57a;
+  --lona-naranja: #ee5f16;
+  --lona-naranja-hondo: #a8390a;
+  --lona-naranja-luz: #ff9a55;
+
+  /* Tinta, papel y cartulina */
+  --plumon: #17101b;
+  --plumon-suave: #4a3a51;
+  --ciruela: #2b1238;
+  --cartulina: #fffbf1;
+  --cartulina-borde: #e9dfc8;
+  --fosfo-amarillo: #efff3a;
+  --fosfo-naranja: #ff7a21;
+  --fosfo-verde: #5dff86;
+  --fosfo-rosa: #ff5fae;
+  --rojo-plumon: #c8141c;
+  --masking: #e9dbb1;
+  --madera: #d7a064;
+  --madera-sombra: #a36b33;
+  --cuerda: #efe2c4;
+  --cuerda-sombra: #b7a47c;
+  --asfalto: #2e2632;
+  --asfalto-luz: #3b3240;
+  --banqueta: #9c8f95;
+
+  /* Tipos: rotulación de cartel, plumón y lectura */
+  --font-cartel: "Big Shoulders Display Variable", "Arial Narrow", sans-serif;
+  --font-plumon: "Permanent Marker", "Segoe Print", cursive;
+  --font-ui: "Bricolage Grotesque Variable", system-ui, sans-serif;
+
+  --step--1: clamp(0.84rem, 0.81rem + 0.15vw, 0.92rem);
+  --step-0: clamp(1rem, 0.97rem + 0.15vw, 1.06rem);
+  --step-1: clamp(1.18rem, 1.1rem + 0.4vw, 1.4rem);
+  --step-2: clamp(1.5rem, 1.32rem + 0.9vw, 2.05rem);
+  --step-3: clamp(2.1rem, 1.6rem + 2.4vw, 3.5rem);
+  --step-4: clamp(3.6rem, 2rem + 7.5vw, 6rem);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+
+  /* Trazo a mano: esquinas desiguales, como un rectángulo hecho con plumón */
+  --trazo: 7px 12px 9px 13px / 12px 8px 13px 9px;
+  --trazo-chico: 5px 8px 6px 9px / 8px 5px 9px 6px;
+
+  --sombra-hoja: 0 1px 1px rgb(43 18 56 / 0.22), 0 14px 26px -10px rgb(43 18 56 / 0.55);
+  --sombra-cartulina: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55);
+  --sombra-cartulina-hundida: 0 0 0 rgb(23 16 27 / 0.2), 0 2px 4px -2px rgb(43 18 56 / 0.5);
+
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-presion: cubic-bezier(0.3, 0, 0.1, 1);
+
+  --calle-alto: 112px;
+}
+
+/* Cada puesto, su lona. `--sobre-lona` es la tinta legible encima de ella. */
+[data-lona="rosa"] {
+  --lona: var(--lona-rosa);
+  --lona-hondo: var(--lona-rosa-hondo);
+  --lona-luz: var(--lona-rosa-luz);
+  --sobre-lona: var(--cartulina);
+}
+[data-lona="azul"] {
+  --lona: var(--lona-azul);
+  --lona-hondo: var(--lona-azul-hondo);
+  --lona-luz: var(--lona-azul-luz);
+  --sobre-lona: var(--cartulina);
+}
+[data-lona="verde"] {
+  --lona: var(--lona-verde);
+  --lona-hondo: var(--lona-verde-hondo);
+  --lona-luz: var(--lona-verde-luz);
+  --sobre-lona: var(--cartulina);
+}
+[data-lona="amarilla"] {
+  --lona: var(--lona-amarilla);
+  --lona-hondo: var(--lona-amarilla-hondo);
+  --lona-luz: var(--lona-amarilla-luz);
+  --sobre-lona: var(--plumon);
+}
+[data-lona="naranja"] {
+  --lona: var(--lona-naranja);
+  --lona-hondo: var(--lona-naranja-hondo);
+  --lona-luz: var(--lona-naranja-luz);
+  --sobre-lona: var(--cartulina);
+}

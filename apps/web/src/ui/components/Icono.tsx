@@ -1,0 +1,78 @@
+import type { SVGProps } from 'react';
+
+/**
+ * Íconos a trazo de plumón: un solo grosor (2.4), puntas redondas, trazos
+ * apenas irregulares. Heredan el color del texto.
+ */
+const PATHS = {
+  ojo: (
+    <>
+      <path d="M2.8 12.2c2.3-4.3 5.6-6.5 9.3-6.4 3.6 0 6.8 2.2 9.1 6.3-2.3 4.1-5.5 6.2-9.2 6.2-3.6 0-6.9-2-9.2-6.1Z" />
+      <circle cx="12" cy="12.1" r="2.9" />
+    </>
+  ),
+  'ojo-tachado': (
+    <>
+      <path d="M4.6 8.9C3.9 9.9 3.3 11 2.8 12.2c2.3 4.1 5.6 6.1 9.2 6.1 1.4 0 2.8-.3 4-.9M9.5 6.2c.8-.2 1.7-.4 2.6-.4 3.6 0 6.8 2.2 9.1 6.3-.6 1.1-1.3 2.1-2 2.9" />
+      <path d="M3.4 3.6 20.7 20.4" />
+      <path d="M9.9 10.2a2.9 2.9 0 0 0 4 4" />
+    </>
+  ),
+  regresar: (
+    <>
+      <path d="M19.6 12.3H5.1" />
+      <path d="M10.6 6.1 4.6 12.2l6.1 6" />
+    </>
+  ),
+  sobre: (
+    <>
+      <path d="M3.3 6.4h17.5l-.2 11.4H3.4Z" />
+      <path d="m3.6 6.7 8.5 6.6 8.4-6.7" />
+    </>
+  ),
+  palomita: <path d="m4.4 12.8 4.9 4.6L19.8 6.3" />,
+  alerta: (
+    <>
+      <path d="M12.1 3.5 21 19.6H3.1Z" />
+      <path d="M12 9.6v4.3" />
+      <path d="M12 16.9v.2" />
+    </>
+  ),
+  salir: (
+    <>
+      <path d="M14.3 4.2H5.1v15.6h9.1" />
+      <path d="M10.2 12.1h10.3" />
+      <path d="m16.7 8.1 4 4-4 3.9" />
+    </>
+  ),
+  gancho: (
+    <>
+      <path d="M12 7.3V6.1a2 2 0 1 1 2.2-2" />
+      <path d="M12 7.3 2.9 15.4c-.6.6-.2 1.6.7 1.6h16.8c.9 0 1.3-1 .7-1.6Z" />
+    </>
+  ),
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number };
+
+export function Icono({ name, size = 22, ...rest }: Props) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      {...rest}
+    >
+      {PATHS[name]}
+    </svg>
+  );
+}

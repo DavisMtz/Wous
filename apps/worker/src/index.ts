@@ -1,5 +1,6 @@
 import { createApp } from './app.ts';
 import { readConfig } from './config.ts';
+import { CRON_PURGE, CRON_SWEEP_OUTBOX } from './cron.ts';
 import { createEmailQueueHandler } from './email/queue-consumer.ts';
 import { systemClock } from './lib/clock.ts';
 import { createLogger } from './lib/log.ts';
@@ -8,10 +9,6 @@ import { purgeExpired, sweepOutbox } from './notifications/sweeper.ts';
 export { RateLimitDO } from './durable-objects/RateLimitDO.ts';
 export { RoomDirectoryDO } from './durable-objects/RoomDirectoryDO.ts';
 export { RoomDO } from './durable-objects/RoomDO.ts';
-
-/** Deben coincidir con `triggers.crons` de wrangler.jsonc. */
-export const CRON_SWEEP_OUTBOX = '*/5 * * * *';
-export const CRON_PURGE = '17 3 * * *';
 
 const app = createApp();
 

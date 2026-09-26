@@ -197,7 +197,7 @@ describe('consumidor de EMAIL_QUEUE', () => {
     await handler(batch, env, ctx);
     const result = await getQueueResult(batch, ctx);
     // El arnés no expone delaySeconds; su cálculo lo cubre retryDelaySeconds en units.
-    expect(result.retryMessages.map((m) => m.msgId)).toEqual(['q-1']);
+    expect(result.retryMessages.map((m: { msgId: string }) => m.msgId)).toEqual(['q-1']);
     expect(result.explicitAcks).toEqual([]);
   });
 

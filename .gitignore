@@ -32,3 +32,6 @@ desktop.ini
 
 # Tipos generados por `wrangler types` (se regeneran en typecheck)
 worker-configuration.d.ts
+
+# Estado temporal de las páginas de decisión de impeccable
+**/.impeccable/questions/

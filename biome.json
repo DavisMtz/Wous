@@ -12,7 +12,8 @@
       "!**/dist",
       "!**/.wrangler",
       "!**/playwright-report",
-      "!**/test-results"
+      "!**/test-results",
+      "!**/.impeccable"
     ]
   },
   "formatter": {
@@ -46,6 +47,9 @@
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error"
+      },
+      "complexity": {
+        "noImportantStyles": "off"
       }
     }
   },
