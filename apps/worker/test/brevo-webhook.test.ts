@@ -67,6 +67,27 @@ describe('POST /api/v1/webhooks/brevo', () => {
     expect(audit?.reason).toBe('hard_bounce');
   });
 
+  it('un bloqueo de Brevo no pierde la dirección para siempre: el reenvío se intenta', async () => {
+    // Brevo dice «blocked» cuando la dirección está en SU lista (un rebote viejo
+    // de otro proyecto de la cuenta, por ejemplo); esa lista se puede levantar.
+    const { identity, account, messageId } = await sentOutbox();
+    const res = await webhook({
+      event: 'blocked',
+      email: identity.email,
+      'message-id': messageId,
+      reason: 'blocked : due to blacklist user',
+      ts_event: 2,
+    });
+    expect(res.status).toBe(204);
+    expect((await accountByEmail(identity.email))?.email_deliverability).toBe('SOFT_BOUNCE');
+    const audit = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM audit_log WHERE target_id = ? AND action = 'EMAIL_MARKED_UNDELIVERABLE'",
+    )
+      .bind(account.id)
+      .first<{ n: number }>();
+    expect(audit?.n).toBe(0);
+  });
+
   it('ignora aperturas y clics (no se rastrean)', async () => {
     const { identity, messageId } = await sentOutbox();
     await webhook({ event: 'opened', email: identity.email, 'message-id': messageId, ts: 5 });

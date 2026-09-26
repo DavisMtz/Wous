@@ -25,8 +25,14 @@ type BrevoEvent = z.infer<typeof BrevoEvent>;
 const IGNORED_EVENTS = new Set(['opened', 'unique_opened', 'click', 'proxy_open']);
 
 /** Eventos que dicen que la dirección no sirve: se deja de insistir. */
-const UNDELIVERABLE_EVENTS = new Set(['hard_bounce', 'invalid_email', 'blocked']);
-const SOFT_EVENTS = new Set(['soft_bounce', 'deferred']);
+const UNDELIVERABLE_EVENTS = new Set(['hard_bounce', 'invalid_email']);
+/**
+ * Pasajeros o reversibles. `blocked` es Brevo negándose a enviar porque la
+ * dirección está en SU lista de bloqueo (p. ej. por un rebote viejo de otro
+ * proyecto de la cuenta): esa lista se puede levantar, así que no se marca
+ * como perdida para siempre y el reenvío que pida la persona se intenta.
+ */
+const SOFT_EVENTS = new Set(['soft_bounce', 'deferred', 'blocked']);
 
 /**
  * Autenticación del webhook: secreto de alta entropía en `Authorization:
