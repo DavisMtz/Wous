@@ -16,11 +16,9 @@ export const devRoutes = new Hono<AppHono>()
   })
   .get('/mailbox', async (c) => {
     const to = c.req.query('to')?.toLowerCase();
+    // Las claves van en tiempo invertido: la primera página trae lo más nuevo.
     const listing = await c.env.ASSETS_BUCKET.list({ prefix: DEV_MAILBOX_PREFIX, limit: 200 });
-    const keys = listing.objects
-      .map((o) => o.key)
-      .sort()
-      .reverse();
+    const keys = listing.objects.map((o) => o.key).sort();
     const messages: DevMailboxEntry[] = [];
     for (const key of keys) {
       const object = await c.env.ASSETS_BUCKET.get(key);

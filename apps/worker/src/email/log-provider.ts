@@ -4,8 +4,19 @@ import type { Clock } from '../lib/clock.ts';
 import type { Logger } from '../lib/log.ts';
 import type { EmailProvider, OutgoingEmail } from './provider.ts';
 
-/** Prefijo del buzón de desarrollo en R2 (solo entorno local). */
-export const DEV_MAILBOX_PREFIX = 'dev/mailbox/';
+/**
+ * Prefijo del buzón de desarrollo en R2 (solo entorno local). R2 lista en
+ * orden lexicográfico y por páginas: la clave lleva el tiempo INVERTIDO para
+ * que lo más nuevo salga primero. (La v1 usaba el tiempo tal cual: pasados
+ * 200 correos, los nuevos ya no cabían en la primera página y el E2E no los
+ * encontraba.)
+ */
+export const DEV_MAILBOX_PREFIX = 'dev/mailbox-v2/';
+const MAX_TIME = 9_999_999_999_999;
+
+export function devMailboxKey(sentAt: number, outboxId: string): string {
+  return `${DEV_MAILBOX_PREFIX}${String(MAX_TIME - sentAt).padStart(13, '0')}-${outboxId}.json`;
+}
 
 export type DevMailboxEntry = OutgoingEmail & { sentAt: number };
 
@@ -30,10 +41,13 @@ export function createLogProvider(
       });
       if (config.env === 'local') {
         const entry: DevMailboxEntry = { ...email, sentAt: clock.now() };
-        const key = `${DEV_MAILBOX_PREFIX}${String(entry.sentAt).padStart(15, '0')}-${email.outboxId}.json`;
-        await env.ASSETS_BUCKET.put(key, JSON.stringify(entry), {
-          httpMetadata: { contentType: 'application/json' },
-        });
+        await env.ASSETS_BUCKET.put(
+          devMailboxKey(entry.sentAt, email.outboxId),
+          JSON.stringify(entry),
+          {
+            httpMetadata: { contentType: 'application/json' },
+          },
+        );
       }
       return { providerMessageId: `log:${email.outboxId}` };
     },
