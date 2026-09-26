@@ -1,3 +1,4 @@
+import { API_PREFIX } from '@wous/config';
 import { createMiddleware } from 'hono/factory';
 import { Errors } from '../errors.ts';
 import type { AppHono } from '../types.ts';
@@ -27,6 +28,8 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  */
 export const requireSameOrigin = createMiddleware<AppHono>(async (c, next) => {
   if (SAFE_METHODS.has(c.req.method)) return next();
+  // Los webhooks llegan de servidores, no de navegadores: se autentican con su secreto.
+  if (new URL(c.req.url).pathname.startsWith(`${API_PREFIX}/webhooks/`)) return next();
   const origin = c.req.header('Origin');
   if (!origin || origin !== c.get('config').origin) {
     c.get('log').warn('http.origin_rejected', { origin: origin ?? null });

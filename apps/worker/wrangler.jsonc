@@ -18,8 +18,18 @@
     "APP_ENV": "local",
     "APP_ORIGIN": "http://localhost:5173",
     "EMAIL_MODE": "log",
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "MAIL_FROM_NAME": "Wous",
+    "MAIL_FROM_EMAIL": "wous@logidma.com",
+    "EMAIL_ALLOWLIST": "",
+    "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
+    "BREVO_TEMPLATE_WELCOME": "0",
+    "BREVO_TEMPLATE_PASSWORD_RESET": "0",
+    "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
+    "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
+    "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
   },
+  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
   "secrets": {
     "required": [
       "SESSION_PEPPER",
@@ -71,8 +81,18 @@
         "APP_ENV": "staging",
         "APP_ORIGIN": "https://wous-staging.logidma.workers.dev",
         "EMAIL_MODE": "log",
-        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4UXgAcoGEIyO"
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4UXgAcoGEIyO",
+        "MAIL_FROM_NAME": "Wous",
+        "MAIL_FROM_EMAIL": "wous@logidma.com",
+        "EMAIL_ALLOWLIST": "davismartinesad@gmail.com,@logidma.com",
+        "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
+        "BREVO_TEMPLATE_WELCOME": "0",
+        "BREVO_TEMPLATE_PASSWORD_RESET": "0",
+        "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
+        "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
+        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
       },
+      "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
       "secrets": {
         "required": [
           "SESSION_PEPPER",
@@ -125,8 +145,18 @@
         "APP_ENV": "production",
         "APP_ORIGIN": "https://wous.logidma.com",
         "EMAIL_MODE": "log",
-        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4hgAd3Z5imM9"
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4hgAd3Z5imM9",
+        "MAIL_FROM_NAME": "Wous",
+        "MAIL_FROM_EMAIL": "wous@logidma.com",
+        "EMAIL_ALLOWLIST": "",
+        "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
+        "BREVO_TEMPLATE_WELCOME": "0",
+        "BREVO_TEMPLATE_PASSWORD_RESET": "0",
+        "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
+        "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
+        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
       },
+      "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
       "secrets": {
         "required": [
           "SESSION_PEPPER",

@@ -51,6 +51,7 @@ export type RateLimitRule = { readonly limit: number; readonly windowMs: number 
 /** Límites de abuso para endpoints sensibles (§23). */
 export const RATE_LIMITS = {
   registerPerIp: { limit: 5, windowMs: 15 * MINUTE },
+  registerPerEmail: { limit: 3, windowMs: HOUR },
   loginPerIp: { limit: 10, windowMs: 10 * MINUTE },
   loginPerAccount: { limit: 10, windowMs: 15 * MINUTE },
   forgotPasswordPerIp: { limit: 5, windowMs: HOUR },

@@ -14,6 +14,7 @@
     "deploy:production": "wrangler d1 migrations apply DB --remote --env production && wrangler deploy --env production --secrets-file secrets.production.json"
   },
   "dependencies": {
+    "@phi-ag/argon2": "0.5.28",
     "@wous/config": "workspace:*",
     "@wous/contracts": "workspace:*",
     "hono": "4.13.9",

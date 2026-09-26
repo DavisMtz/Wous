@@ -22,6 +22,8 @@ export default defineConfig({
         wrangler: { configPath: './wrangler.jsonc' },
         miniflare: {
           bindings: { ...TEST_SECRETS, TEST_MIGRATIONS: migrations },
+          // Sin consumidor automático: cada prueba entrega el outbox a mano y en orden.
+          queueConsumers: {},
         },
       };
     }),

@@ -1,8 +1,11 @@
 import { createMiddleware } from 'hono/factory';
+import { argon2idHasher } from '../../auth/password.ts';
 import { readConfig } from '../../config.ts';
 import { systemClock } from '../../lib/clock.ts';
 import { createIdGenerator } from '../../lib/ids.ts';
 import { createLogger } from '../../lib/log.ts';
+import { durableObjectRateLimiter } from '../../security/rate-limit.ts';
+import { createTurnstileVerifier } from '../../security/turnstile.ts';
 import type { AppHono, Deps } from '../types.ts';
 
 /**
@@ -16,12 +19,19 @@ export function contextMiddleware(overrides: Partial<Deps> = {}) {
     const ids = overrides.ids ?? createIdGenerator(clock);
     const requestId = ids.next('request');
     c.set('requestId', requestId);
+    c.set('session', null);
 
     const config = readConfig(c.env);
     const log = createLogger({ requestId, environment: config.env });
     c.set('config', config);
     c.set('log', log);
-    c.set('deps', { clock, ids });
+    c.set('deps', {
+      clock,
+      ids,
+      hasher: overrides.hasher ?? argon2idHasher,
+      turnstile: overrides.turnstile ?? createTurnstileVerifier(c.env, config, log),
+      rateLimiter: overrides.rateLimiter ?? durableObjectRateLimiter(c.env, clock),
+    });
 
     const started = Date.now();
     await next();

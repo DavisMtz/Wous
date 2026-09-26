@@ -59,8 +59,8 @@ export const healthRoutes = new Hono<AppHono>().get('/', async (c) => {
     durableObjects,
     emailQueue: { status: 'ok', detail: 'productor configurado' },
     email: {
-      status: config.emailMode === 'log' || brevoReady ? 'ok' : 'not_configured',
-      detail: `modo ${config.emailMode}`,
+      status: config.email.mode === 'log' || brevoReady ? 'ok' : 'not_configured',
+      detail: `modo ${config.email.mode}`,
     },
     secrets: {
       status: configuredSecrets === SECRET_NAMES.length ? 'ok' : 'degraded',
