@@ -1,18 +1,13 @@
-import { Hono } from 'hono';
+import { createApp } from './app.ts';
+import { handleEmailQueue } from './email/queue-consumer.ts';
 
-const app = new Hono<{ Bindings: Env }>();
+export { RateLimitDO } from './durable-objects/RateLimitDO.ts';
+export { RoomDirectoryDO } from './durable-objects/RoomDirectoryDO.ts';
+export { RoomDO } from './durable-objects/RoomDO.ts';
 
-app.get('/api/v1/health', (c) =>
-  c.json({
-    data: {
-      status: 'ok',
-      service: 'wous',
-      environment: c.env.APP_ENV,
-      serverTime: Date.now(),
-    },
-  }),
-);
+const app = createApp();
 
 export default {
   fetch: app.fetch,
-} satisfies ExportedHandler<Env>;
+  queue: handleEmailQueue,
+} satisfies ExportedHandler<Env, unknown>;

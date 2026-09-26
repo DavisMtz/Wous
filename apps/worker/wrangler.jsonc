@@ -2,6 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   // Nivel superior = entorno LOCAL (wrangler dev y pruebas). Nunca se despliega:
   // los scripts de despliegue siempre pasan --env staging | production.
+  // D1, R2, colas, Durable Objects y vars NO se heredan: cada entorno los declara enteros.
   "name": "wous-local",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-15",
@@ -15,22 +16,158 @@
   },
   "vars": {
     "APP_ENV": "local",
-    "APP_ORIGIN": "http://localhost:5173"
+    "APP_ORIGIN": "http://localhost:5173",
+    "EMAIL_MODE": "log",
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
   },
+  "secrets": {
+    "required": [
+      "SESSION_PEPPER",
+      "TOKEN_PEPPER",
+      "TURNSTILE_SECRET_KEY",
+      "BREVO_API_KEY",
+      "BREVO_WEBHOOK_SECRET"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wous-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../database/migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "wous-assets-local" }],
+  "queues": {
+    "producers": [{ "binding": "EMAIL_QUEUE", "queue": "wous-email-local" }],
+    "consumers": [
+      {
+        "queue": "wous-email-local",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wous-email-dlq-local"
+      },
+      { "queue": "wous-email-dlq-local", "max_batch_size": 10, "max_retries": 3 }
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOM", "class_name": "RoomDO" },
+      { "name": "ROOM_DIRECTORY", "class_name": "RoomDirectoryDO" },
+      { "name": "RATE_LIMIT", "class_name": "RateLimitDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RoomDO", "RoomDirectoryDO", "RateLimitDO"] }
+  ],
+
   "env": {
     "staging": {
       "name": "wous-staging",
+      "workers_dev": true,
+      "preview_urls": false,
       "vars": {
         "APP_ENV": "staging",
-        "APP_ORIGIN": "https://wous-staging.logidma.workers.dev"
-      }
+        "APP_ORIGIN": "https://wous-staging.logidma.workers.dev",
+        "EMAIL_MODE": "log",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4UXgAcoGEIyO"
+      },
+      "secrets": {
+        "required": [
+          "SESSION_PEPPER",
+          "TOKEN_PEPPER",
+          "TURNSTILE_SECRET_KEY",
+          "BREVO_API_KEY",
+          "BREVO_WEBHOOK_SECRET"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "wous-staging",
+          "database_id": "cd1cf7fe-187b-4a72-a2ae-669a8c9968c6",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "wous-assets-staging" }],
+      "queues": {
+        "producers": [{ "binding": "EMAIL_QUEUE", "queue": "wous-email-staging" }],
+        "consumers": [
+          {
+            "queue": "wous-email-staging",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "dead_letter_queue": "wous-email-dlq-staging"
+          },
+          { "queue": "wous-email-dlq-staging", "max_batch_size": 10, "max_retries": 3 }
+        ]
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "ROOM", "class_name": "RoomDO" },
+          { "name": "ROOM_DIRECTORY", "class_name": "RoomDirectoryDO" },
+          { "name": "RATE_LIMIT", "class_name": "RateLimitDO" }
+        ]
+      },
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["RoomDO", "RoomDirectoryDO", "RateLimitDO"] }
+      ]
     },
+
     "production": {
       "name": "wous",
+      // Solo por wous.logidma.com (dominio atado por API, ver CLAUDE.md).
+      "workers_dev": false,
+      "preview_urls": false,
       "vars": {
         "APP_ENV": "production",
-        "APP_ORIGIN": "https://wous.logidma.com"
-      }
+        "APP_ORIGIN": "https://wous.logidma.com",
+        "EMAIL_MODE": "log",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4hgAd3Z5imM9"
+      },
+      "secrets": {
+        "required": [
+          "SESSION_PEPPER",
+          "TOKEN_PEPPER",
+          "TURNSTILE_SECRET_KEY",
+          "BREVO_API_KEY",
+          "BREVO_WEBHOOK_SECRET"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "wous-production",
+          "database_id": "79537ff7-d817-4910-8697-f95989ec3c8b",
+          "migrations_dir": "../../database/migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "wous-assets-production" }],
+      "queues": {
+        "producers": [{ "binding": "EMAIL_QUEUE", "queue": "wous-email-production" }],
+        "consumers": [
+          {
+            "queue": "wous-email-production",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "dead_letter_queue": "wous-email-dlq-production"
+          },
+          { "queue": "wous-email-dlq-production", "max_batch_size": 10, "max_retries": 3 }
+        ]
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "ROOM", "class_name": "RoomDO" },
+          { "name": "ROOM_DIRECTORY", "class_name": "RoomDirectoryDO" },
+          { "name": "RATE_LIMIT", "class_name": "RateLimitDO" }
+        ]
+      },
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["RoomDO", "RoomDirectoryDO", "RateLimitDO"] }
+      ]
     }
   }
 }

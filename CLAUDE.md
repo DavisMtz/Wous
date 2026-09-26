@@ -9,7 +9,7 @@ cambies la arquitectura en silencio (§38).
 | Fase | Estado |
 | --- | --- |
 | 0 · Bootstrap del monorepo | ✅ hecha |
-| 1 · Infra Cloudflare y D1 | ⏳ |
+| 1 · Infra Cloudflare y D1 | ✅ hecha · staging en `wous-staging.logidma.workers.dev` |
 | 2 · Registro, login, Brevo | ⏳ |
 | 3 · Creación de personaje | ⏳ |
 | 4 · Phaser + InputManager | ⏳ |

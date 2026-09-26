@@ -10,8 +10,8 @@
     "test": "vitest run",
     "cf-typegen": "wrangler types --env-interface Env",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "deploy:staging": "wrangler d1 migrations apply DB --remote --env staging && wrangler deploy --env staging",
-    "deploy:production": "wrangler d1 migrations apply DB --remote --env production && wrangler deploy --env production"
+    "deploy:staging": "wrangler d1 migrations apply DB --remote --env staging && wrangler deploy --env staging --secrets-file secrets.staging.json",
+    "deploy:production": "wrangler d1 migrations apply DB --remote --env production && wrangler deploy --env production --secrets-file secrets.production.json"
   },
   "dependencies": {
     "@wous/config": "workspace:*",

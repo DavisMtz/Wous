@@ -1,0 +1,8 @@
+# Copia este archivo a .dev.vars (ignorado por git) y rellena los valores.
+# En staging/producción los secretos se suben con `wrangler secret bulk`.
+SESSION_PEPPER=
+TOKEN_PEPPER=
+# Local: llave de prueba de Turnstile 1x0000000000000000000000000000000AA
+TURNSTILE_SECRET_KEY=
+BREVO_API_KEY=
+BREVO_WEBHOOK_SECRET=
