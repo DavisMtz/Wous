@@ -13,8 +13,18 @@ export default defineConfig({
       '/ws': { target: 'ws://localhost:8787', ws: true, changeOrigin: false },
     },
   },
+  // Phaser entra por import dinámico (/plaza): sin esto Vite lo descubre tarde
+  // y recarga la página a media partida en desarrollo.
+  optimizeDeps: { include: ['phaser'] },
   build: {
     target: 'es2022',
     sourcemap: true,
+    // Phaser es un solo bloque de ~1.2 MB (min): va en su propio chunk perezoso.
+    chunkSizeWarningLimit: 1400,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => (id.includes('node_modules/phaser/') ? 'phaser' : undefined),
+      },
+    },
   },
 });

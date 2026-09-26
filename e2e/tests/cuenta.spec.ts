@@ -1,45 +1,10 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { turnstileReady, useOwnIp, waitForMail } from './ayudantes.ts';
 
 /**
- * Flujo completo de cuenta contra el stack local (Worker + Vite). El correo va
- * en modo log: el buzón de desarrollo (/api/v1/dev/mailbox, solo local) hace
- * de bandeja de entrada — la «verificación controlada» de §25.
+ * Flujo completo de cuenta contra el stack local (Worker + Vite): la
+ * «verificación controlada» de §25, con el buzón de desarrollo como bandeja.
  */
-
-type MailboxMessage = { type: string; to: { email: string }; params: Record<string, string> };
-
-async function waitForMail(
-  request: APIRequestContext,
-  email: string,
-  type: string,
-  timeoutMs = 40_000,
-): Promise<MailboxMessage> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const res = await request.get(`/api/v1/dev/mailbox?to=${encodeURIComponent(email)}`);
-    if (res.ok()) {
-      const body = (await res.json()) as { data: { messages: MailboxMessage[] } };
-      const found = body.data.messages.find((m) => m.type === type);
-      if (found) return found;
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  throw new Error(`No llegó ${type} a ${email}`);
-}
-
-/** Cada corrida entra con su propia IP: los límites por IP no se pisan entre corridas. */
-async function useOwnIp(page: Page) {
-  const ip = `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
-  await page.route('**/api/**', (route) =>
-    route.continue({ headers: { ...route.request().headers(), 'cf-connecting-ip': ip } }),
-  );
-}
-
-async function turnstileReady(page: Page) {
-  await expect(page.locator('input[name="cf-turnstile-response"]')).toHaveValue(/.+/, {
-    timeout: 30_000,
-  });
-}
 
 test('registro, verificación, sesión, reset y vuelta a entrar', async ({
   browser,
@@ -138,7 +103,11 @@ test('credenciales incorrectas muestran el error sin revelar si la cuenta existe
 }) => {
   await useOwnIp(page);
   await page.goto('/login');
-  await page.getByLabel('Correo o nombre de usuario').fill('nadie.nunca@example.com');
+  // Identificador nuevo por corrida: el límite por identificador no debe
+  // acumular intentos de corridas anteriores.
+  await page
+    .getByLabel('Correo o nombre de usuario')
+    .fill(`nadie.${Date.now().toString(36)}@example.com`);
   await page.getByLabel('Contraseña', { exact: true }).fill('una contraseña cualquiera');
   await turnstileReady(page);
   await page.getByRole('button', { name: 'Entrar' }).click();

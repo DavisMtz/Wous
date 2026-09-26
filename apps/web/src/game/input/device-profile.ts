@@ -24,7 +24,6 @@ export function readDeviceProfile(
 ): DeviceProfile {
   const mq = (query: string) => window.matchMedia(query).matches;
   const maxTouchPoints = navigator.maxTouchPoints ?? 0;
-  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
   return {
     hasTouch: maxTouchPoints > 0 || 'ontouchstart' in window,
     maxTouchPoints,
@@ -32,16 +31,32 @@ export function readDeviceProfile(
     hover: mq('(hover: hover)'),
     hasKeyboardEvidence: evidence.keyboard,
     hasMouseEvidence: evidence.mouse,
-    hasGamepad: pads.length > 0,
+    hasGamepad: connectedGamepads().length > 0,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     orientation: mq('(orientation: portrait)') ? 'portrait' : 'landscape',
   };
 }
 
+/**
+ * Mandos conectados. Algunos navegadores lanzan si una Permissions-Policy lo
+ * prohíbe o si no hubo gesto: sin mando no es un error.
+ */
+export function connectedGamepads(): (Gamepad | null)[] {
+  try {
+    return typeof navigator !== 'undefined' && navigator.getGamepads
+      ? [...navigator.getGamepads()].filter((p) => p !== null)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Método con el que se arranca antes de ver evidencia real de uso. */
 export function initialInputMethod(profile: DeviceProfile): InputMethod {
   if (profile.hasGamepad) return 'GAMEPAD';
-  if (profile.coarsePointer && !profile.hover && profile.hasTouch) return 'TOUCH';
+  // Sin hover y con toque: teléfono o tablet. (Algunas emulaciones no reportan
+  // «pointer: coarse»; el hover ausente basta junto con el toque.)
+  if (profile.hasTouch && !profile.hover) return 'TOUCH';
   return 'KEYBOARD_MOUSE';
 }

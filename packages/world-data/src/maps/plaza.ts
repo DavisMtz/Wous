@@ -54,11 +54,12 @@ const bancas: MapObject[] = [
   [33, 17],
 ].map(([x = 0, y = 0], i) => ({ id: `banca-${i + 1}`, kind: 'banca', x, y, w: 2, h: 1 }));
 
+// Las del norte van al fondo del jardín: su copa no debe tapar los puestos.
 const jacarandas: MapObject[] = [
-  [4, 6],
-  [12, 8],
-  [27, 7],
-  [35, 6],
+  [4, 9],
+  [12, 10],
+  [27, 10],
+  [35, 9],
   [4, 22],
   [12, 25],
   [28, 24],

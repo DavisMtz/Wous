@@ -62,7 +62,10 @@ export function Calle() {
       painter.clear();
       const ordered = [...walkers].sort((a, b) => a.lane - b.lane);
       for (const w of ordered) {
-        const frame = (Math.floor(elapsed / FRAME_MS + w.phase) % 4) as Frame;
+        // El reloj de rAF puede ir un pelo detrás de performance.now(): con
+        // tiempo negativo el módulo daba -1 y el cuadro no existía.
+        const step = Math.floor(Math.max(0, elapsed) / FRAME_MS + w.phase);
+        const frame = (((step % 4) + 4) % 4) as Frame;
         painter.sprite(
           frameCanvas(w.look, w.direction, animated ? frame : 0),
           0,

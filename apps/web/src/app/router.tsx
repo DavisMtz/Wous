@@ -23,6 +23,7 @@ export const ROUTES = {
   verifyEmail: '/verify-email',
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
+  plaza: '/plaza',
 } as const;
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES];

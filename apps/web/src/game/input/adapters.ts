@@ -1,4 +1,5 @@
 import type { InputMethod } from '@wous/game-core';
+import { connectedGamepads } from './device-profile.ts';
 
 /** Lo que aporta una fuente de entrada en un instante. */
 export type RawInput = { x: number; y: number; interact: boolean };
@@ -67,11 +68,18 @@ export class KeyboardAdapter implements InputSource {
     const editable = (el: EventTarget | null) =>
       el instanceof HTMLElement &&
       (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+    // Con un botón enfocado, Espacio y E son del botón (activarlo), no del juego.
+    const control = (el: EventTarget | null) =>
+      el instanceof HTMLElement && el.closest('button, a[href], [role="button"]') !== null;
+    const scrolls = (code: string) => code.startsWith('Arrow') || code === 'Space';
     const down = (e: KeyboardEvent) => {
-      if (e.repeat && !UP.has(e.code) && !DOWN.has(e.code)) return;
-      if (this.handleKey(e.code, true, editable(e.target)) && e.code.startsWith('Arrow')) {
-        e.preventDefault();
+      const owned = editable(e.target) || (INTERACT.has(e.code) && control(e.target));
+      // Mantener E o Espacio no repite la interacción; solo se evita el scroll.
+      if (e.repeat && INTERACT.has(e.code)) {
+        if (!owned) e.preventDefault();
+        return;
       }
+      if (this.handleKey(e.code, true, owned) && scrolls(e.code)) e.preventDefault();
     };
     const up = (e: KeyboardEvent) => {
       this.handleKey(e.code, false, false);
@@ -133,8 +141,7 @@ export class GamepadAdapter implements InputSource {
 
   constructor(
     private readonly onActivity: Activity = () => {},
-    private readonly pads: () => readonly PadLike[] = () =>
-      typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [],
+    private readonly pads: () => readonly PadLike[] = connectedGamepads,
   ) {}
 
   read(): RawInput {

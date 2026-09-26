@@ -6,7 +6,13 @@ const external = Boolean(process.env.WOUS_BASE_URL);
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
+  // Cada flujo de cuenta hace Argon2 y Turnstile de verdad: más de dos a la vez
+  // satura el Worker local (respuestas de 6 s y conexiones perdidas).
+  workers: 2,
   retries: 0,
+  // El stack local hace Argon2 real y Vite compila al vuelo: con varias pruebas
+  // a la vez, 5 s se quedan cortos para una respuesta sana.
+  expect: { timeout: 15_000 },
   reporter: [['list']],
   use: {
     baseURL,

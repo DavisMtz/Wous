@@ -1,0 +1,468 @@
+/*
+ * La Plaza: el mundo en pixel art a pantalla completa y, encima, el HUD de
+ * papel del tianguis. Las dos capas no se mezclan: el pixel art es el mundo,
+ * la interfaz es cartulina, masking y plumón (DESIGN.md).
+ */
+
+.plaza {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--asfalto);
+  color: var(--plumon);
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.plaza__mundo {
+  position: absolute;
+  inset: 0;
+}
+
+.plaza__mundo canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.plaza__mundo:focus-visible {
+  outline-offset: -6px;
+}
+
+.hud {
+  pointer-events: none;
+}
+
+/* ─── Arriba: el letrero de la sala y la salida ─── */
+
+.hud--arriba {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.hud--arriba > * {
+  pointer-events: auto;
+}
+
+.letrero {
+  position: relative;
+  max-width: min(52vw, 340px);
+  padding: 11px 18px 10px;
+  background: var(--cartulina);
+  border-radius: var(--trazo);
+  box-shadow: var(--sombra-cartulina);
+  rotate: -1.5deg;
+}
+
+.letrero__masking,
+.hud__aviso-masking {
+  position: absolute;
+  top: -8px;
+  left: 22px;
+  width: 58px;
+  height: 17px;
+  rotate: -5deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+.letrero__sala {
+  font-family: var(--font-cartel);
+  font-size: clamp(1.35rem, 1rem + 1.1vw, 1.85rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.letrero__nota {
+  margin-top: 5px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--plumon-suave);
+}
+
+.hud__salir {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 18px 8px 14px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: var(--cartulina);
+  color: var(--plumon);
+  font-family: var(--font-plumon);
+  font-size: 1.12rem;
+  box-shadow: var(--sombra-cartulina);
+  rotate: 1.5deg;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 110ms var(--ease-presion),
+    box-shadow 110ms var(--ease-presion);
+}
+
+.hud__salir:active {
+  transform: translateY(3px);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+@media (hover: hover) {
+  .hud__salir:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 55%, var(--cartulina));
+  }
+}
+
+/* ─── Pistas de teclado y mando ─── */
+
+.pistas {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.pista {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  background: var(--cartulina);
+  border-radius: var(--trazo-chico);
+  box-shadow: var(--sombra-cartulina);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pista--accion {
+  background: var(--fosfo-amarillo);
+  rotate: -1.2deg;
+  animation: pista-pegar 320ms var(--ease-salida);
+}
+
+.pista__teclas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pista__o {
+  margin: 0 5px;
+  font-weight: 600;
+  color: var(--plumon-suave);
+}
+
+.pista__texto {
+  font-size: 1rem;
+}
+
+.tecla {
+  display: inline-grid;
+  place-items: center;
+  min-width: 29px;
+  height: 29px;
+  padding: 0 6px 1px;
+  border: 2px solid var(--plumon);
+  border-bottom-width: 4px;
+  border-radius: 6px 8px 7px 9px;
+  background: #fff;
+  font-family: var(--font-cartel);
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tecla--ancha {
+  min-width: 72px;
+}
+
+@keyframes pista-pegar {
+  from {
+    transform: translateY(8px) rotate(3deg);
+    opacity: 0;
+  }
+}
+
+/* ─── Controles táctiles ─── */
+
+.hud--tactil {
+  position: absolute;
+  inset: 0;
+}
+
+.joystick {
+  position: absolute;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 138px;
+  height: 138px;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.joystick__disco {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgb(43 18 56 / 0.35));
+}
+
+.joystick__papel {
+  fill: color-mix(in oklab, var(--cartulina) 74%, transparent);
+}
+
+.joystick__trazo {
+  fill: none;
+  stroke: var(--plumon);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 6;
+  opacity: 0.7;
+}
+
+.joystick__flecha {
+  fill: none;
+  stroke: var(--plumon);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.72;
+}
+
+.joystick__perilla {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border: 2.5px solid var(--plumon);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+  background: var(--fosfo-amarillo);
+  box-shadow: var(--sombra-cartulina);
+  transition:
+    transform 160ms var(--ease-salida),
+    box-shadow 110ms var(--ease-presion);
+}
+
+.joystick--activo .joystick__perilla {
+  transition: box-shadow 110ms var(--ease-presion);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+.hud__guia {
+  position: absolute;
+  left: calc(max(20px, env(safe-area-inset-left)) + 150px);
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 52px);
+  padding: 7px 13px;
+  background: var(--cartulina);
+  border-radius: var(--trazo-chico);
+  box-shadow: var(--sombra-cartulina);
+  font-family: var(--font-plumon);
+  font-size: 1.02rem;
+  rotate: -3deg;
+}
+
+.hud__contexto {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  pointer-events: auto;
+}
+
+.estrella--hud {
+  width: 124px;
+}
+
+.estrella--hud .estrella__grande {
+  font-size: 1.5rem;
+}
+
+.estrella--hud .estrella__chica {
+  margin-top: 2px;
+  font-size: 0.72rem;
+}
+
+/* ─── Aviso del mundo ─── */
+
+.hud__aviso {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 84px);
+  left: 50%;
+  translate: -50% 0;
+  max-width: min(86vw, 430px);
+  padding: 13px 20px 12px;
+  background: var(--fosfo-verde);
+  border-radius: var(--trazo);
+  box-shadow: var(--sombra-cartulina);
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  rotate: -1deg;
+  animation: aviso-pegar 420ms var(--ease-salida);
+}
+
+.hud__aviso-masking {
+  left: 50%;
+  translate: -50% 0;
+}
+
+@keyframes aviso-pegar {
+  from {
+    transform: translateY(-12px) rotate(-4deg);
+    opacity: 0;
+  }
+}
+
+/* ─── Mientras abre y en vertical ─── */
+
+.plaza__cargando,
+.gira {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--lona-naranja);
+  color: var(--cartulina);
+  --lona: var(--lona-naranja);
+  --lona-hondo: var(--lona-naranja-hondo);
+  --lona-luz: var(--lona-naranja-luz);
+}
+
+.plaza__cargando {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  font-family: var(--font-plumon);
+  font-size: 1.3rem;
+}
+
+.gira {
+  display: flex;
+  flex-direction: column;
+  touch-action: auto;
+}
+
+.gira__cuerpo {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+.gira__telefono {
+  width: 136px;
+  height: 136px;
+  filter: drop-shadow(0 10px 14px rgb(43 18 56 / 0.4));
+}
+
+.gira__marco {
+  fill: var(--cartulina);
+  stroke: var(--plumon);
+  stroke-width: 3;
+}
+
+.gira__pantalla {
+  fill: var(--lona-naranja-hondo);
+}
+
+.gira__boton {
+  fill: var(--plumon);
+}
+
+.gira__flecha {
+  fill: none;
+  stroke: var(--cartulina);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gira__giro {
+  transform-origin: 60px 60px;
+  animation: gira-telefono 2.8s var(--ease-salida) infinite;
+}
+
+@keyframes gira-telefono {
+  0%,
+  22% {
+    rotate: 0deg;
+  }
+  52%,
+  84% {
+    rotate: 90deg;
+  }
+  100% {
+    rotate: 0deg;
+  }
+}
+
+.gira__titulo {
+  font-family: var(--font-cartel);
+  font-size: clamp(2.2rem, 9vw, 3rem);
+  font-weight: 900;
+  line-height: 0.92;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--lona-naranja-hondo);
+}
+
+/* Cartulina sobre naranja mide 3.2:1: solo alcanza como texto grande (≥19px en negritas). */
+.gira__texto {
+  max-width: 26ch;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.gira__salir {
+  margin-top: 8px;
+  color: var(--cartulina);
+  font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pista--accion,
+  .hud__aviso,
+  .gira__giro {
+    animation: none;
+  }
+}
+
+[data-quieto] .pista--accion,
+[data-quieto] .hud__aviso,
+[data-quieto] .gira__giro {
+  animation: none;
+}
+
+/* Teléfono apaisado: el letrero se compacta para dejar ver el mundo. */
+@media (max-height: 480px) {
+  .letrero {
+    padding: 8px 14px 7px;
+  }
+
+  .letrero__nota {
+    display: none;
+  }
+
+  .hud__aviso {
+    top: calc(max(10px, env(safe-area-inset-top)) + 60px);
+  }
+}

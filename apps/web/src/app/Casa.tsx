@@ -4,6 +4,7 @@ import { Mostrador } from '../auth/Mostrador.tsx';
 import { lookFromAppearance } from '../game/rendering/appearance.ts';
 import { mensajeDeError } from '../ui/components/Formulario.tsx';
 import { Aviso, Cartulina, Hoja } from '../ui/components/Tianguis.tsx';
+import { ROUTES, useRouter } from './router.tsx';
 import { useSession } from './session.tsx';
 
 /**
@@ -12,6 +13,7 @@ import { useSession } from './session.tsx';
  */
 export function Casa({ session }: { session: SessionResponse }) {
   const { logout } = useSession();
+  const { navigate } = useRouter();
   const [cargando, setCargando] = useState<'una' | 'todas' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +38,8 @@ export function Casa({ session }: { session: SessionResponse }) {
         id="casa-titulo"
       >
         <p className="hoja__entrada">
-          Tu personaje ya está listo. La plaza abre muy pronto: ahí vas a poder caminar, platicar y
-          ver a los demás.
+          Tu personaje ya está listo. En la plaza ya puedes caminar entre los puestos; muy pronto
+          también vas a ver a los demás y platicar con ellos.
         </p>
         <dl className="hoja__datos">
           <div>
@@ -54,6 +56,14 @@ export function Casa({ session }: { session: SessionResponse }) {
           </div>
         </dl>
         {error ? <Aviso>{error}</Aviso> : null}
+        <Cartulina
+          type="button"
+          icono="caminar"
+          className="casa__plaza"
+          onClick={() => navigate(ROUTES.plaza)}
+        >
+          Salir a la plaza
+        </Cartulina>
         <div className="hoja__acciones">
           <Cartulina
             type="button"

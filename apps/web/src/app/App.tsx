@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { OlvideContrasena, RestablecerContrasena } from '../auth/screens/Contrasena.tsx';
 import { Entrar } from '../auth/screens/Entrar.tsx';
 import { Portada } from '../auth/screens/Portada.tsx';
@@ -13,6 +13,9 @@ import { Creador } from './creador/Creador.tsx';
 import { ROUTES, RouterProvider, useRouter } from './router.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
+// La plaza trae Phaser: se descarga solo cuando alguien entra.
+const Plaza = lazy(() => import('./plaza/Plaza.tsx'));
+
 /** Cada puesto, su lona. */
 const LONA_POR_RUTA: Record<string, LonaColor> = {
   [ROUTES.home]: 'rosa',
@@ -22,6 +25,7 @@ const LONA_POR_RUTA: Record<string, LonaColor> = {
   [ROUTES.verifyEmail]: 'verde',
   [ROUTES.forgotPassword]: 'amarilla',
   [ROUTES.resetPassword]: 'amarilla',
+  [ROUTES.plaza]: 'naranja',
 };
 
 const SOLO_SIN_SESION = new Set<string>([ROUTES.register, ROUTES.login, ROUTES.forgotPassword]);
@@ -44,9 +48,14 @@ function Pantallas() {
   const path = location.path;
   const autenticado = state.status === 'authenticated';
 
+  const conPersonaje = state.status === 'authenticated' && state.session.hasCharacter;
   useEffect(() => {
     if (autenticado && SOLO_SIN_SESION.has(path)) navigate(ROUTES.home, { replace: true });
-  }, [autenticado, path, navigate]);
+    // A la plaza solo se entra con sesión y personaje.
+    if (path === ROUTES.plaza && state.status !== 'loading' && !conPersonaje) {
+      navigate(ROUTES.home, { replace: true });
+    }
+  }, [autenticado, conPersonaje, path, navigate, state.status]);
 
   let lona: LonaColor = LONA_POR_RUTA[path] ?? 'rosa';
   if (path === ROUTES.home && autenticado) lona = 'naranja';
@@ -73,6 +82,16 @@ function Pantallas() {
         break;
       case ROUTES.resetPassword:
         screen = <RestablecerContrasena />;
+        break;
+      case ROUTES.plaza:
+        screen =
+          state.status === 'authenticated' && state.session.hasCharacter ? (
+            <Suspense fallback={<Cargando />}>
+              <Plaza session={state.session} />
+            </Suspense>
+          ) : (
+            <Cargando />
+          );
         break;
       default:
         if (state.status !== 'authenticated') screen = <Portada />;

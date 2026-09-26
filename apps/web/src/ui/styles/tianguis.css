@@ -798,6 +798,11 @@
   gap: var(--s-3);
 }
 
+/* La acción de la casa: salir a caminar. Las de la cuenta quedan debajo. */
+.casa__plaza {
+  margin: var(--s-2) 0 var(--s-5);
+}
+
 .hoja__pie {
   margin-top: var(--s-5);
   padding-top: var(--s-4);
