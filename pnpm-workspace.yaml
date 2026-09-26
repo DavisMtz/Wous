@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# Solo estas dependencias pueden ejecutar scripts de instalación.
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# Publicadas hace menos del periodo mínimo de pnpm; fijadas a propósito
+# porque vienen con el wrangler que usamos para desplegar.
+minimumReleaseAgeExclude:
+  - miniflare@5.20260925.0-alpha
+  - wrangler@4.141.0
+  - '@types/node@24.19.0'

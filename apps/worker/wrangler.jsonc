@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Nivel superior = entorno LOCAL (wrangler dev y pruebas). Nunca se despliega:
+  // los scripts de despliegue siempre pasan --env staging | production.
+  "name": "wous-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/ws/*"]
+  },
+  "vars": {
+    "APP_ENV": "local",
+    "APP_ORIGIN": "http://localhost:5173"
+  },
+  "env": {
+    "staging": {
+      "name": "wous-staging",
+      "vars": {
+        "APP_ENV": "staging",
+        "APP_ORIGIN": "https://wous-staging.logidma.workers.dev"
+      }
+    },
+    "production": {
+      "name": "wous",
+      "vars": {
+        "APP_ENV": "production",
+        "APP_ORIGIN": "https://wous.logidma.com"
+      }
+    }
+  }
+}

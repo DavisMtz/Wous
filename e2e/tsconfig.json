@@ -1,0 +1,8 @@
+{
+  "extends": "@wous/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["tests", "playwright.config.ts"]
+}
