@@ -1273,3 +1273,112 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* ─── Pantalla de lona: pide algo antes de seguir (girar, recargar) ─── */
+
+.gira {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--lona-naranja);
+  color: var(--cartulina);
+  --lona: var(--lona-naranja);
+  --lona-hondo: var(--lona-naranja-hondo);
+  --lona-luz: var(--lona-naranja-luz);
+}
+
+.gira {
+  display: flex;
+  flex-direction: column;
+  touch-action: auto;
+}
+
+.gira__cuerpo {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+.gira__telefono {
+  width: 136px;
+  height: 136px;
+  filter: drop-shadow(0 10px 14px rgb(43 18 56 / 0.4));
+}
+
+.gira__marco {
+  fill: var(--cartulina);
+  stroke: var(--plumon);
+  stroke-width: 3;
+}
+
+.gira__pantalla {
+  fill: var(--lona-naranja-hondo);
+}
+
+.gira__boton {
+  fill: var(--plumon);
+}
+
+.gira__flecha {
+  fill: none;
+  stroke: var(--cartulina);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gira__giro {
+  transform-origin: 60px 60px;
+  animation: gira-telefono 2.8s var(--ease-salida) infinite;
+}
+
+@keyframes gira-telefono {
+  0%,
+  22% {
+    rotate: 0deg;
+  }
+  52%,
+  84% {
+    rotate: 90deg;
+  }
+  100% {
+    rotate: 0deg;
+  }
+}
+
+.gira__titulo {
+  font-family: var(--font-cartel);
+  font-size: clamp(2.2rem, 9vw, 3rem);
+  font-weight: 900;
+  line-height: 0.92;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--lona-naranja-hondo);
+}
+
+/* Cartulina sobre naranja mide 3.2:1: solo alcanza como texto grande (≥19px en negritas). */
+.gira__texto {
+  max-width: 26ch;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.gira__salir {
+  margin-top: 8px;
+  color: var(--cartulina);
+  font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gira__giro {
+    animation: none;
+  }
+}
+
+[data-quieto] .gira__giro {
+  animation: none;
+}

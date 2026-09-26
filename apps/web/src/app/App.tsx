@@ -10,6 +10,7 @@ import type { LonaColor } from '../ui/components/Puesto.tsx';
 import { FiltrosDelTianguis, OrillaDeLona, Rotulo } from '../ui/components/Tianguis.tsx';
 import { Casa } from './Casa.tsx';
 import { Creador } from './creador/Creador.tsx';
+import { FronteraDeError } from './FronteraDeError.tsx';
 import { ROUTES, RouterProvider, useRouter } from './router.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
@@ -86,9 +87,14 @@ function Pantallas() {
       case ROUTES.plaza:
         screen =
           state.status === 'authenticated' && state.session.hasCharacter ? (
-            <Suspense fallback={<Cargando />}>
-              <Plaza session={state.session} />
-            </Suspense>
+            <FronteraDeError
+              titulo="La plaza no abrió"
+              onSalir={() => navigate(ROUTES.home, { replace: true })}
+            >
+              <Suspense fallback={<Cargando />}>
+                <Plaza session={state.session} />
+              </Suspense>
+            </FronteraDeError>
           ) : (
             <Cargando />
           );
