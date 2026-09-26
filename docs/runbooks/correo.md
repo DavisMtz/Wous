@@ -36,7 +36,7 @@ npx wrangler d1 execute DB --remote --env production --command \
 | `Brevo 400` | Plantilla o parámetros inválidos. Revisar `BREVO_TEMPLATE_*` en `wrangler.jsonc` y `node scripts/correo/plantillas.mjs --subir`. |
 | `Sin plantilla de Brevo para …` | Falta el ID en `vars`. |
 | `correo marcado como no entregable` | Rebote duro o bloqueo reportado por el webhook. No reintentar: pedir otro correo a la persona. |
-| `destinatario fuera de la lista permitida del entorno` | Solo en staging: `EMAIL_ALLOWLIST`. |
+| `destinatario fuera de la lista permitida del entorno` | Solo si un entorno declara `EMAIL_ALLOWLIST` (hoy vacía en todos: se envía a cualquier dirección). |
 | `token ilegible (¿rotó TOKEN_PEPPER?)` | Se rotó el pepper: la persona debe pedir otro enlace. |
 | `agotó reintentos (DLQ)` | Cinco fallos transitorios seguidos: mirar el `last_error` anterior en la misma celda. |
 

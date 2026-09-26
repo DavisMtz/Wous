@@ -84,7 +84,7 @@
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4UXgAcoGEIyO",
         "MAIL_FROM_NAME": "Wous",
         "MAIL_FROM_EMAIL": "wous@logidma.com",
-        "EMAIL_ALLOWLIST": "davismartinesad@gmail.com,@logidma.com",
+        "EMAIL_ALLOWLIST": "",
         "BREVO_TEMPLATE_VERIFY_EMAIL": "1",
         "BREVO_TEMPLATE_WELCOME": "2",
         "BREVO_TEMPLATE_PASSWORD_RESET": "3",
