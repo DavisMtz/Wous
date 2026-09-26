@@ -1,3 +1,4 @@
+import { ROOM_CAPACITY } from '@wous/config';
 import { AppEnv } from '@wous/contracts';
 import { z } from 'zod';
 
@@ -22,6 +23,9 @@ const RuntimeConfig = z.object({
   BREVO_TEMPLATE_PASSWORD_CHANGED: TemplateId,
   BREVO_TEMPLATE_FRIEND_REQUEST: TemplateId,
   BREVO_TEMPLATE_FRIEND_ACCEPTED: TemplateId,
+  /** Solo para pruebas: capacidad chica sin abrir 45 sockets. En los entornos reales no se declara. */
+  ROOM_SOFT_LIMIT: z.coerce.number().int().positive().optional(),
+  ROOM_HARD_LIMIT: z.coerce.number().int().positive().optional(),
 });
 
 export type EmailTemplateKey =
@@ -34,6 +38,7 @@ export type EmailTemplateKey =
 
 export type AppConfig = {
   env: AppEnv;
+  roomCapacity: { softLimit: number; hardLimit: number };
   origin: string;
   isProduction: boolean;
   turnstileSiteKey: string;
@@ -57,6 +62,10 @@ export function readConfig(env: Env): AppConfig {
     env: p.APP_ENV,
     origin: p.APP_ORIGIN.replace(/\/$/, ''),
     isProduction: p.APP_ENV === 'production',
+    roomCapacity: {
+      softLimit: p.ROOM_SOFT_LIMIT ?? ROOM_CAPACITY.softLimit,
+      hardLimit: p.ROOM_HARD_LIMIT ?? ROOM_CAPACITY.hardLimit,
+    },
     turnstileSiteKey: p.TURNSTILE_SITE_KEY,
     email: {
       mode: p.EMAIL_MODE,

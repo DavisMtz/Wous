@@ -45,3 +45,24 @@ describe('sobre WebSocket', () => {
     expect(Ping.safeParse({ v: 99, type: 'PING', payload: { t: 1 } }).success).toBe(false);
   });
 });
+
+describe('mensajes del mundo', () => {
+  it('PLAYER_INPUT es intención: rechaza coordenadas coladas', async () => {
+    const { ClientMessage } = await import('../src/index.ts');
+    const ok = { v: 1, type: 'PLAYER_INPUT', seq: 3, payload: { moveX: 1, moveY: 0 } };
+    expect(ClientMessage.safeParse(ok).success).toBe(true);
+    const hack = { ...ok, payload: { moveX: 1, moveY: 0, x: 30, y: 4 } };
+    expect(ClientMessage.safeParse(hack).success).toBe(false);
+    const tooFast = { ...ok, payload: { moveX: 5, moveY: 0 } };
+    expect(ClientMessage.safeParse(tooFast).success).toBe(false);
+    const sinSeq = { v: 1, type: 'PLAYER_INPUT', payload: { moveX: 0, moveY: 0 } };
+    expect(ClientMessage.safeParse(sinSeq).success).toBe(false);
+  });
+
+  it('el texto del ping es el que la auto-respuesta espera', async () => {
+    const { ClientMessage, WS_PING_TEXT, WS_PONG_TEXT } = await import('../src/index.ts');
+    expect(WS_PING_TEXT).toBe('{"v":1,"type":"PING"}');
+    expect(WS_PONG_TEXT).toBe('{"v":1,"type":"PONG"}');
+    expect(ClientMessage.safeParse(JSON.parse(WS_PING_TEXT)).success).toBe(true);
+  });
+});

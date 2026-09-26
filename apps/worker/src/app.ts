@@ -9,6 +9,7 @@ import { configRoutes } from './http/routes/config.ts';
 import { devRoutes } from './http/routes/dev.ts';
 import { healthRoutes } from './http/routes/health.ts';
 import { webhookRoutes } from './http/routes/webhooks.ts';
+import { worldRoutes } from './http/routes/world.ts';
 import type { AppHono, Deps } from './http/types.ts';
 
 /**
@@ -28,6 +29,7 @@ export function createApp(overrides: Partial<Deps> = {}) {
   app.route(`${API_PREFIX}/characters`, characterRoutes);
   app.route(`${API_PREFIX}/webhooks`, webhookRoutes);
   app.route(`${API_PREFIX}/dev`, devRoutes);
+  app.route('/ws', worldRoutes);
 
   app.notFound((c) => errorResponse(c, Errors.notFound()));
   app.onError(handleError);

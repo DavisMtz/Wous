@@ -6,4 +6,5 @@ export * from './http/auth.ts';
 export * from './http/characters.ts';
 export * from './http/envelope.ts';
 export * from './http/health.ts';
+export * from './websocket/messages.ts';
 export * from './websocket/protocol.ts';

@@ -21,7 +21,13 @@ export default defineConfig({
         main: './src/index.ts',
         wrangler: { configPath: './wrangler.jsonc' },
         miniflare: {
-          bindings: { ...TEST_SECRETS, TEST_MIGRATIONS: migrations },
+          // Capacidad chica: «sala llena» y «otra instancia» sin abrir 45 sockets.
+          bindings: {
+            ...TEST_SECRETS,
+            TEST_MIGRATIONS: migrations,
+            ROOM_SOFT_LIMIT: '2',
+            ROOM_HARD_LIMIT: '3',
+          },
           // Sin consumidor automático: cada prueba entrega el outbox a mano y en orden.
           queueConsumers: {},
         },

@@ -59,6 +59,8 @@ export const RATE_LIMITS = {
   resendVerificationPerIp: { limit: 10, windowMs: HOUR },
   resetPasswordPerIp: { limit: 10, windowMs: 15 * MINUTE },
   verifyEmailPerIp: { limit: 20, windowMs: 15 * MINUTE },
+  /** Conexiones al mundo: cubre tormentas de reconexión y pestañas en bucle. */
+  worldConnectPerAccount: { limit: 30, windowMs: MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 /** Cola de correo y outbox (§7). */
@@ -89,6 +91,18 @@ export const NETWORK = {
   inputSendHz: 12,
   /** Búfer de interpolación de jugadores remotos. */
   interpolationDelayMs: 100,
+  /** La sala junta los estados y los manda en lotes a este ritmo, solo mientras alguien se mueve. */
+  stateFlushMs: 66,
+  /** El cliente manda el ping de auto-respuesta con este ritmo. */
+  pingIntervalMs: 20_000,
+  /** Sin ping ni mensajes en esta ventana, la presencia expira (§17). */
+  staleAfterMs: 60_000,
+  /** Inputs por segundo tolerados por socket (12 Hz más los cambios de dirección). */
+  maxInputsPerSecond: 40,
+  /** Faltas (mensajes inválidos o de más) antes de cerrar el socket (§23). */
+  maxStrikes: 20,
+  /** Reconexión con espera creciente y azar (§17). */
+  reconnect: { baseMs: 600, maxMs: 10_000 },
 } as const;
 
 /** Capacidad por instancia de sala (§13). */

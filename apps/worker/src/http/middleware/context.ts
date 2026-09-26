@@ -35,7 +35,8 @@ export function contextMiddleware(overrides: Partial<Deps> = {}) {
 
     const started = Date.now();
     await next();
-    c.res.headers.set('X-Request-Id', requestId);
+    // Un 101 (WebSocket) trae cabeceras inmutables: ahí no se agrega nada.
+    if (c.res.status !== 101) c.res.headers.set('X-Request-Id', requestId);
     log.info('http.request', {
       method: c.req.method,
       path: new URL(c.req.url).pathname,
