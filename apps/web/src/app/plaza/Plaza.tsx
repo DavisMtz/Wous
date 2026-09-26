@@ -10,8 +10,15 @@ import { PlazaJuego } from './PlazaJuego.tsx';
  */
 export default function Plaza({ session }: { session: SessionResponse }) {
   const { navigate } = useRouter();
-  const appearance = session.character?.appearance;
-  const look = useMemo(() => (appearance ? lookFromAppearance(appearance) : null), [appearance]);
+  // Por contenido, no por identidad: si la sesión se vuelve a pedir con la
+  // misma ropa, el juego no se reinicia ni te regresa al punto de entrada.
+  const appearanceJson = JSON.stringify(session.character?.appearance ?? null);
+  const look = useMemo(() => {
+    const appearance = JSON.parse(appearanceJson) as
+      | Parameters<typeof lookFromAppearance>[0]
+      | null;
+    return appearance ? lookFromAppearance(appearance) : null;
+  }, [appearanceJson]);
   if (!look) return null;
   return <PlazaJuego look={look} onSalir={() => navigate(ROUTES.home)} />;
 }
