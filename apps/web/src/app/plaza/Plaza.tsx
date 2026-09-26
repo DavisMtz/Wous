@@ -20,5 +20,11 @@ export default function Plaza({ session }: { session: SessionResponse }) {
     return appearance ? lookFromAppearance(appearance) : null;
   }, [appearanceJson]);
   if (!look) return null;
-  return <PlazaJuego look={look} onSalir={() => navigate(ROUTES.home)} />;
+  return (
+    <PlazaJuego
+      look={look}
+      {...(session.character ? { nombre: session.character.displayName } : {})}
+      onSalir={() => navigate(ROUTES.home)}
+    />
+  );
 }

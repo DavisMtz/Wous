@@ -5,6 +5,8 @@ import { WorldScene, type WorldSceneOptions } from './world-scene.ts';
 export type GameHandle = {
   /** Posición del jugador en tiles, o null si la escena aún no arranca. */
   position(): Vec | null;
+  /** Dónde se dibuja a los demás (pruebas E2E). */
+  remotes(): { id: string; x: number; y: number }[];
   pause(): void;
   resume(): void;
   destroy(): void;
@@ -33,6 +35,7 @@ export function createGame(parent: HTMLElement, options: WorldSceneOptions): Gam
   });
   return {
     position: () => (scene.sys?.isActive() ? scene.playerPosition : null),
+    remotes: () => (scene.sys?.isActive() ? scene.remotePositions : []),
     pause: () => game.pause(),
     resume: () => game.resume(),
     destroy: () => game.destroy(true),

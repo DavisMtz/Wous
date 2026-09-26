@@ -1,4 +1,5 @@
 import type { InputMethod } from '@wous/game-core';
+import type { ConnectionStatus, EndReason } from './network/world-connection.ts';
 
 /**
  * El puente entre el juego y la interfaz: la escena publica lo que el HUD
@@ -18,6 +19,12 @@ export type HudState = {
   camino: boolean;
   /** La escena ya pintó su primer cuadro. */
   listo: boolean;
+  /** Estado del cable con la sala; `SIN_RED` en el banco de desarrollo. */
+  conexion: ConnectionStatus | 'SIN_RED';
+  /** Por qué terminó la conexión (cuando `conexion` es ENDED). */
+  fin: EndReason | null;
+  /** Personas en la sala contándote a ti. */
+  gente: number;
 };
 
 type Listener = () => void;

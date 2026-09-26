@@ -22,6 +22,8 @@ createRoot(root).render(
   <StrictMode>
     <PlazaJuego
       look={look}
+      nombre="Prueba"
+      conectar={false}
       onSalir={() => window.location.reload()}
       {...(params.get('spawn') ? { spawn: params.get('spawn') ?? '' } : {})}
     />

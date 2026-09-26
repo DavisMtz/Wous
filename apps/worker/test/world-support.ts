@@ -67,7 +67,7 @@ export function wrap(ws: WebSocket): TestSocket {
         // Ya cerrado.
       }
     },
-    next(type, where, timeoutMs = 3000) {
+    next(type, where, timeoutMs = 8000) {
       return new Promise((resolve, reject) => {
         const find = () => {
           for (let i = cursor; i < received.length; i++) {

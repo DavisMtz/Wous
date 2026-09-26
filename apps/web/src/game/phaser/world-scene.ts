@@ -1,5 +1,6 @@
 import {
   type CollisionGrid,
+  canStandAt,
   distance,
   type Facing,
   facingFrom,
@@ -17,65 +18,79 @@ import {
 import Phaser from 'phaser';
 import type { HudStore } from '../hud-store.ts';
 import type { InputManager } from '../input/input-manager.ts';
-import {
-  DIRECTIONS,
-  FRAME_H,
-  FRAME_W,
-  type Look,
-  lookKey,
-  spriteSheet,
-  WALK_FRAMES,
-} from '../rendering/pixel-character.ts';
+import { InputSampler } from '../network/input-sampler.ts';
+import type { RoomState } from '../network/room-state.ts';
+import { lookFromAppearance } from '../rendering/appearance.ts';
+import type { Look } from '../rendering/pixel-character.ts';
 import { paintGround } from '../world-art/ground.ts';
 import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/objects.ts';
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
+import { addCanvasTexture, Persona } from './persona.ts';
+
+/** La red de la sala, vista desde la escena: leer el estado y mandar intención. */
+export type SceneNetwork = {
+  room: RoomState;
+  send(input: GameInput): boolean;
+};
 
 export type WorldSceneOptions = {
   map: MapDef;
   spawn?: string;
   look: Look;
+  /** Tu nombre, en la etiqueta de marcatextos. */
+  name?: string;
   input: InputManager;
   hud: HudStore;
-  /** Cada cuadro, la intención normalizada (el muestreador de red la recibe). */
-  onInput?: (nowMs: number, input: Omit<GameInput, 'seq'>) => void;
+  /** Sin red (banco de desarrollo): solo tú, como en la Fase 4. */
+  net?: SceneNetwork;
   /** Sin movimiento ambiental ni cámara suave (movimiento reducido, capturas). */
   quiet: boolean;
   cafeAbierto: boolean;
 };
 
-/** Los pies del sprite están en la fila 30 de 32: ahí se ancla al suelo. */
-const FEET_ORIGIN_Y = 31 / FRAME_H;
 const PAPEL_PICADO_DEPTH = 100_000;
 const OCCLUDED_ALPHA = 0.45;
 /** Con dos tiles caminados ya quedó claro cómo se camina. */
 const WALK_HINT_TILES = 2;
+/** Más lejos que esto, la corrección es un salto (no se desliza). */
+const SNAP_TILES = 3;
+/** Por debajo de esto la diferencia con el servidor es ruido. */
+const IGNORE_TILES = 0.02;
 
 type Occluder = { image: Phaser.GameObjects.Image; depth: number };
+type Sent = { seq: number; x: number; y: number };
 
 /**
- * La sala en Phaser (Fase 4: solo tú, sin red). Cada cuadro: lee el
- * `GameInput` del manager, avanza con el mismo `stepMovement` que usará el
- * servidor, ordena por profundidad y mueve la cámara con zoom entero.
+ * La sala en Phaser. Cada cuadro: lee el `GameInput`, lo manda a la sala
+ * (intención, a 12 Hz), PREDICE con el mismo `stepMovement` del servidor y
+ * corrige suave contra los estados autoritativos; los demás se dibujan
+ * interpolados ~100 ms en el pasado. Orden por profundidad y cámara con
+ * zoom entero.
  */
 export class WorldScene extends Phaser.Scene {
   private readonly o: WorldSceneOptions;
   private grid!: CollisionGrid;
   private position!: Vec;
   private facing: Facing = 'down';
-  private player!: Phaser.GameObjects.Sprite;
-  private shadow!: Phaser.GameObjects.Image;
-  private sheetKey = '';
+  private self!: Persona;
+  private readonly remotes = new Map<string, { persona: Persona; x: number; y: number }>();
+  private remotesVersion = -1;
   private readonly occluders: Occluder[] = [];
   private readonly flags: { image: Phaser.GameObjects.Image; color: number; lean: number }[] = [];
   private camCenter = { x: 0, y: 0 };
   private cercanoId: string | null = null;
-  /** Tiles recorridos hasta que se retiran las pistas de arranque. */
   private walked = 0;
+  private readonly sampler: InputSampler;
+  /** Dónde estabas al mandar cada input: con eso se mide el error del servidor. */
+  private history: Sent[] = [];
+  /** Corrección pendiente (tiles) que se aplica poco a poco. */
+  private correction = { x: 0, y: 0 };
 
   constructor(options: WorldSceneOptions) {
     super({ key: 'mundo' });
     this.o = options;
+    this.sampler = new InputSampler((input) => this.sendInput(input));
   }
 
   create(): void {
@@ -85,19 +100,21 @@ export class WorldScene extends Phaser.Scene {
     this.position = { x: spawn.x, y: spawn.y };
     this.facing = spawn.facing;
 
-    this.addTexture(`suelo:${map.id}:${map.version}`, () => paintGround(map));
+    addCanvasTexture(this, `suelo:${map.id}:${map.version}`, () => paintGround(map));
     this.add.image(0, 0, `suelo:${map.id}:${map.version}`).setOrigin(0, 0).setDepth(-10);
-
     for (const object of map.objects) {
       if (object.kind === 'papel-picado') this.papelPicado(object);
       else this.placeObject(object);
     }
-    this.createPlayer();
+    this.self = new Persona(this, this.o.look, {
+      ...(this.o.name ? { name: this.o.name } : {}),
+      own: true,
+      facing: this.facing,
+    });
+    this.self.draw(this.position.x, this.position.y, this.facing, false, false);
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layoutCamera, this);
     this.layoutCamera();
-    this.followCamera(0, true);
-
     if (!this.o.quiet) {
       this.time.addEvent({ delay: 110, loop: true, callback: this.swayFlags, callbackScope: this });
     }
@@ -107,14 +124,32 @@ export class WorldScene extends Phaser.Scene {
     this.o.hud.set({ sala: map.name, listo: true });
   }
 
-  /** Posición actual en tiles (para pruebas y, en la Fase 5, la reconciliación). */
+  /** Posición actual en tiles (pruebas E2E). */
   get playerPosition(): Vec {
     return { ...this.position };
   }
 
+  /** Dónde se dibuja a cada quien (pruebas E2E: «A se mueve y B lo ve»). */
+  get remotePositions(): { id: string; x: number; y: number }[] {
+    return [...this.remotes].map(([id, r]) => ({ id, x: r.x, y: r.y }));
+  }
+
   override update(time: number, delta: number): void {
+    const net = this.o.net;
     const input = this.o.input.poll();
-    this.o.onInput?.(time, input);
+
+    // Al entrar (o reentrar) la sala dice dónde estás: se salta ahí.
+    const spawn = net?.room.takeSpawn();
+    if (spawn) {
+      this.position = { x: spawn.x, y: spawn.y };
+      this.facing = spawn.facing;
+      this.history = [];
+      this.correction = { x: 0, y: 0 };
+      this.followCamera(0, true);
+    }
+
+    // Primero se manda (con la posición de ANTES de moverse: así la mide el servidor).
+    this.sampler.tick(time, input);
 
     const intent = { x: input.moveX, y: input.moveY };
     const moving = intent.x !== 0 || intent.y !== 0;
@@ -125,7 +160,10 @@ export class WorldScene extends Phaser.Scene {
       if (this.walked >= WALK_HINT_TILES) this.o.hud.set({ camino: true });
     }
     this.position = next;
-    this.drawPlayer(moving);
+    if (net) this.reconcile(net.room, delta);
+    this.self.draw(this.position.x, this.position.y, this.facing, moving, !this.o.quiet);
+
+    if (net) this.drawRemotes(net.room, time);
 
     const portal = nearestPortal(this.o.map, this.position);
     const id = portal?.id ?? null;
@@ -144,27 +182,93 @@ export class WorldScene extends Phaser.Scene {
     this.followCamera(delta, this.o.quiet);
   }
 
-  // ─── Construcción ───────────────────────────────────────────────────────
+  // ─── Red ────────────────────────────────────────────────────────────────
+
+  private sendInput(input: GameInput): void {
+    const net = this.o.net;
+    if (!net) return;
+    if (net.send(input)) {
+      this.history.push({ seq: input.seq, x: this.position.x, y: this.position.y });
+      if (this.history.length > 64) this.history.shift();
+    }
+  }
 
   /**
-   * Textura desde un canvas ya pintado. `create` (y no `addCanvas`) evita
-   * que Phaser relea cada canvas con getImageData: el arte no se edita después.
+   * Corrección de la predicción (§14): el estado del servidor para el input
+   * N se compara con dónde estabas al mandar N. La diferencia se aplica poco
+   * a poco (o de golpe si es grande) y también se descuenta del historial,
+   * para no corregir dos veces el mismo error.
    */
-  private addTexture(key: string, paint: () => HTMLCanvasElement): Phaser.Textures.Texture {
-    if (this.textures.exists(key)) return this.textures.get(key);
-    const canvas = paint();
-    const texture = this.textures.create(key, canvas, canvas.width, canvas.height);
-    if (!texture) throw new Error(`No se pudo crear la textura ${key}`);
-    // `create` no trae el cuadro completo que usan las imágenes sin frame.
-    texture.add('__BASE', 0, 0, 0, canvas.width, canvas.height);
-    return texture;
+  private reconcile(room: RoomState, delta: number): void {
+    for (const state of room.takeSelfStates()) {
+      const sent = this.history.find((h) => h.seq === state.seq);
+      this.history = this.history.filter((h) => h.seq > state.seq);
+      if (!sent) continue;
+      const ex = state.x - sent.x;
+      const ey = state.y - sent.y;
+      const size = Math.hypot(ex, ey);
+      if (size > SNAP_TILES) {
+        this.shift(ex, ey);
+        this.correction = { x: 0, y: 0 };
+      } else if (size > IGNORE_TILES) {
+        this.correction = { x: ex, y: ey };
+      }
+    }
+    if (this.correction.x === 0 && this.correction.y === 0) return;
+    const k = 1 - Math.exp(-delta / 90);
+    const sx = this.correction.x * k;
+    const sy = this.correction.y * k;
+    const candidate = { x: this.position.x + sx, y: this.position.y + sy };
+    if (canStandAt(this.grid, candidate)) this.shift(sx, sy);
+    this.correction.x -= sx;
+    this.correction.y -= sy;
+    if (Math.hypot(this.correction.x, this.correction.y) < 0.001) this.correction = { x: 0, y: 0 };
   }
+
+  private shift(dx: number, dy: number): void {
+    this.position = { x: this.position.x + dx, y: this.position.y + dy };
+    for (const h of this.history) {
+      h.x += dx;
+      h.y += dy;
+    }
+  }
+
+  private drawRemotes(room: RoomState, time: number): void {
+    if (room.version !== this.remotesVersion) {
+      this.remotesVersion = room.version;
+      for (const [id, entry] of this.remotes) {
+        if (!room.remotes.has(id)) {
+          entry.persona.destroy();
+          this.remotes.delete(id);
+        }
+      }
+      for (const [id, remote] of room.remotes) {
+        if (this.remotes.has(id)) continue;
+        const persona = new Persona(this, lookFromAppearance(remote.appearance), {
+          name: remote.displayName,
+        });
+        persona.setZoom(this.cameras.main.zoom);
+        this.remotes.set(id, { persona, x: 0, y: 0 });
+      }
+      this.o.hud.set({ gente: room.remotes.size + 1 });
+    }
+    for (const [id, entry] of this.remotes) {
+      const remote = room.remotes.get(id);
+      const at = remote ? room.render(remote, time, this.grid) : null;
+      if (!at) continue;
+      entry.x = at.x;
+      entry.y = at.y;
+      entry.persona.draw(at.x, at.y, at.facing, at.moving, !this.o.quiet);
+    }
+  }
+
+  // ─── Construcción ───────────────────────────────────────────────────────
 
   private placeObject(object: MapObject): void {
     const art = paintObject(object, { cafeAbierto: this.o.cafeAbierto });
     if (!art) return;
     const key = `objeto:${this.o.map.id}:${object.id}`;
-    this.addTexture(key, () => art.canvas);
+    addCanvasTexture(this, key, () => art.canvas);
     const image = this.add
       .image(object.x * TILE + art.ox, object.y * TILE + art.oy, key)
       .setOrigin(0, 0)
@@ -184,7 +288,7 @@ export class WorldScene extends Phaser.Scene {
       return Math.round(sag * 4 * t * (1 - t));
     };
     const cuerdaKey = `cuerda:${this.o.map.id}:${object.id}`;
-    this.addTexture(cuerdaKey, () => {
+    addCanvasTexture(this, cuerdaKey, () => {
       const p = painter(width, sag + 2);
       for (let x = 0; x < width; x++) p.px(x, curve(x), '#efe2c4');
       return p.canvas;
@@ -193,7 +297,9 @@ export class WorldScene extends Phaser.Scene {
 
     for (let color = 0; color < 6; color++) {
       for (const lean of [-1, 0, 1] as const) {
-        this.addTexture(`bandera:${color}:${lean}`, () => papelPicadoFlag(flagColor(color), lean));
+        addCanvasTexture(this, `bandera:${color}:${lean}`, () =>
+          papelPicadoFlag(flagColor(color), lean),
+        );
       }
     }
     let i = 0;
@@ -220,62 +326,9 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private createPlayer(): void {
-    this.sheetKey = `persona:${lookKey(this.o.look)}`;
-    const texture = this.addTexture(this.sheetKey, () => spriteSheet(this.o.look));
-    DIRECTIONS.forEach((direction, row) => {
-      for (const frame of WALK_FRAMES) {
-        const index = row * WALK_FRAMES.length + frame;
-        if (!texture.has(String(index))) {
-          texture.add(index, 0, frame * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
-        }
-      }
-      const key = `caminar:${this.sheetKey}:${direction}`;
-      if (!this.anims.exists(key)) {
-        this.anims.create({
-          key,
-          frames: WALK_FRAMES.map((frame) => ({
-            key: this.sheetKey,
-            frame: row * WALK_FRAMES.length + frame,
-          })),
-          frameRate: 9,
-          repeat: -1,
-        });
-      }
-    });
-
-    this.addTexture('sombra-persona', () => {
-      const p = painter(14, 5);
-      p.ellipse(7, 2, 6.5, 2.4, 'rgb(43 18 56 / 0.3)');
-      return p.canvas;
-    });
-    this.shadow = this.add.image(0, 0, 'sombra-persona').setOrigin(0.5, 0.5).setDepth(-5);
-    this.player = this.add
-      .sprite(0, 0, this.sheetKey, this.idleFrame())
-      .setOrigin(0.5, FEET_ORIGIN_Y);
-    this.drawPlayer(false);
-  }
-
-  private idleFrame(): number {
-    return DIRECTIONS.indexOf(this.facing) * WALK_FRAMES.length;
-  }
-
-  private drawPlayer(moving: boolean): void {
-    const x = Math.round(this.position.x * TILE);
-    const y = Math.round(this.position.y * TILE);
-    this.player.setPosition(x, y).setDepth(this.position.y * TILE);
-    this.shadow.setPosition(x, y);
-    if (moving && !this.o.quiet) {
-      this.player.anims.play(`caminar:${this.sheetKey}:${this.facing}`, true);
-    } else {
-      this.player.anims.stop();
-      this.player.setFrame(this.idleFrame());
-    }
-  }
-
   /** La copa o el techo que te tapa se vuelve translúcido: nunca te pierdes. */
   private updateOccluders(): void {
-    const body = this.player.getBounds();
+    const body = this.self.sprite.getBounds();
     for (const { image, depth } of this.occluders) {
       const behind = this.position.y * TILE < depth;
       const hides = behind && Phaser.Geom.Intersects.RectangleToRectangle(body, image.getBounds());
@@ -297,6 +350,8 @@ export class WorldScene extends Phaser.Scene {
     const { width, height } = this.scale.gameSize;
     const zoom = Phaser.Math.Clamp(Math.floor(Math.min(width / 416, height / 224)), 2, 6);
     this.cameras.main.setZoom(zoom).setRoundPixels(true);
+    this.self.setZoom(zoom);
+    for (const { persona } of this.remotes.values()) persona.setZoom(zoom);
     this.followCamera(0, true);
   }
 

@@ -124,6 +124,38 @@
   }
 }
 
+/* ─── Estado de la conexión: cinta de masking con un punto que late ─── */
+
+.hud__conexion {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 78px);
+  left: max(14px, env(safe-area-inset-left));
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px;
+  background: color-mix(in oklab, var(--masking) 92%, transparent);
+  clip-path: polygon(1% 6%, 99% 0, 100% 94%, 0 100%);
+  font-size: 0.9rem;
+  font-weight: 700;
+  rotate: -1deg;
+  pointer-events: none;
+}
+
+.hud__conexion-punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rojo-plumon);
+  animation: punto-late 1.1s ease-in-out infinite;
+}
+
+@keyframes punto-late {
+  50% {
+    opacity: 0.25;
+  }
+}
+
 /* ─── Pistas de teclado y mando ─── */
 
 .pistas {
@@ -350,13 +382,15 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pista--accion,
-  .hud__aviso {
+  .hud__aviso,
+  .hud__conexion-punto {
     animation: none;
   }
 }
 
 [data-quieto] .pista--accion,
-[data-quieto] .hud__aviso {
+[data-quieto] .hud__aviso,
+[data-quieto] .hud__conexion-punto {
   animation: none;
 }
 
@@ -367,7 +401,12 @@
   }
 
   .letrero__nota {
-    display: none;
+    margin-top: 3px;
+    font-size: 0.74rem;
+  }
+
+  .hud__conexion {
+    top: calc(max(10px, env(safe-area-inset-top)) + 64px);
   }
 
   .hud__aviso {

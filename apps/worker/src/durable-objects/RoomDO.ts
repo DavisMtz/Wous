@@ -235,7 +235,10 @@ export class RoomDO extends DurableObject<Env> {
       att.n = 0;
     }
     att.n += 1;
-    if (att.n > NETWORK.maxInputsPerSecond) return this.strike(ws, att, 'RATE_LIMITED');
+    if (att.n > NETWORK.maxInputsPerSecond) {
+      this.strike(ws, att, 'RATE_LIMITED');
+      return;
+    }
     // Secuencias viejas o repetidas no cuentan (§14.1).
     if (msg.seq <= att.seq) {
       ws.serializeAttachment(att);

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { cuentaConPersonaje } from './ayudantes.ts';
+import { cuentaPorApi } from './ayudantes.ts';
 
 /**
  * Fase 4: la Plaza local. El DoD pide caminar con WASD/flechas en PC, con
@@ -8,12 +8,6 @@ import { cuentaConPersonaje } from './ayudantes.ts';
  */
 
 type Vec = { x: number; y: number };
-
-declare global {
-  interface Window {
-    __wousJuego?: { posicion(): Vec | null; metodo(): string };
-  }
-}
 
 async function posicion(page: Page): Promise<Vec> {
   const pos = await page.evaluate(() => window.__wousJuego?.posicion() ?? null);
@@ -40,10 +34,10 @@ async function mantener(page: Page, key: string, ms: number) {
   await page.keyboard.up(key);
 }
 
-test('en PC se camina con WASD y flechas, y se sale a la casa', async ({ page, request }, info) => {
+test('en PC se camina con WASD y flechas, y se sale a la casa', async ({ page }, info) => {
   test.skip(info.project.name !== 'escritorio', 'teclado: proyecto de escritorio');
   test.setTimeout(120_000);
-  await cuentaConPersonaje(page, request, info, 'Teclado');
+  await cuentaPorApi(page, info, 'Teclado');
   await entrarALaPlaza(page);
 
   expect(await metodo(page)).toBe('KEYBOARD_MOUSE');
@@ -72,11 +66,10 @@ test('en PC se camina con WASD y flechas, y se sale a la casa', async ({ page, r
 
 test('en el teléfono se camina con el joystick y los controles siguen al método', async ({
   page,
-  request,
 }, info) => {
   test.skip(info.project.name !== 'movil', 'táctil: proyecto móvil');
   test.setTimeout(120_000);
-  await cuentaConPersonaje(page, request, info, 'Pulgar');
+  await cuentaPorApi(page, info, 'Pulgar');
   await entrarALaPlaza(page);
 
   expect(await metodo(page)).toBe('TOUCH');

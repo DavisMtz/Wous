@@ -1,14 +1,22 @@
 import '../../ui/styles/plaza.css';
+import type { ServerMessage } from '@wous/contracts';
 import { PLAZA } from '@wous/world-data';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { HudStore } from '../../game/hud-store.ts';
 import { type Controls, createControls, TOUCH_CONTROL_ATTR } from '../../game/input/controls.ts';
-import { InputSampler } from '../../game/network/input-sampler.ts';
+import { RoomState } from '../../game/network/room-state.ts';
+import {
+  checkSessionOverHttp,
+  WorldConnection,
+  worldUrl,
+} from '../../game/network/world-connection.ts';
 import { createGame, type GameHandle } from '../../game/phaser/create-game.ts';
+import { NAME_FONT } from '../../game/phaser/persona.ts';
 import type { Look } from '../../game/rendering/pixel-character.ts';
 import { Icono } from '../../ui/components/Icono.tsx';
 import { Estrella, Rotulo } from '../../ui/components/Tianguis.tsx';
 import { prefersReducedMotion } from '../../ui/motion.ts';
+import { FinDeConexion } from './FinDeConexion.tsx';
 import { GiraTuTelefono } from './GiraTuTelefono.tsx';
 import { Joystick } from './Joystick.tsx';
 import { Pistas } from './Pistas.tsx';
@@ -16,7 +24,12 @@ import { Pistas } from './Pistas.tsx';
 declare global {
   interface Window {
     /** Solo en desarrollo: lo que las pruebas E2E leen del juego. */
-    __wousJuego?: { posicion(): { x: number; y: number } | null; metodo(): string };
+    __wousJuego?: {
+      posicion(): { x: number; y: number } | null;
+      metodo(): string;
+      remotos(): { id: string; x: number; y: number }[];
+      conexion(): string;
+    };
   }
 }
 
@@ -33,23 +46,47 @@ function useMedia(query: string): boolean {
   );
 }
 
+/** La fuente de los nombres tiene que estar lista antes del primer texto de Phaser. */
+async function fuenteDeNombres(): Promise<void> {
+  try {
+    await Promise.race([
+      document.fonts.load(`600 13px ${NAME_FONT}`),
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+    ]);
+  } catch {
+    // Sin la fuente se dibuja con la de respaldo: no es motivo para no entrar.
+  }
+}
+
+const ESTADO_CONEXION: Partial<Record<string, string>> = {
+  CONNECTING: 'Entrando a la plaza…',
+  RECONNECTING: 'Se cortó la conexión. Reconectando…',
+};
+
 /**
  * La Plaza: el lienzo de Phaser a pantalla completa y, encima, el HUD de
- * papel del tianguis. Aquí se arma la entrada (InputManager y adaptadores),
- * se arranca el juego y se conecta el puente del HUD.
+ * papel del tianguis. Aquí se arma la entrada, el cable con la sala
+ * (WorldConnection → RoomState) y el juego, y se conecta el puente del HUD.
  */
 export function PlazaJuego({
   look,
+  nombre,
   onSalir,
   spawn,
+  conectar = true,
 }: {
   look: Look;
+  /** Tu nombre en la etiqueta de marcatextos. */
+  nombre?: string;
   onSalir: () => void;
   /** Dónde aparecer (el banco de desarrollo lo usa para revisar cada rincón). */
   spawn?: string;
+  /** Sin red (banco de desarrollo): solo tú, como en la Fase 4. */
+  conectar?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
+  const connectionRef = useRef<WorldConnection | null>(null);
   const [controls, setControls] = useState<Controls | null>(null);
   const hud = useMemo(
     () =>
@@ -60,8 +97,11 @@ export function PlazaJuego({
         aviso: null,
         camino: false,
         listo: false,
+        conexion: conectar ? 'CONNECTING' : 'SIN_RED',
+        fin: null,
+        gente: 1,
       }),
-    [],
+    [conectar],
   );
   const state = useSyncExternalStore(hud.subscribe, hud.get);
   const vertical = useMedia(VERTICAL);
@@ -71,39 +111,69 @@ export function PlazaJuego({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    let cancelled = false;
     const nextControls = createControls(window);
     setControls(nextControls);
     hud.set({ metodo: nextControls.manager.activeMethod });
     const unsubscribe = nextControls.manager.subscribe((metodo) => hud.set({ metodo }));
-    // Fase 4: sin servidor, el muestreador corre igual para que la Fase 5
-    // solo cambie el destino de los envíos (el WebSocket).
-    const sampler = new InputSampler(() => {});
+
+    const room = new RoomState();
+    const connection = conectar
+      ? new WorldConnection({
+          url: worldUrl(),
+          onMessage: (message: ServerMessage) => room.apply(message, performance.now()),
+          onStatus: (conexion, fin) => hud.set({ conexion, fin: fin ?? null }),
+          checkSession: checkSessionOverHttp,
+        })
+      : null;
+    connectionRef.current = connection;
+    connection?.start();
+    const retry = () => {
+      if (document.visibilityState === 'visible') connection?.retryNow();
+    };
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', retry);
+
     const quiet = document.documentElement.dataset.quieto !== undefined || prefersReducedMotion();
-    const game = createGame(host, {
-      map: PLAZA,
-      ...(spawn ? { spawn } : {}),
-      look,
-      input: nextControls.manager,
-      hud,
-      quiet,
-      cafeAbierto: false,
-      onInput: (now, input) => sampler.tick(now, input),
+    let game: GameHandle | null = null;
+    void fuenteDeNombres().then(() => {
+      if (cancelled) return;
+      game = createGame(host, {
+        map: PLAZA,
+        ...(spawn ? { spawn } : {}),
+        look,
+        ...(nombre ? { name: nombre } : {}),
+        input: nextControls.manager,
+        hud,
+        quiet,
+        cafeAbierto: false,
+        ...(connection ? { net: { room, send: (input) => connection.send(input) } } : {}),
+      });
+      gameRef.current = game;
+      if (import.meta.env.DEV) {
+        const handle = game;
+        window.__wousJuego = {
+          posicion: () => handle.position(),
+          metodo: () => nextControls.manager.activeMethod,
+          remotos: () => handle.remotes(),
+          conexion: () => hud.get().conexion,
+        };
+      }
     });
-    gameRef.current = game;
-    if (import.meta.env.DEV) {
-      window.__wousJuego = {
-        posicion: () => game.position(),
-        metodo: () => nextControls.manager.activeMethod,
-      };
-    }
+
     return () => {
+      cancelled = true;
       unsubscribe();
-      game.destroy();
+      window.removeEventListener('online', retry);
+      document.removeEventListener('visibilitychange', retry);
+      connection?.stop();
+      connectionRef.current = null;
+      game?.destroy();
       gameRef.current = null;
       nextControls.dispose();
       if (import.meta.env.DEV) delete window.__wousJuego;
     };
-  }, [hud, look, spawn]);
+  }, [hud, look, nombre, spawn, conectar]);
 
   // En vertical el juego descansa; al girar, sigue donde estaba.
   useEffect(() => {
@@ -128,6 +198,13 @@ export function PlazaJuego({
 
   const metodo = state.metodo;
   const [verbo = '', ...resto] = (state.cercano?.label ?? '').split(' ');
+  const estadoConexion = state.listo ? ESTADO_CONEXION[state.conexion] : undefined;
+  const nota =
+    state.conexion === 'SIN_RED'
+      ? 'Banco de desarrollo · sin conexión'
+      : state.gente > 1
+        ? `${state.gente} personas aquí`
+        : 'Solo tú por ahora';
 
   return (
     <div className="plaza" data-metodo={metodo}>
@@ -143,13 +220,22 @@ export function PlazaJuego({
         <div className="letrero">
           <span className="letrero__masking" aria-hidden="true" />
           <h1 className="letrero__sala">{state.sala}</h1>
-          <p className="letrero__nota">Solo tú por ahora · la gente llega pronto</p>
+          <p className="letrero__nota" aria-live="polite">
+            {nota}
+          </p>
         </div>
         <button type="button" className="hud__salir" onClick={onSalir}>
           <Icono name="salir" size={20} />
           <span>Salir</span>
         </button>
       </header>
+
+      {estadoConexion ? (
+        <p className="hud__conexion" role="status">
+          <span className="hud__conexion-punto" aria-hidden="true" />
+          {estadoConexion}
+        </p>
+      ) : null}
 
       <p className="visually-hidden" aria-live="polite">
         {state.cercano
@@ -189,6 +275,14 @@ export function PlazaJuego({
           <Rotulo className="rotulo--chico" />
           <p>Abriendo la plaza…</p>
         </div>
+      ) : null}
+
+      {state.conexion === 'ENDED' && state.fin ? (
+        <FinDeConexion
+          motivo={state.fin}
+          onSeguir={() => connectionRef.current?.start()}
+          onSalir={onSalir}
+        />
       ) : null}
 
       {girar ? <GiraTuTelefono onSalir={onSalir} /> : null}

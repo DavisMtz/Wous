@@ -5,6 +5,18 @@ import { type APIRequestContext, expect, type Page, type TestInfo } from '@playw
  * el buzón de desarrollo (/api/v1/dev/mailbox, solo local) hace de bandeja.
  */
 
+declare global {
+  interface Window {
+    /** Solo en desarrollo: lo que el juego deja leer a las pruebas. */
+    __wousJuego?: {
+      posicion(): { x: number; y: number } | null;
+      metodo(): string;
+      remotos(): { id: string; x: number; y: number }[];
+      conexion(): string;
+    };
+  }
+}
+
 type MailboxMessage = { type: string; to: { email: string }; params: Record<string, string> };
 
 export async function waitForMail(
@@ -35,8 +47,9 @@ export async function useOwnIp(page: Page) {
 }
 
 export async function turnstileReady(page: Page) {
+  // El widget viene de challenges.cloudflare.com: en una máquina cargada tarda.
   await expect(page.locator('input[name="cf-turnstile-response"]')).toHaveValue(/.+/, {
-    timeout: 30_000,
+    timeout: 60_000,
   });
 }
 
@@ -72,4 +85,59 @@ export async function cuentaConPersonaje(
   await page.getByRole('button', { name: '¡Listo, a la plaza!' }).click();
   await expect(page.getByRole('heading', { name: `¡Qué onda, ${nombre}!` })).toBeVisible();
   return { email, username, password };
+}
+
+/** Token que aceptan las llaves de prueba de Turnstile en local (sin red). */
+const TURNSTILE_PRUEBA = 'XXXX.DUMMY.TOKEN.XXXX';
+
+/**
+ * Cuenta verificada con personaje por la API, con las cookies en el contexto
+ * de la página. Para pruebas que tratan de la plaza, no del registro (ese
+ * flujo lo cubre cuenta.spec con la interfaz): no dependen del widget de
+ * Turnstile, que en una máquina cargada puede no cargar. Deja la página en la casa.
+ */
+export async function cuentaPorApi(page: Page, info: TestInfo, nombre: string): Promise<void> {
+  const origin = new URL(info.project.use.baseURL ?? 'http://localhost:5173').origin;
+  // IP propia por cuenta, como useOwnIp: los límites por IP no se pisan entre corridas.
+  const ip = `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+  const headers = { Origin: origin, 'CF-Connecting-IP': ip };
+  const tag = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+  const email = `e2e.api.${tag}@example.com`;
+  const registro = await page.request.post('/api/v1/auth/register', {
+    headers,
+    data: {
+      email,
+      username: `e2e_${tag}`.slice(0, 20),
+      password: 'Tianguis de prueba 2026',
+      turnstileToken: TURNSTILE_PRUEBA,
+      termsVersion: '2026-01',
+    },
+  });
+  expect(registro.status(), await registro.text()).toBe(202);
+  const verify = await waitForMail(page.request, email, 'EMAIL_VERIFY');
+  const token = new URL(verify.params.verificationUrl ?? '').searchParams.get('token');
+  const verificado = await page.request.post('/api/v1/auth/verify-email', {
+    headers,
+    data: { token },
+  });
+  expect(verificado.status()).toBe(200);
+  const personaje = await page.request.post('/api/v1/characters', {
+    headers,
+    data: {
+      displayName: nombre,
+      appearance: {
+        body: 'a',
+        skinTone: 'piel-4',
+        hair: 'chino',
+        hairColor: 'castano',
+        top: 'playera.verde',
+        bottom: 'pantalon.mezclilla',
+        shoes: 'tenis.blanco',
+        accessory: null,
+      },
+    },
+  });
+  expect(personaje.status(), await personaje.text()).toBe(201);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: `¡Qué onda, ${nombre}!` })).toBeVisible();
 }
