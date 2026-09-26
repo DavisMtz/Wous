@@ -35,3 +35,4 @@ worker-configuration.d.ts
 
 # Estado temporal de las páginas de decisión de impeccable
 **/.impeccable/questions/
+**/.impeccable/review/
