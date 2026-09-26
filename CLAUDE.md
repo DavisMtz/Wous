@@ -55,6 +55,7 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
 
 - Node portable en `C:\Users\seguimientos\.local\node`; pnpm instalado ahí.
 - Toda orden con red (install, wrangler remoto) necesita el sandbox desactivado.
-- El dominio `wous.logidma.com` NO se declara en `wrangler.jsonc` (`routes` rompe el deploy con
-  `Authentication error [10000]`); se ata una vez con `PUT /accounts/{id}/workers/domains`.
+- `wous.logidma.com` va en `routes` con `custom_domain: true` (entorno production) y funciona con la
+  sesión OAuth de `wrangler login`. En otros proyectos con **token de API** eso fallaba con
+  `Authentication error [10000]`: si algún día se despliega con token, atar el dominio por API.
 - Heredocs largos en Bash se truncan: los archivos se escriben con la herramienta de escritura.

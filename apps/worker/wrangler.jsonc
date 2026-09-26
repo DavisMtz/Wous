@@ -141,6 +141,7 @@
       // Solo por wous.logidma.com (dominio atado por API, ver CLAUDE.md).
       "workers_dev": false,
       "preview_urls": false,
+      "routes": [{ "pattern": "wous.logidma.com", "custom_domain": true }],
       "vars": {
         "APP_ENV": "production",
         "APP_ORIGIN": "https://wous.logidma.com",

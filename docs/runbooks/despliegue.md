@@ -33,9 +33,10 @@ Toda migración D1 pasa primero por staging.
 
 ## Dominio propio
 
-`wous.logidma.com` NO va en `wrangler.jsonc`: un bloque `routes` hace fallar el deploy con
-`Authentication error [code: 10000]`. Se ata una sola vez con
-`PUT /accounts/{account_id}/workers/domains` y el vínculo sobrevive a los despliegues.
+`wous.logidma.com` está declarado en `wrangler.jsonc` (production, `routes` con `custom_domain: true`)
+y se ata en cada deploy con la sesión OAuth de `wrangler login`. Con un **token de API** sin permisos de
+zona, ese bloque hace fallar el deploy con `Authentication error [code: 10000]`; en ese caso, quitarlo y
+atar el dominio una vez con `PUT /accounts/{account_id}/workers/domains`.
 
 ## Rotar un secreto
 
