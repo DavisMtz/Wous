@@ -36,6 +36,9 @@
   --fosfo-verde: #5dff86;
   --fosfo-rosa: #ff5fae;
   --rojo-plumon: #c8141c;
+  /* Tinta de los avisos: el rojo y el verde oscurecidos para leerse en su fondo. */
+  --tinta-error: #8c0a10;
+  --tinta-ok: #0a5328;
   --masking: #e9dbb1;
   --madera: #d7a064;
   --madera-sombra: #a36b33;

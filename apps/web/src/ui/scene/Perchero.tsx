@@ -4,6 +4,7 @@ import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from
 import { describeOutfit, type Outfit, outfitOf, wear } from '../../game/rendering/looks.ts';
 import { FRAME_H, FRAME_W, frameCanvas, type Look } from '../../game/rendering/pixel-character.ts';
 import { canAnimate } from '../motion.ts';
+import { huacal } from './huacal.ts';
 import { fitScale, pixelCanvas } from './pixel-canvas.ts';
 
 /** Escena en pixeles de arte: foco, huacal con la persona y perchero. */
@@ -19,9 +20,6 @@ const WIRE = '#dcd6df';
 const WIRE_SHADE = '#8d8594';
 const METAL = '#bdb6c4';
 const METAL_SHADE = '#6f6778';
-const WOOD = '#cf8a4a';
-const WOOD_SHADE = '#8f5424';
-const WOOD_GAP = '#4a2716';
 
 function drawBackdrop(canvas: HTMLCanvasElement, scale: number) {
   const p = pixelCanvas(canvas, ART_W, ART_H, scale);
@@ -40,13 +38,7 @@ function drawBackdrop(canvas: HTMLCanvasElement, scale: number) {
   p.ctx.fill();
 
   // Huacal de madera: tablas con rendijas.
-  p.rect(4, 72, 28, 12, WOOD_GAP);
-  for (const y of [72, 76, 80]) {
-    p.rect(4, y, 28, 3, WOOD);
-    p.rect(4, y + 2, 28, 1, WOOD_SHADE);
-  }
-  p.rect(4, 72, 2, 12, WOOD_SHADE);
-  p.rect(30, 72, 2, 12, WOOD_SHADE);
+  huacal(p, 4, 72, 28, 12, 3, 4);
 
   // Perchero: dos postes, tubo y patas.
   for (const x of [38, 118]) {

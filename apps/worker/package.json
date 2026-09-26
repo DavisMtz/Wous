@@ -17,6 +17,8 @@
     "@phi-ag/argon2": "0.5.28",
     "@wous/config": "workspace:*",
     "@wous/contracts": "workspace:*",
+    "@wous/game-core": "workspace:*",
+    "@wous/world-data": "workspace:*",
     "hono": "4.13.9",
     "zod": "4.6.5"
   },

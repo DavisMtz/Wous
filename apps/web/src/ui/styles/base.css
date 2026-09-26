@@ -46,8 +46,9 @@ textarea {
   background-clip: padding-box;
 }
 
+/* Foco de plumón: sobre el papel el amarillo no se ve (1.05:1). */
 :focus-visible {
-  outline: 3px solid var(--fosfo-amarillo);
+  outline: 3px solid var(--plumon);
   outline-offset: 3px;
   border-radius: 6px;
 }

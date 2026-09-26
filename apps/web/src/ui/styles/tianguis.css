@@ -855,7 +855,10 @@
 .campo__entrada:focus,
 .campo__entrada:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 5px color-mix(in oklab, var(--fosfo-amarillo) 92%, transparent);
+  /* Marcatextos por dentro, plumón por fuera: se ve sobre cualquier papel. */
+  box-shadow:
+    0 0 0 3px var(--fosfo-amarillo),
+    0 0 0 5px var(--plumon);
 }
 
 .campo--error .campo__entrada {
@@ -1035,15 +1038,15 @@
 }
 
 .aviso--error {
-  color: #8c0a10;
+  color: var(--tinta-error);
   background: color-mix(in oklab, var(--rojo-plumon) 8%, white);
   box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon) 55%, white);
 }
 
 .aviso--ok {
-  color: #0a5328;
+  color: var(--tinta-ok);
   background: color-mix(in oklab, var(--fosfo-verde) 24%, white);
-  box-shadow: inset 0 0 0 2px color-mix(in oklab, #0f8a4a 50%, white);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--lona-verde) 50%, white);
 }
 
 .aviso .enlace {

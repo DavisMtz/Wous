@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from
 import { describeOutfit, outfitOf } from '../../game/rendering/looks.ts';
 import { FRAME_H, FRAME_W, frameCanvas, type Look } from '../../game/rendering/pixel-character.ts';
 import { canAnimate } from '../motion.ts';
+import { huacal } from './huacal.ts';
 import { pixelCanvas } from './pixel-canvas.ts';
 
 const ART_W = 36;
@@ -20,13 +21,7 @@ function draw(
     // Versión chica para la cabecera del teléfono: persona sobre un huacal bajo.
     const p = pixelCanvas(canvas, COMPACTO_W, COMPACTO_H, scale);
     p.clear();
-    p.rect(0, 31, 20, 6, '#4a2716');
-    for (const y of [31, 34]) {
-      p.rect(0, y, 20, 2, '#cf8a4a');
-      p.rect(0, y + 1, 20, 1, '#8f5424');
-    }
-    p.rect(0, 31, 1, 6, '#8f5424');
-    p.rect(19, 31, 1, 6, '#8f5424');
+    huacal(p, 0, 31, 20, 6, 2, 3, 1);
     p.sprite(frameCanvas(look, 'down', 0, { blink }), 0, 0, FRAME_W, FRAME_H, 2, 0);
     return;
   }
@@ -36,14 +31,7 @@ function draw(
   p.ctx.beginPath();
   p.ctx.ellipse(18 * p.unit, 46.5 * p.unit, 16 * p.unit, 1.6 * p.unit, 0, 0, Math.PI * 2);
   p.ctx.fill();
-  // Huacal.
-  p.rect(4, 36, 28, 10, '#4a2716');
-  for (const y of [36, 40, 44]) {
-    p.rect(4, y, 28, 2, '#cf8a4a');
-    p.rect(4, y + 1, 28, 1, '#8f5424');
-  }
-  p.rect(4, 36, 2, 10, '#8f5424');
-  p.rect(30, 36, 2, 10, '#8f5424');
+  huacal(p, 4, 36, 28, 10, 2, 4);
   p.sprite(frameCanvas(look, 'down', 0, { blink }), 0, 0, FRAME_W, FRAME_H, 10, 5);
 }
 

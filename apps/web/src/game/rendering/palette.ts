@@ -80,3 +80,6 @@ export type ClothColorId = keyof typeof CLOTH_COLORS;
 
 export const EYE_COLOR = '#24161f';
 export const SOLE_WHITE = tone('#f4f1ec', 0.18);
+
+/** Madera de huacal y banca: tabla, su canto y la rendija entre tablas. */
+export const WOOD = { base: '#cf8a4a', shadow: '#8f5424', gap: '#4a2716' } as const;

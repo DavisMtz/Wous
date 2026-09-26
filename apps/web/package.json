@@ -17,6 +17,8 @@
     "@gsap/react": "2.1.2",
     "@wous/config": "workspace:*",
     "@wous/contracts": "workspace:*",
+    "@wous/game-core": "workspace:*",
+    "@wous/world-data": "workspace:*",
     "gsap": "3.15.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

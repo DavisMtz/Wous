@@ -70,3 +70,26 @@ export const EMAIL = {
   /** Máximo de filas que rescata el barrido en una pasada. */
   sweepBatchSize: 50,
 } as const;
+
+/** Movimiento autoritativo (§14). Unidades: tiles del mapa y milisegundos. */
+export const MOVEMENT = {
+  /** Velocidad al caminar, en tiles por segundo. */
+  speedTilesPerSecond: 4.2,
+  /** Tope de tiempo que se simula de un solo paso (§14: ~150 ms). */
+  maxStepMs: 150,
+  /** Huella de los pies para la colisión, en tiles (mitad del ancho y del alto). */
+  footprint: { halfWidth: 0.3, halfHeight: 0.16 },
+  /** Por debajo de esta magnitud, la palanca cuenta como suelta. */
+  deadZone: 0.12,
+} as const;
+
+/** Cadencia de red del cliente (§14). Se ajusta tras medir. */
+export const NETWORK = {
+  /** Envío de entrada mientras hay movimiento. */
+  inputSendHz: 12,
+  /** Búfer de interpolación de jugadores remotos. */
+  interpolationDelayMs: 100,
+} as const;
+
+/** Capacidad por instancia de sala (§13). */
+export const ROOM_CAPACITY = { softLimit: 35, hardLimit: 45 } as const;
