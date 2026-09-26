@@ -13,7 +13,7 @@ cambies la arquitectura en silencio (§38).
 | 2 · Registro, login, Brevo | ✅ hecha · correo real verificado en staging |
 | 3 · Creación de personaje | ✅ hecha · el probador |
 | 4 · Phaser + InputManager | ✅ hecha · la Plaza (`/plaza`), arte por código (ADR-0007) |
-| 5 · Realtime / RoomDO | ⏳ |
+| 5 · Realtime / RoomDO | ✅ hecha · `/ws/world`, RoomDO con Hibernation (ADR-0008) |
 | 6 · Portales, Café y reconexión | ⏳ |
 | 7 · Chat, emotes y seguridad social | ⏳ |
 | 8 · Amigos + correo social | ⏳ |

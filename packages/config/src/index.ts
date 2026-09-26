@@ -95,8 +95,12 @@ export const NETWORK = {
   stateFlushMs: 66,
   /** El cliente manda el ping de auto-respuesta con este ritmo. */
   pingIntervalMs: 20_000,
-  /** Sin ping ni mensajes en esta ventana, la presencia expira (§17). */
-  staleAfterMs: 60_000,
+  /**
+   * Sin ping ni mensajes en esta ventana, la presencia expira (§17). Holgada a
+   * propósito: con la pestaña en segundo plano Chrome deja los temporizadores
+   * a uno por minuto y el ping de 20 s se vuelve de 60.
+   */
+  staleAfterMs: 120_000,
   /** Inputs por segundo tolerados por socket (12 Hz más los cambios de dirección). */
   maxInputsPerSecond: 40,
   /** Faltas (mensajes inválidos o de más) antes de cerrar el socket (§23). */

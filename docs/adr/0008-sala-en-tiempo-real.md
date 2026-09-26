@@ -49,3 +49,11 @@
   comprobable en pruebas es que la sala vacía no deja alarma ni temporizadores.
 - Si un jugador suelta la tecla y su último input se pierde, el servidor lo deja donde lo llevó el
   tope de 150 ms: el cliente corrige hacia la posición autoritativa.
+- **Pestaña en segundo plano.** Chrome estrangula los temporizadores (uno por minuto tras ~5 min
+  oculta); por eso la ventana de presencia es de 120 s y no de 60. Si aun así vence, el socket se
+  cierra con 4010 y al volver la persona reaparece en la entrada (el socket viejo ya no hereda lugar).
+- **`ROOM_FULL` al reconectar.** El directorio no conoce a quien nunca llegó a entrar y su ocupación
+  llega con un instante de atraso; el margen entre límite suave (35) y duro (45) lo vuelve raro, y el
+  cliente reintenta con espera creciente.
+- **`connect-src 'self'` y `wss:`.** Verificado en Chrome (cero violaciones); Safari lo acepta desde
+  la 15.4. Un «Reconectando…» eterno en un Safari viejo sería esto.
