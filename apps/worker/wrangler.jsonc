@@ -22,12 +22,12 @@
     "MAIL_FROM_NAME": "Wous",
     "MAIL_FROM_EMAIL": "wous@logidma.com",
     "EMAIL_ALLOWLIST": "",
-    "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
-    "BREVO_TEMPLATE_WELCOME": "0",
-    "BREVO_TEMPLATE_PASSWORD_RESET": "0",
-    "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
-    "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
-    "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
+    "BREVO_TEMPLATE_VERIFY_EMAIL": "1",
+    "BREVO_TEMPLATE_WELCOME": "2",
+    "BREVO_TEMPLATE_PASSWORD_RESET": "3",
+    "BREVO_TEMPLATE_PASSWORD_CHANGED": "4",
+    "BREVO_TEMPLATE_FRIEND_REQUEST": "5",
+    "BREVO_TEMPLATE_FRIEND_ACCEPTED": "6"
   },
   "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
   "secrets": {
@@ -80,17 +80,17 @@
       "vars": {
         "APP_ENV": "staging",
         "APP_ORIGIN": "https://wous-staging.logidma.workers.dev",
-        "EMAIL_MODE": "log",
+        "EMAIL_MODE": "brevo",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4UXgAcoGEIyO",
         "MAIL_FROM_NAME": "Wous",
         "MAIL_FROM_EMAIL": "wous@logidma.com",
         "EMAIL_ALLOWLIST": "davismartinesad@gmail.com,@logidma.com",
-        "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
-        "BREVO_TEMPLATE_WELCOME": "0",
-        "BREVO_TEMPLATE_PASSWORD_RESET": "0",
-        "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
-        "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
-        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
+        "BREVO_TEMPLATE_VERIFY_EMAIL": "1",
+        "BREVO_TEMPLATE_WELCOME": "2",
+        "BREVO_TEMPLATE_PASSWORD_RESET": "3",
+        "BREVO_TEMPLATE_PASSWORD_CHANGED": "4",
+        "BREVO_TEMPLATE_FRIEND_REQUEST": "5",
+        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "6"
       },
       "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
       "secrets": {
@@ -144,17 +144,17 @@
       "vars": {
         "APP_ENV": "production",
         "APP_ORIGIN": "https://wous.logidma.com",
-        "EMAIL_MODE": "log",
+        "EMAIL_MODE": "brevo",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFEG4hgAd3Z5imM9",
         "MAIL_FROM_NAME": "Wous",
         "MAIL_FROM_EMAIL": "wous@logidma.com",
         "EMAIL_ALLOWLIST": "",
-        "BREVO_TEMPLATE_VERIFY_EMAIL": "0",
-        "BREVO_TEMPLATE_WELCOME": "0",
-        "BREVO_TEMPLATE_PASSWORD_RESET": "0",
-        "BREVO_TEMPLATE_PASSWORD_CHANGED": "0",
-        "BREVO_TEMPLATE_FRIEND_REQUEST": "0",
-        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "0"
+        "BREVO_TEMPLATE_VERIFY_EMAIL": "1",
+        "BREVO_TEMPLATE_WELCOME": "2",
+        "BREVO_TEMPLATE_PASSWORD_RESET": "3",
+        "BREVO_TEMPLATE_PASSWORD_CHANGED": "4",
+        "BREVO_TEMPLATE_FRIEND_REQUEST": "5",
+        "BREVO_TEMPLATE_FRIEND_ACCEPTED": "6"
       },
       "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
       "secrets": {

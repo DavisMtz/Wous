@@ -50,6 +50,16 @@ export function buildTemplateParams(
   secret: string | null,
   origin: string,
 ): TemplateParams {
+  // Imágenes de los correos (servidas por la web: apps/web/public/email).
+  return { ...paramsFor(type, rawPayload, secret, origin), assetsUrl: appUrl(origin, '/email') };
+}
+
+function paramsFor(
+  type: OutboxType,
+  rawPayload: unknown,
+  secret: string | null,
+  origin: string,
+): TemplateParams {
   switch (type) {
     case 'EMAIL_VERIFY': {
       const p = OutboxPayloads.EMAIL_VERIFY.parse(rawPayload);

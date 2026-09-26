@@ -13,7 +13,8 @@
       "!**/.wrangler",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/.impeccable"
+      "!**/.impeccable",
+      "!**/email-templates"
     ]
   },
   "formatter": {
