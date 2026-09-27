@@ -1,5 +1,6 @@
 import type { GroundKind, MapDef } from '@wous/world-data';
 import { WOOD } from '../rendering/palette.ts';
+import { lucesEnElPiso, mosaico, muro, paintInterior, repello } from './interior.ts';
 import { objectShadow } from './objects.ts';
 import { hash, type Painter, painter, pick, sign, signWidth } from './paint.ts';
 import {
@@ -37,13 +38,16 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
   const petals = map.objects
     .filter((o) => o.kind === 'jacaranda')
     .map((o) => ({ x: (o.x + 0.5) * TILE, y: (o.y + 0.9) * TILE }));
+  // Interiores: las primeras filas de pared son la pared del fondo, vista de frente.
+  let backRows = 0;
+  while (backRows < map.height && kindAt(1, backRows) === 'pared') backRows++;
 
   for (let gy = 0; gy < h; gy++) {
     for (let gx = 0; gx < w; gx++) {
       const tx = Math.floor(gx / TILE);
       const ty = Math.floor(gy / TILE);
       const kind = kindAt(tx, ty);
-      const ctx: Px = { gx, gy, lx: gx % TILE, ly: gy % TILE, tx, ty, kindAt };
+      const ctx: Px = { gx, gy, lx: gx % TILE, ly: gy % TILE, tx, ty, kindAt, backRows };
       let color = kind ? MATERIAL[kind](ctx) : CANTERA.base;
       // Pétalos de jacaranda caídos cerca de cada árbol (en piso, no en seto).
       if (kind === 'adoquin' || kind === 'pasto' || kind === 'ladrillo') {
@@ -55,7 +59,8 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
   p.ctx.putImageData(image, 0, 0);
 
   paintFacades(p, map, kindAt);
-  paintShadows(p, map, kindAt);
+  paintInterior(p, map, kindAt);
+  paintShadows(p, map, kindAt, backRows);
   return p.canvas;
 }
 
@@ -67,6 +72,8 @@ type Px = {
   tx: number;
   ty: number;
   kindAt: (tx: number, ty: number) => GroundKind | null;
+  /** Filas de pared del fondo (interiores): se pintan de frente, no como tapa de muro. */
+  backRows: number;
 };
 
 const MATERIAL: Record<GroundKind, (px: Px) => string> = {
@@ -78,7 +85,9 @@ const MATERIAL: Record<GroundKind, (px: Px) => string> = {
   seto: seto,
   fachada: (px) => pared(px, '#f2e6cf'),
   duela: duela,
-  pared: (px) => pared(px, '#e9d3b8'),
+  mosaico: ({ gx, gy, lx, ly, tx, ty, kindAt }) => mosaico(gx, gy, lx, ly, tx, ty, kindAt),
+  pared: ({ gx, gy, lx, ly, tx, ty, kindAt, backRows }) =>
+    ty < backRows ? repello(gx, gy) : muro(lx, ly, tx, ty, kindAt),
 };
 
 /** Losas de cantera de 8×8 con junta; cada losa con su tono y su desgaste. */
@@ -371,13 +380,35 @@ function paintShadows(
   p: Painter,
   map: MapDef,
   kindAt: (tx: number, ty: number) => GroundKind | null,
+  backRows: number,
 ): void {
-  const rows = countRows(map, kindAt);
+  const rows = Math.max(countRows(map, kindAt), backRows);
   if (rows > 0) {
-    // La sombra de las fachadas sobre la banqueta.
+    // La sombra de las fachadas (o de la pared del fondo) sobre el piso.
     const y = rows * TILE;
     for (let i = 0; i < 5; i++) {
       p.rect(0, y + i, map.width * TILE, 1, `rgb(43 18 56 / ${0.24 - i * 0.045})`);
+    }
+  }
+  if (backRows > 0) {
+    // Interior: los muros de los lados también dan sombra, y por la puerta entra el día.
+    const h = map.height * TILE;
+    for (let i = 0; i < 4; i++) {
+      const a = (0.18 - i * 0.04).toFixed(3);
+      p.rect(TILE + i, rows * TILE, 1, h - (rows + 1) * TILE, `rgb(43 18 56 / ${a})`);
+    }
+    const door = map.portals[0];
+    if (door) {
+      const cx = door.x * TILE;
+      const bottom = (map.height - 1) * TILE;
+      for (let i = 0; i < 26; i++) {
+        const half = 16 + i * 0.7;
+        const a = (0.2 * (1 - i / 26)).toFixed(3);
+        p.rect(cx - half, bottom - 1 - i, half * 2, 1, `rgb(255 248 228 / ${a})`);
+      }
+    }
+    for (const o of map.objects) {
+      if (o.kind === 'focos') lucesEnElPiso(p, o.x * TILE, o.y * TILE, o.w * TILE);
     }
   }
   for (const o of map.objects) objectShadow(p, o);

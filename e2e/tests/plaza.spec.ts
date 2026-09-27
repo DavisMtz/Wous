@@ -111,7 +111,9 @@ test('en el teléfono se camina con el joystick y los controles siguen al métod
   await expect(joystick).toBeVisible();
 });
 
-test('junto a la puerta del Café aparece la acción y E responde', async ({ page }, info) => {
+test('junto a la puerta del Café aparece la acción y E cruza (banco, sin servidor)', async ({
+  page,
+}, info) => {
   test.skip(Boolean(process.env.WOUS_BASE_URL), 'el banco de la plaza solo existe en desarrollo');
   test.skip(info.project.name !== 'escritorio', 'teclado: proyecto de escritorio');
   await page.goto('/dev-plaza.html?quieto&spawn=desde-cafe');
@@ -119,12 +121,17 @@ test('junto a la puerta del Café aparece la acción y E responde', async ({ pag
 
   const accion = page.locator('.pista--accion');
   await expect(accion).toContainText('Entrar al Café');
-  await page.keyboard.press('KeyE');
-  await expect(
-    page.getByRole('status').filter({ hasText: 'El Café abre muy pronto' }),
-  ).toBeVisible();
-
-  // Alejarse de la puerta quita la acción.
+  // Alejarse de la puerta quita la acción; volver la trae.
   await mantener(page, 'KeyS', 700);
   await expect(accion).toBeHidden();
+  await mantener(page, 'KeyW', 900);
+  await expect(accion).toContainText('Entrar al Café');
+
+  await page.keyboard.press('KeyE');
+  await page.waitForFunction(() => window.__wousJuego?.sala() === 'cafe');
+  await expect(page.getByRole('heading', { name: 'El Café' })).toBeVisible();
+  await expect(accion).toContainText('Salir a la Plaza');
+  await page.keyboard.press('KeyE');
+  await page.waitForFunction(() => window.__wousJuego?.sala() === 'plaza');
+  await expect(page.getByRole('heading', { name: 'La Plaza' })).toBeVisible();
 });

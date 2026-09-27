@@ -8,8 +8,13 @@ import type { ConnectionStatus, EndReason } from './network/world-connection.ts'
  */
 export type Cercano = { id: string; label: string } | null;
 
+/** Cruzaste una puerta y se está abriendo la otra sala (la cortina baja mientras). */
+export type Transicion = { destino: string; mapa: string } | null;
+
 export type HudState = {
   sala: string;
+  /** ID del mapa donde estás (la cortina toma de ahí su lona). */
+  mapa: string;
   metodo: InputMethod;
   /** Lo que el botón contextual haría ahora («Entrar al Café»), o nada. */
   cercano: Cercano;
@@ -25,6 +30,8 @@ export type HudState = {
   fin: EndReason | null;
   /** Personas en la sala contándote a ti. */
   gente: number;
+  /** Cambio de sala en curso. */
+  transicion: Transicion;
 };
 
 type Listener = () => void;

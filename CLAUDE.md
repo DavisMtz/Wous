@@ -14,7 +14,7 @@ cambies la arquitectura en silencio (§38).
 | 3 · Creación de personaje | ✅ hecha · el probador |
 | 4 · Phaser + InputManager | ✅ hecha · la Plaza (`/plaza`), arte por código (ADR-0007) |
 | 5 · Realtime / RoomDO | ✅ hecha · `/ws/world`, RoomDO con Hibernation (ADR-0008) |
-| 6 · Portales, Café y reconexión | ⏳ |
+| 6 · Portales, Café y reconexión | ✅ hecha · el Café, `ENTER_PORTAL`, turno de presencia y ventana de gracia (ADR-0009) |
 | 7 · Chat, emotes y seguridad social | ⏳ |
 | 8 · Amigos + correo social | ⏳ |
 
@@ -59,7 +59,12 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   sesión OAuth de `wrangler login`. En otros proyectos con **token de API** eso fallaba con
   `Authentication error [10000]`: si algún día se despliega con token, atar el dominio por API.
 - Heredocs largos en Bash se truncan: los archivos se escriben con la herramienta de escritura.
-- `apps/web/dev-plaza.html?quieto&spawn=desde-cafe` abre la Plaza sin sesión (solo desarrollo); el E2E
-  lee la posición de `window.__wousJuego`, que solo existe con `import.meta.env.DEV`.
+- `apps/web/dev-plaza.html?quieto&spawn=desde-cafe` abre la Plaza sin sesión (solo desarrollo);
+  `?mapa=cafe` abre el Café y las puertas cruzan sin servidor. El E2E lee posición, sala e ID de
+  `window.__wousJuego`, que solo existe con `import.meta.env.DEV` (compara por ID: otras pruebas
+  pueden dejar gente en la misma plaza).
+- Localmente, cerrar una pestaña llega a la sala con cierre de despedida (se va en el acto) y el
+  doble montaje de `StrictMode` como 1006 (lugar guardado que hereda la segunda conexión). Ver ADR-0009.
+- Toda migración nueva cambia el conteo que revisa `test/health.test.ts`.
 - El Worker local (:8787) sirve el último `apps/web/dist` con la CSP real de `_headers`: la cookie de
   `localhost` vale en ambos puertos, así que una cuenta creada por :5173 prueba el build de producción.

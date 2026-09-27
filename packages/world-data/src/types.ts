@@ -18,6 +18,7 @@ export type GroundKind =
   | 'seto'
   | 'calle'
   | 'duela'
+  | 'mosaico'
   | 'pared';
 
 export const BLOCKING_GROUND: ReadonlySet<GroundKind> = new Set([
@@ -37,14 +38,17 @@ export type ObjectKind =
   | 'fachada-cafe'
   | 'mesa'
   | 'barra'
+  | 'vitroleros'
   | 'maceta'
-  | 'tapete';
+  | 'tapete'
+  | 'focos';
 
 /** Objetos que se dibujan pero no estorban (van encima o son solo decoración). */
 export const NON_SOLID: ReadonlySet<ObjectKind> = new Set([
   'papel-picado',
   'fachada-cafe',
   'tapete',
+  'focos',
 ]);
 
 export type MapObject = {

@@ -66,4 +66,6 @@ test('dos navegadores se ven, uno camina y el otro lo ve; al irse, desaparece', 
     timeout: 10_000,
   });
   await expect(b.getByText('Solo tú por ahora')).toBeVisible();
+  await ctxA.close();
+  await ctxB.close();
 });

@@ -13,6 +13,8 @@ declare global {
       metodo(): string;
       remotos(): { id: string; x: number; y: number }[];
       conexion(): string;
+      sala(): string;
+      yo(): string | null;
     };
   }
 }

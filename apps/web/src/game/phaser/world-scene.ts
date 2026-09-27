@@ -1,3 +1,4 @@
+import type { WsErrorCode } from '@wous/contracts';
 import {
   type CollisionGrid,
   canStandAt,
@@ -5,14 +6,17 @@ import {
   type Facing,
   facingFrom,
   type GameInput,
+  IDLE_INPUT,
   stepMovement,
   type Vec,
 } from '@wous/game-core';
 import {
   collisionGrid,
+  getMap,
   type MapDef,
   type MapObject,
   nearestPortal,
+  type Portal,
   spawnOf,
 } from '@wous/world-data';
 import Phaser from 'phaser';
@@ -23,6 +27,7 @@ import type { RoomState } from '../network/room-state.ts';
 import { lookFromAppearance } from '../rendering/appearance.ts';
 import type { Look } from '../rendering/pixel-character.ts';
 import { paintGround } from '../world-art/ground.ts';
+import { foco, focoXs, haloDeFoco } from '../world-art/interior.ts';
 import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/objects.ts';
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
@@ -32,9 +37,12 @@ import { addCanvasTexture, Persona } from './persona.ts';
 export type SceneNetwork = {
   room: RoomState;
   send(input: GameInput): boolean;
+  /** Pide cruzar un portal (solo su ID). */
+  enterPortal(portalId: string): boolean;
 };
 
 export type WorldSceneOptions = {
+  /** La sala con la que arranca (con red, la que dijo el primer snapshot). */
   map: MapDef;
   spawn?: string;
   look: Look;
@@ -46,8 +54,10 @@ export type WorldSceneOptions = {
   net?: SceneNetwork;
   /** Sin movimiento ambiental ni cámara suave (movimiento reducido, capturas). */
   quiet: boolean;
-  cafeAbierto: boolean;
 };
+
+/** Al arrancar o reiniciar la escena: qué sala y en qué punto. */
+type SceneData = { map?: MapDef; spawn?: string };
 
 const PAPEL_PICADO_DEPTH = 100_000;
 const OCCLUDED_ALPHA = 0.45;
@@ -57,6 +67,16 @@ const WALK_HINT_TILES = 2;
 const SNAP_TILES = 3;
 /** Por debajo de esto la diferencia con el servidor es ruido. */
 const IGNORE_TILES = 0.02;
+/** Si la sala no contesta al pedir cruzar, se suelta a la persona. */
+const CROSSING_TIMEOUT_MS = 6000;
+
+/** Lo que se le dice a quien la puerta no dejó pasar. */
+const PORTAL_REFUSED: Partial<Record<WsErrorCode, string>> = {
+  PORTAL_NOT_REACHABLE: 'Acércate más a la puerta.',
+  PORTAL_NOT_FOUND: 'Esa puerta no lleva a ningún lado.',
+  INVALID_STATE: 'No se pudo cruzar. Intenta otra vez.',
+  RATE_LIMITED: 'Con calma: una vez basta.',
+};
 
 type Occluder = { image: Phaser.GameObjects.Image; depth: number };
 type Sent = { seq: number; x: number; y: number };
@@ -67,17 +87,23 @@ type Sent = { seq: number; x: number; y: number };
  * corrige suave contra los estados autoritativos; los demás se dibujan
  * interpolados ~100 ms en el pasado. Orden por profundidad y cámara con
  * zoom entero.
+ *
+ * La sala la decide el servidor: cuando un snapshot llega de otro mapa (se
+ * cruzó un portal, o volviste a entrar y estabas en otro lado), la escena se
+ * reinicia con ese mapa. El estado de cada sala se limpia en `init`.
  */
 export class WorldScene extends Phaser.Scene {
   private readonly o: WorldSceneOptions;
+  private map: MapDef;
+  private spawnName: string | undefined;
   private grid!: CollisionGrid;
   private position!: Vec;
   private facing: Facing = 'down';
   private self!: Persona;
   private readonly remotes = new Map<string, { persona: Persona; x: number; y: number }>();
   private remotesVersion = -1;
-  private readonly occluders: Occluder[] = [];
-  private readonly flags: { image: Phaser.GameObjects.Image; color: number; lean: number }[] = [];
+  private occluders: Occluder[] = [];
+  private flags: { image: Phaser.GameObjects.Image; color: number; lean: number }[] = [];
   private camCenter = { x: 0, y: 0 };
   private cercanoId: string | null = null;
   private walked = 0;
@@ -86,17 +112,37 @@ export class WorldScene extends Phaser.Scene {
   private history: Sent[] = [];
   /** Corrección pendiente (tiles) que se aplica poco a poco. */
   private correction = { x: 0, y: 0 };
+  /** Pediste cruzar y la sala aún no contesta: no se camina (§33, TRANSITIONING). */
+  private crossing: { portalId: string; since: number } | null = null;
 
   constructor(options: WorldSceneOptions) {
     super({ key: 'mundo' });
     this.o = options;
+    this.map = options.map;
+    this.spawnName = options.spawn;
     this.sampler = new InputSampler((input) => this.sendInput(input));
   }
 
+  /** Cada arranque (el primero y cada cambio de sala) empieza limpio. */
+  init(data: SceneData = {}): void {
+    if (data.map) {
+      this.map = data.map;
+      this.spawnName = data.spawn;
+    }
+    this.remotes.clear();
+    this.remotesVersion = -1;
+    this.occluders = [];
+    this.flags = [];
+    this.cercanoId = null;
+    this.history = [];
+    this.correction = { x: 0, y: 0 };
+    this.crossing = null;
+  }
+
   create(): void {
-    const { map } = this.o;
+    const map = this.map;
     this.grid = collisionGrid(map);
-    const spawn = spawnOf(map, this.o.spawn);
+    const spawn = spawnOf(map, this.spawnName);
     this.position = { x: spawn.x, y: spawn.y };
     this.facing = spawn.facing;
 
@@ -104,6 +150,7 @@ export class WorldScene extends Phaser.Scene {
     this.add.image(0, 0, `suelo:${map.id}:${map.version}`).setOrigin(0, 0).setDepth(-10);
     for (const object of map.objects) {
       if (object.kind === 'papel-picado') this.papelPicado(object);
+      else if (object.kind === 'focos') this.focos(object);
       else this.placeObject(object);
     }
     this.self = new Persona(this, this.o.look, {
@@ -121,7 +168,7 @@ export class WorldScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.layoutCamera, this);
     });
-    this.o.hud.set({ sala: map.name, listo: true });
+    this.o.hud.set({ sala: map.name, mapa: map.id, listo: true, cercano: null, transicion: null });
   }
 
   /** Posición actual en tiles (pruebas E2E). */
@@ -136,7 +183,19 @@ export class WorldScene extends Phaser.Scene {
 
   override update(time: number, delta: number): void {
     const net = this.o.net;
-    const input = this.o.input.poll();
+    // La sala manda: si el servidor te tiene en otro mapa, se cambia de escena.
+    const room = net?.room.room;
+    if (room && room.mapId !== this.map.id) {
+      const next = getMap(room.mapId);
+      if (next) {
+        this.scene.restart({ map: next } satisfies SceneData);
+        return;
+      }
+    }
+    // Cruzando no se camina: la intención se vuelve «quieto» (y se manda una vez).
+    const polled = this.o.input.poll();
+    if (net) this.watchCrossing(net.room, time);
+    const input = this.crossing ? { ...polled, ...IDLE_INPUT } : polled;
 
     // Al entrar (o reentrar) la sala dice dónde estás: se salta ahí.
     const spawn = net?.room.takeSpawn();
@@ -145,6 +204,7 @@ export class WorldScene extends Phaser.Scene {
       this.facing = spawn.facing;
       this.history = [];
       this.correction = { x: 0, y: 0 };
+      this.crossing = null;
       this.followCamera(0, true);
     }
 
@@ -165,21 +225,61 @@ export class WorldScene extends Phaser.Scene {
 
     if (net) this.drawRemotes(net.room, time);
 
-    const portal = nearestPortal(this.o.map, this.position);
+    const portal = this.crossing ? null : nearestPortal(this.map, this.position);
     const id = portal?.id ?? null;
     if (id !== this.cercanoId) {
       this.cercanoId = id;
       this.o.hud.set({ cercano: portal ? { id: portal.id, label: portal.label } : null });
     }
-    if (input.interact && portal) {
-      // Los portales se cruzan en la Fase 6 (validados por el servidor).
-      this.o.hud.avisar(
-        this.o.cafeAbierto ? portal.label : 'El Café abre muy pronto. Mientras, date una vuelta.',
-      );
-    }
+    if (polled.interact && portal) this.cross(portal, time);
 
     this.updateOccluders();
     this.followCamera(delta, this.o.quiet);
+  }
+
+  // ─── Portales ───────────────────────────────────────────────────────────
+
+  /**
+   * Pedir cruzar (§16). Con red solo se pide: la sala valida y, si acepta,
+   * el cambio llega como un snapshot de otra sala. Sin red (banco de
+   * desarrollo) se cruza aquí mismo, para revisar cada sala a ojo.
+   */
+  private cross(portal: Portal, time: number): void {
+    const net = this.o.net;
+    if (!net) {
+      const next = getMap(portal.to.map);
+      if (!next) return;
+      // Misma cortina que con servidor: baja, se cambia de sala y sube.
+      this.o.hud.set({ transicion: { destino: next.name, mapa: next.id }, cercano: null });
+      this.cercanoId = null;
+      this.crossing = { portalId: portal.id, since: time };
+      this.time.delayedCall(this.o.quiet ? 0 : 420, () =>
+        this.scene.restart({ map: next, spawn: portal.to.spawn } satisfies SceneData),
+      );
+      return;
+    }
+    if (!net.enterPortal(portal.id)) {
+      this.o.hud.avisar('Sin conexión: espera a que vuelva para cruzar.');
+      return;
+    }
+    this.crossing = { portalId: portal.id, since: time };
+    this.cercanoId = null;
+    this.o.hud.set({ cercano: null });
+  }
+
+  /** Lo que la sala contestó al pedir cruzar: si no dejó, se suelta y se dice por qué. */
+  private watchCrossing(room: RoomState, time: number): void {
+    for (const code of room.takeErrors()) {
+      const texto = this.crossing ? PORTAL_REFUSED[code] : undefined;
+      if (!texto) continue;
+      this.crossing = null;
+      this.o.hud.avisar(texto);
+    }
+    if (room.transfer) return; // Aceptado: se espera la sala nueva.
+    if (this.crossing && time - this.crossing.since > CROSSING_TIMEOUT_MS) {
+      this.crossing = null;
+      this.o.hud.avisar('La puerta no contestó. Intenta otra vez.');
+    }
   }
 
   // ─── Red ────────────────────────────────────────────────────────────────
@@ -259,15 +359,16 @@ export class WorldScene extends Phaser.Scene {
       entry.x = at.x;
       entry.y = at.y;
       entry.persona.draw(at.x, at.y, at.facing, at.moving, !this.o.quiet);
+      entry.persona.setAway(at.away);
     }
   }
 
   // ─── Construcción ───────────────────────────────────────────────────────
 
   private placeObject(object: MapObject): void {
-    const art = paintObject(object, { cafeAbierto: this.o.cafeAbierto });
+    const art = paintObject(object);
     if (!art) return;
-    const key = `objeto:${this.o.map.id}:${object.id}`;
+    const key = `objeto:${this.map.id}:${this.map.version}:${object.id}`;
     addCanvasTexture(this, key, () => art.canvas);
     const image = this.add
       .image(object.x * TILE + art.ox, object.y * TILE + art.oy, key)
@@ -287,7 +388,7 @@ export class WorldScene extends Phaser.Scene {
       const t = (x % span) / span;
       return Math.round(sag * 4 * t * (1 - t));
     };
-    const cuerdaKey = `cuerda:${this.o.map.id}:${object.id}`;
+    const cuerdaKey = `cuerda:${this.map.id}:${object.id}`;
     addCanvasTexture(this, cuerdaKey, () => {
       const p = painter(width, sag + 2);
       for (let x = 0; x < width; x++) p.px(x, curve(x), '#efe2c4');
@@ -310,6 +411,39 @@ export class WorldScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDepth(PAPEL_PICADO_DEPTH + 1);
       this.flags.push({ image, color, lean: 0 });
+    }
+  }
+
+  /**
+   * Serie de focos pelones de pared a pared: el cable cuelga en una sola
+   * curva y cada foco suma su halo cálido a lo que hay debajo (modo aditivo).
+   */
+  private focos(object: MapObject): void {
+    const x0 = object.x * TILE;
+    const width = object.w * TILE;
+    const top = object.y * TILE - 10;
+    const sag = 9;
+    const curve = (x: number) => Math.round(sag * 4 * (x / width) * (1 - x / width));
+    const cuerdaKey = `cable:${this.map.id}:${object.id}`;
+    addCanvasTexture(this, cuerdaKey, () => {
+      const p = painter(width, sag + 2);
+      for (let x = 0; x < width; x++) p.px(x, curve(x), '#2a2530');
+      return p.canvas;
+    });
+    this.add.image(x0, top, cuerdaKey).setOrigin(0, 0).setDepth(PAPEL_PICADO_DEPTH);
+    addCanvasTexture(this, 'foco', foco);
+    addCanvasTexture(this, 'halo-foco', haloDeFoco);
+    for (const bx of focoXs(width)) {
+      const y = top + curve(bx);
+      this.add
+        .image(x0 + bx + 0.5, y + 6, 'halo-foco')
+        .setOrigin(0.5, 0.5)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(PAPEL_PICADO_DEPTH + 1);
+      this.add
+        .image(x0 + bx - 2, y, 'foco')
+        .setOrigin(0, 0)
+        .setDepth(PAPEL_PICADO_DEPTH + 2);
     }
   }
 
@@ -359,8 +493,8 @@ export class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    const mapW = this.o.map.width * TILE;
-    const mapH = this.o.map.height * TILE;
+    const mapW = this.map.width * TILE;
+    const mapH = this.map.height * TILE;
     const px = this.position.x * TILE;
     const py = this.position.y * TILE - 12;
     const tx = mapW <= viewW ? mapW / 2 : Phaser.Math.Clamp(px, viewW / 2, mapW - viewW / 2);

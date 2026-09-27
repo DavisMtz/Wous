@@ -1,5 +1,6 @@
 import type { MapObject } from '@wous/world-data';
 import { CLOTH_COLORS, mix, WOOD } from '../rendering/palette.ts';
+import { barra, maceta, mesa, tapete, vitroleros } from './interior.ts';
 import { hash, type Painter, painter, pick, sign, signWidth } from './paint.ts';
 import {
   CAL,
@@ -37,9 +38,7 @@ export type ObjectArt = {
   occluder: boolean;
 };
 
-export type ArtOptions = { cafeAbierto: boolean };
-
-export function paintObject(o: MapObject, options: ArtOptions): ObjectArt | null {
+export function paintObject(o: MapObject): ObjectArt | null {
   const depth = (o.y + o.h) * TILE;
   switch (o.kind) {
     case 'kiosko':
@@ -53,17 +52,20 @@ export function paintObject(o: MapObject, options: ArtOptions): ObjectArt | null
     case 'farol':
       return { ...farol(), depth, occluder: false };
     case 'fachada-cafe':
-      return { ...fachadaCafe(options.cafeAbierto), depth, occluder: false };
+      return { ...fachadaCafe(), depth, occluder: false };
     case 'mesa':
-      return { ...mesa(), depth, occluder: false };
+      return { ...mesa(o.variant), depth, occluder: false };
     case 'barra':
       return { ...barra(o.w, o.h), depth, occluder: false };
+    case 'vitroleros':
+      return { ...vitroleros(o.w), depth, occluder: false };
     case 'maceta':
       return { ...maceta(o.variant), depth, occluder: false };
     case 'tapete':
       return { ...tapete(o.w, o.h), depth: o.y * TILE, occluder: false };
     case 'papel-picado':
-      return null; // Lo arma la escena: cada banderita se mece sola.
+    case 'focos':
+      return null; // Los arma la escena: cuelgan de pared a pared, encima de todos.
   }
 }
 
@@ -453,7 +455,7 @@ function farol(): Omit<ObjectArt, 'depth' | 'occluder'> {
 const VERDE_BOTELLA = { base: '#1f5a47', light: '#2e7a60', shade: '#153f32' };
 
 /** El Café: verde botella con rótulo de cal, toldo rayado de lona rosa, vitrinas tibias y puerta de madera. */
-function fachadaCafe(abierto: boolean): Omit<ObjectArt, 'depth' | 'occluder'> {
+function fachadaCafe(): Omit<ObjectArt, 'depth' | 'occluder'> {
   const W = 96;
   const H = 48;
   const p = painter(W, H);
@@ -512,7 +514,7 @@ function fachadaCafe(abierto: boolean): Omit<ObjectArt, 'depth' | 'occluder'> {
   p.rect(38, 27, 20, 19, CAL.base);
   p.rect(40, 29, 16, 17, WOOD.base);
   p.rect(40, 29, 1, 17, mix(WOOD.base, '#fff4d6', 0.3));
-  p.rect(42, 31, 12, 6, abierto ? '#ffd98a' : '#e8b86a');
+  p.rect(42, 31, 12, 6, '#ffd98a');
   p.rect(42, 39, 12, 5, WOOD.shadow);
   p.px(54, 38, '#f0cf45');
   p.rect(36, 46, 24, 2, CANTERA.light);
@@ -522,70 +524,6 @@ function fachadaCafe(abierto: boolean): Omit<ObjectArt, 'depth' | 'occluder'> {
     p.rect(lx, 33, 2, 2, FAROL.glass);
   }
 
-  if (!abierto) {
-    // Letrero colgado: todavía no abre (los portales llegan en la Fase 6).
-    const label = 'CERRADO';
-    const lw = signWidth(label) + 4;
-    const lx = 48 - Math.floor(lw / 2);
-    p.px(47, 29, PLUMON);
-    p.px(46, 30, PLUMON);
-    p.px(49, 30, PLUMON);
-    p.rect(lx, 31, lw, 8, CAL.base);
-    p.rect(lx, 38, lw, 1, CAL.deep);
-    sign(p, label, lx + 2, 32, LONAS.rosa.hondo);
-  }
-
-  return { canvas: p.canvas, ox: 0, oy: 0 };
-}
-
-// ─── Interior del Café (se juega en la Fase 6) ────────────────────────────
-
-function mesa(): Omit<ObjectArt, 'depth' | 'occluder'> {
-  const p = painter(32, 36);
-  p.ellipse(16, 14, 14, 9, WOOD.shadow);
-  p.ellipse(16, 13, 14, 9, WOOD.base);
-  p.ellipse(13, 11, 6, 3, mix(WOOD.base, '#fff4d6', 0.3));
-  p.rect(14, 22, 4, 10, WOOD.shadow);
-  p.rect(9, 31, 14, 2, WOOD.shadow);
-  p.rect(12, 9, 4, 3, '#fff4d6');
-  p.rect(18, 12, 3, 3, LONAS.rosa.luz);
-  return { canvas: p.canvas, ox: 0, oy: -4 };
-}
-
-function barra(w: number, h: number): Omit<ObjectArt, 'depth' | 'occluder'> {
-  const W = w * TILE;
-  const H = h * TILE + 12;
-  const p = painter(W, H);
-  p.rect(0, 0, W, 8, WOOD.base);
-  p.rect(0, 0, W, 1, mix(WOOD.base, '#fff4d6', 0.35));
-  p.rect(0, 8, W, H - 8, WOOD.shadow);
-  for (let x = 6; x < W; x += 12) p.rect(x, 9, 1, H - 10, WOOD.gap);
-  p.rect(10, 1, 8, 5, METAL.base);
-  p.rect(12, 0, 4, 1, METAL.light);
-  return { canvas: p.canvas, ox: 0, oy: -12 };
-}
-
-function maceta(variant: string | undefined): Omit<ObjectArt, 'depth' | 'occluder'> {
-  const p = painter(16, 30);
-  p.rect(3, 22, 10, 7, '#b8532e');
-  p.rect(3, 22, 10, 1, '#d4704a');
-  if (variant === 'cactus') {
-    p.rect(6, 6, 4, 16, '#3f9d68');
-    p.rect(3, 10, 3, 6, '#3f9d68');
-    p.rect(10, 8, 3, 7, '#3f9d68');
-    p.px(7, 5, '#ff4f9a');
-  } else {
-    p.ellipse(8, 12, 7, 8, '#2f7d4f');
-    p.ellipse(6, 10, 3, 3, '#4f9c64');
-  }
-  return { canvas: p.canvas, ox: 0, oy: -14 };
-}
-
-function tapete(w: number, h: number): Omit<ObjectArt, 'depth' | 'occluder'> {
-  const p = painter(w * TILE, h * TILE);
-  p.rect(0, 0, w * TILE, h * TILE, LONAS.rosa.hondo);
-  p.rect(2, 2, w * TILE - 4, h * TILE - 4, LONAS.rosa.base);
-  for (let x = 4; x < w * TILE - 4; x += 6) p.rect(x, 7, 3, 2, LONAS.amarilla.base);
   return { canvas: p.canvas, ox: 0, oy: 0 };
 }
 
@@ -664,7 +602,15 @@ export function objectShadow(p: Painter, o: MapObject): void {
       p.ellipse(x + 9, y + 14, 5, 2, SOMBRA);
       break;
     case 'mesa':
-      p.ellipse(x + 17, y + h - 2, 12, 3, SOMBRA_SUAVE);
+      p.ellipse(x + w / 2, y + h - 1, w / 2 - 4, 3, SOMBRA_SUAVE);
+      break;
+    case 'barra':
+    case 'vitroleros':
+      p.rect(x + 1, y + h, w - 1, 3, SOMBRA);
+      p.rect(x + 1, y + h + 3, w - 1, 2, SOMBRA_SUAVE);
+      break;
+    case 'maceta':
+      p.ellipse(x + 8, y + 14, 7, 2, SOMBRA);
       break;
     default:
       break;

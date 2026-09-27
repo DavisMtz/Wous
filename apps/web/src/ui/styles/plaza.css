@@ -363,21 +363,50 @@
 
 /* ─── Mientras abre ─── */
 
-.plaza__cargando {
+/* ─── Cortina entre salas: la lona baja al cruzar una puerta ─── */
+
+.cortina-sala {
   position: absolute;
   inset: 0;
   z-index: 20;
+  display: flex;
+  flex-direction: column;
+  color: var(--sobre-lona);
+  /* La lona cuelga: abajo termina en su dobladillo hondo. */
+  box-shadow: inset 0 -18px 0 var(--lona-hondo);
+}
+
+.cortina-sala__cuerpo {
+  flex: 1;
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 14px;
-  background: var(--lona-naranja);
-  color: var(--cartulina);
+  padding: 24px;
+  text-align: center;
+}
+
+.cortina-sala__destino {
+  margin: 0;
+  font-family: var(--font-cartel);
+  font-size: clamp(3rem, 2rem + 6vw, 5.2rem);
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: 0.012em;
+  text-transform: uppercase;
+  text-shadow:
+    1px 1px 0 var(--lona-hondo),
+    2px 2px 0 var(--lona-hondo),
+    3px 3px 0 var(--lona-hondo),
+    4px 4px 0 var(--lona-hondo),
+    0 8px 16px rgb(43 18 56 / 0.3);
+}
+
+/* Cartulina sobre la lona: texto grande (plumón a 20 px) para que alcance el contraste. */
+.cortina-sala__nota {
+  margin: 0;
   font-family: var(--font-plumon);
   font-size: 1.3rem;
-  --lona: var(--lona-naranja);
-  --lona-hondo: var(--lona-naranja-hondo);
-  --lona-luz: var(--lona-naranja-luz);
 }
 
 @media (prefers-reduced-motion: reduce) {

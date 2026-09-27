@@ -80,7 +80,9 @@ export class Persona {
   private readonly shadow: Phaser.GameObjects.Image;
   private readonly tag: Phaser.GameObjects.Text | null;
   private readonly sheetKey: string;
+  private readonly name: string | null;
   private facing: Facing;
+  private away = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -88,6 +90,7 @@ export class Persona {
     options: { name?: string; own?: boolean; facing?: Facing },
   ) {
     this.sheetKey = ensureLook(scene, look);
+    this.name = options.name ?? null;
     this.facing = options.facing ?? 'down';
     this.shadow = scene.add.image(0, 0, 'sombra-persona').setOrigin(0.5, 0.5).setDepth(-5);
     this.sprite = scene.add
@@ -125,6 +128,20 @@ export class Persona {
     } else {
       this.sprite.anims.stop();
       this.sprite.setFrame(this.idleFrame());
+    }
+  }
+
+  /**
+   * Se le cayó la conexión y la sala le guarda el lugar (§17): queda
+   * desvanecida y su etiqueta lo dice, para que nadie le hable a un hueco.
+   */
+  setAway(away: boolean): void {
+    if (away === this.away) return;
+    this.away = away;
+    this.sprite.setAlpha(away ? 0.45 : 1);
+    this.shadow.setAlpha(away ? 0.5 : 1);
+    if (this.tag && this.name) {
+      this.tag.setText(away ? `${this.name} · sin señal` : this.name).setAlpha(away ? 0.78 : 1);
     }
   }
 

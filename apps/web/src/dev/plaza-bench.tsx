@@ -1,5 +1,6 @@
-// Banco de desarrollo: la Plaza sin sesión, para revisar el arte y el HUD a
-// ojo. ?persona=N elige el look; ?quieto congela el movimiento ambiental.
+// Banco de desarrollo: el mundo sin sesión, para revisar el arte y el HUD a
+// ojo. ?mapa=cafe elige la sala, ?spawn=… el punto, ?persona=N el look y
+// ?quieto congela el movimiento ambiental. Las puertas cruzan sin servidor.
 import '@fontsource-variable/big-shoulders-display';
 import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource/permanent-marker';
@@ -25,6 +26,7 @@ createRoot(root).render(
       nombre="Prueba"
       conectar={false}
       onSalir={() => window.location.reload()}
+      {...(params.get('mapa') ? { mapa: params.get('mapa') ?? '' } : {})}
       {...(params.get('spawn') ? { spawn: params.get('spawn') ?? '' } : {})}
     />
   </StrictMode>,

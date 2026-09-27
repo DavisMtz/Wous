@@ -1,6 +1,6 @@
 import '../../ui/styles/plaza.css';
 import type { ServerMessage } from '@wous/contracts';
-import { PLAZA } from '@wous/world-data';
+import { getMap, type MapDef, PLAZA } from '@wous/world-data';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { HudStore } from '../../game/hud-store.ts';
 import { type Controls, createControls, TOUCH_CONTROL_ATTR } from '../../game/input/controls.ts';
@@ -14,8 +14,10 @@ import { createGame, type GameHandle } from '../../game/phaser/create-game.ts';
 import { NAME_FONT } from '../../game/phaser/persona.ts';
 import type { Look } from '../../game/rendering/pixel-character.ts';
 import { Icono } from '../../ui/components/Icono.tsx';
-import { Estrella, Rotulo } from '../../ui/components/Tianguis.tsx';
+import type { LonaColor } from '../../ui/components/Puesto.tsx';
+import { Estrella } from '../../ui/components/Tianguis.tsx';
 import { prefersReducedMotion } from '../../ui/motion.ts';
+import { CortinaDeSala } from './CortinaDeSala.tsx';
 import { FinDeConexion } from './FinDeConexion.tsx';
 import { GiraTuTelefono } from './GiraTuTelefono.tsx';
 import { Joystick } from './Joystick.tsx';
@@ -29,6 +31,10 @@ declare global {
       metodo(): string;
       remotos(): { id: string; x: number; y: number }[];
       conexion(): string;
+      /** ID del mapa donde estás («plaza», «cafe»). */
+      sala(): string;
+      /** Tu ID de personaje según la sala (null sin red o antes del snapshot). */
+      yo(): string | null;
     };
   }
 }
@@ -59,20 +65,37 @@ async function fuenteDeNombres(): Promise<void> {
 }
 
 const ESTADO_CONEXION: Partial<Record<string, string>> = {
-  CONNECTING: 'Entrando a la plaza…',
+  CONNECTING: 'Entrando…',
   RECONNECTING: 'Se cortó la conexión. Reconectando…',
 };
 
+/** La lona de cada sala: la cortina que baja al cruzar es del color de a dónde vas. */
+const LONA_DE_SALA: Record<string, LonaColor> = { plaza: 'naranja', cafe: 'rosa' };
+
 /**
- * La Plaza: el lienzo de Phaser a pantalla completa y, encima, el HUD de
+ * La sala del snapshot, si este cliente la conoce en esa versión. Si no, el
+ * servidor va adelante (despliegue nuevo) y hay que recargar.
+ */
+function salaConocida(room: { mapId: string; mapVersion: number }): MapDef | null {
+  const map = getMap(room.mapId);
+  return map && map.version === room.mapVersion ? map : null;
+}
+
+/**
+ * El mundo: el lienzo de Phaser a pantalla completa y, encima, el HUD de
  * papel del tianguis. Aquí se arma la entrada, el cable con la sala
  * (WorldConnection → RoomState) y el juego, y se conecta el puente del HUD.
+ *
+ * Con red, la sala la dice el servidor: el juego no arranca hasta el primer
+ * snapshot (puedes volver directo al Café) y cambia de sala cuando llega el
+ * de otra. Entre una y otra baja la cortina de lona.
  */
 export function PlazaJuego({
   look,
   nombre,
   onSalir,
   spawn,
+  mapa,
   conectar = true,
 }: {
   look: Look;
@@ -81,6 +104,8 @@ export function PlazaJuego({
   onSalir: () => void;
   /** Dónde aparecer (el banco de desarrollo lo usa para revisar cada rincón). */
   spawn?: string;
+  /** Sala del banco de desarrollo (sin red). Con red, la decide el servidor. */
+  mapa?: string;
   /** Sin red (banco de desarrollo): solo tú, como en la Fase 4. */
   conectar?: boolean;
 }) {
@@ -91,7 +116,8 @@ export function PlazaJuego({
   const hud = useMemo(
     () =>
       new HudStore({
-        sala: PLAZA.name,
+        sala: '',
+        mapa: conectar ? '' : (getMap(mapa ?? '') ?? PLAZA).id,
         metodo: 'KEYBOARD_MOUSE',
         cercano: null,
         aviso: null,
@@ -100,8 +126,9 @@ export function PlazaJuego({
         conexion: conectar ? 'CONNECTING' : 'SIN_RED',
         fin: null,
         gente: 1,
+        transicion: null,
       }),
-    [conectar],
+    [conectar, mapa],
   );
   const state = useSyncExternalStore(hud.subscribe, hud.get);
   const vertical = useMedia(VERTICAL);
@@ -118,16 +145,50 @@ export function PlazaJuego({
     const unsubscribe = nextControls.manager.subscribe((metodo) => hud.set({ metodo }));
 
     const room = new RoomState();
-    const connection = conectar
+    let connection: WorldConnection | null = null;
+    const onMessage = (message: ServerMessage) => {
+      if (message.type === 'ROOM_SNAPSHOT' && !salaConocida(message.payload.room)) {
+        // El servidor ya trae otra versión del mundo: seguir aquí sería caminar en otro mapa.
+        connection?.stop();
+        hud.set({ conexion: 'ENDED', fin: 'UPDATE_REQUIRED' });
+        return;
+      }
+      room.apply(message, performance.now());
+      // Volviste a la misma sala (el cruce no aplicó): la escena no se reinicia y la cortina sube aquí.
+      if (message.type === 'ROOM_SNAPSHOT' && message.payload.room.mapId === hud.get().mapa) {
+        hud.set({ transicion: null });
+      }
+      if (message.type === 'ROOM_TRANSFER') {
+        const { name, mapId } = message.payload.to;
+        hud.set({ transicion: { destino: name, mapa: mapId } });
+      }
+    };
+    connection = conectar
       ? new WorldConnection({
           url: worldUrl(),
-          onMessage: (message: ServerMessage) => room.apply(message, performance.now()),
+          onMessage,
           onStatus: (conexion, fin) => hud.set({ conexion, fin: fin ?? null }),
           checkSession: checkSessionOverHttp,
         })
       : null;
     connectionRef.current = connection;
     connection?.start();
+
+    // Con red, el juego espera a saber en qué sala estás; sin red, la del banco.
+    let dejarDeEsperar = () => {};
+    const primeraSala = new Promise<MapDef>((resolve) => {
+      if (!conectar) {
+        resolve(getMap(mapa ?? '') ?? PLAZA);
+        return;
+      }
+      const revisar = () => {
+        const map = room.room ? salaConocida(room.room) : null;
+        if (!map) return;
+        dejarDeEsperar();
+        resolve(map);
+      };
+      dejarDeEsperar = room.subscribe(revisar);
+    });
     const retry = () => {
       if (document.visibilityState === 'visible') connection?.retryNow();
     };
@@ -136,18 +197,26 @@ export function PlazaJuego({
 
     const quiet = document.documentElement.dataset.quieto !== undefined || prefersReducedMotion();
     let game: GameHandle | null = null;
-    void fuenteDeNombres().then(() => {
+    void Promise.all([primeraSala, fuenteDeNombres()]).then(([map]) => {
       if (cancelled) return;
+      const net = connection;
       game = createGame(host, {
-        map: PLAZA,
+        map,
         ...(spawn ? { spawn } : {}),
         look,
         ...(nombre ? { name: nombre } : {}),
         input: nextControls.manager,
         hud,
         quiet,
-        cafeAbierto: false,
-        ...(connection ? { net: { room, send: (input) => connection.send(input) } } : {}),
+        ...(net
+          ? {
+              net: {
+                room,
+                send: (input) => net.send(input),
+                enterPortal: (portalId) => net.enterPortal(portalId),
+              },
+            }
+          : {}),
       });
       gameRef.current = game;
       if (import.meta.env.DEV) {
@@ -157,12 +226,15 @@ export function PlazaJuego({
           metodo: () => nextControls.manager.activeMethod,
           remotos: () => handle.remotes(),
           conexion: () => hud.get().conexion,
+          sala: () => hud.get().mapa,
+          yo: () => room.selfId,
         };
       }
     });
 
     return () => {
       cancelled = true;
+      dejarDeEsperar();
       unsubscribe();
       window.removeEventListener('online', retry);
       document.removeEventListener('visibilitychange', retry);
@@ -173,7 +245,7 @@ export function PlazaJuego({
       nextControls.dispose();
       if (import.meta.env.DEV) delete window.__wousJuego;
     };
-  }, [hud, look, nombre, spawn, conectar]);
+  }, [hud, look, nombre, spawn, mapa, conectar]);
 
   // En vertical el juego descansa; al girar, sigue donde estaba.
   useEffect(() => {
@@ -198,7 +270,15 @@ export function PlazaJuego({
 
   const metodo = state.metodo;
   const [verbo = '', ...resto] = (state.cercano?.label ?? '').split(' ');
-  const estadoConexion = state.listo ? ESTADO_CONEXION[state.conexion] : undefined;
+  const cubierta = !state.listo || state.transicion !== null;
+  const estadoConexion = cubierta ? undefined : ESTADO_CONEXION[state.conexion];
+  const lona = LONA_DE_SALA[state.transicion?.mapa ?? state.mapa] ?? 'naranja';
+  const notaCortina =
+    state.conexion === 'RECONNECTING'
+      ? 'Se cortó la conexión. Reconectando…'
+      : state.transicion
+        ? 'Cruzando la puerta…'
+        : 'Entrando…';
   const nota =
     state.conexion === 'SIN_RED'
       ? 'Banco de desarrollo · sin conexión'
@@ -213,7 +293,7 @@ export function PlazaJuego({
         ref={hostRef}
         role="application"
         aria-roledescription="juego"
-        aria-label={`${state.sala}. Camina con W A S D o las flechas; E para interactuar.`}
+        aria-label={`${state.sala || 'Wous'}. Camina con W A S D o las flechas; E para interactuar.`}
       />
 
       <header className="hud hud--arriba">
@@ -270,12 +350,10 @@ export function PlazaJuego({
         </div>
       ) : null}
 
-      {!state.listo ? (
-        <div className="plaza__cargando" aria-busy="true">
-          <Rotulo className="rotulo--chico" />
-          <p>Abriendo la plaza…</p>
-        </div>
-      ) : null}
+      <CortinaDeSala
+        cubre={cubierta}
+        contenido={{ lona, destino: state.transicion?.destino ?? null, nota: notaCortina }}
+      />
 
       {state.conexion === 'ENDED' && state.fin ? (
         <FinDeConexion

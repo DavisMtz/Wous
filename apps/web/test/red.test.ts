@@ -116,6 +116,35 @@ describe('conexión con la sala', () => {
     expect(vencida.statuses.at(-1)).toEqual(['ENDED', 'AUTH_REQUIRED']);
   });
 
+  it('cruzar un portal: pide solo la puerta y, al cerrar la sala, vuelve a entrar sin espera', async () => {
+    const h = harness();
+    h.conn.start();
+    h.sockets[0]?.abrir();
+    expect(h.conn.enterPortal('plaza-cafe')).toBe(true);
+    expect(JSON.parse(h.sockets[0]?.sent.at(-1) ?? '')).toEqual({
+      v: 1,
+      type: 'ENTER_PORTAL',
+      payload: { portalId: 'plaza-cafe' },
+    });
+    h.sockets[0]?.cerrar(WS_CLOSE.TRANSFER);
+    await flush();
+    // La misma URL, en el acto: el servidor ya sabe a qué sala va.
+    expect(h.sockets).toHaveLength(2);
+    expect(h.timeouts).toHaveLength(0);
+    expect(h.conn.current).toBe('TRANSFERRING');
+    h.sockets[1]?.abrir();
+    expect(h.conn.current).toBe('ONLINE');
+  });
+
+  it('un cierre de portal sin haber entrado cuenta como corte normal', async () => {
+    const h = harness();
+    h.conn.start();
+    h.sockets[0]?.cerrar(WS_CLOSE.TRANSFER);
+    await flush();
+    expect(h.conn.current).toBe('RECONNECTING');
+    expect(h.timeouts).toHaveLength(1);
+  });
+
   it('salir cierra y no reintenta', async () => {
     const h = harness();
     h.conn.start();
@@ -212,6 +241,86 @@ describe('estado de la sala', () => {
     );
     expect(room.takeSelfStates()).toEqual([{ x: 10.4, y: 20, seq: 7 }]);
     expect(room.takeSelfStates()).toEqual([]);
+  });
+
+  it('el portal aceptado queda anotado hasta que llega la sala nueva; los errores, para la escena', () => {
+    const room = new RoomState();
+    room.apply(snapshot(5000), 1000);
+    room.apply(
+      {
+        v: 1,
+        type: 'ERROR',
+        payload: { code: 'PORTAL_NOT_REACHABLE', message: 'Acércate más a la puerta.' },
+      },
+      1050,
+    );
+    expect(room.takeErrors()).toEqual(['PORTAL_NOT_REACHABLE']);
+    expect(room.takeErrors()).toEqual([]);
+    room.apply(
+      {
+        v: 1,
+        type: 'ROOM_TRANSFER',
+        payload: { portalId: 'plaza-cafe', to: { mapId: 'cafe', name: 'El Café' } },
+      },
+      1100,
+    );
+    expect(room.transfer).toEqual({ mapId: 'cafe', name: 'El Café' });
+    room.apply(snapshot(6000), 2000);
+    expect(room.transfer).toBeNull();
+  });
+
+  it('a quien se le cae la conexión se le dibuja marcado hasta que vuelve', () => {
+    const room = new RoomState();
+    room.apply(snapshot(5000), 1000);
+    const remoto = () => room.remotes.get(ID_B);
+    room.apply(
+      {
+        v: 1,
+        type: 'PLAYER_STATE',
+        payload: {
+          states: [
+            {
+              id: ID_B,
+              x: 12,
+              y: 20,
+              facing: 'down',
+              moveX: 0,
+              moveY: 0,
+              seq: 3,
+              t: 5100,
+              away: true,
+            },
+          ],
+          serverTime: 5100,
+        },
+      },
+      1100,
+    );
+    const r = remoto();
+    if (!r) throw new Error('sin remoto');
+    expect(room.render(r, 1300, grid)?.away).toBe(true);
+    room.apply(
+      {
+        v: 1,
+        type: 'PLAYER_JOINED',
+        payload: {
+          player: {
+            id: ID_B,
+            displayName: 'Beto',
+            appearance: LOOK,
+            x: 12,
+            y: 20,
+            facing: 'down',
+            moveX: 0,
+            moveY: 0,
+          },
+        },
+      },
+      1400,
+    );
+    const vuelto = remoto();
+    if (!vuelto) throw new Error('sin remoto');
+    expect(room.render(vuelto, 1500, grid)?.away).toBe(false);
   });
 
   it('quien se va desaparece', () => {

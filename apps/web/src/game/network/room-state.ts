@@ -5,7 +5,9 @@ import type {
   PlayerStateView,
   PlayerView,
   RoomRef,
+  RoomTransferMessage,
   ServerMessage,
+  WsErrorCode,
 } from '@wous/contracts';
 import { type CollisionGrid, stepMovement } from '@wous/game-core';
 
@@ -24,6 +26,8 @@ export type RemotePlayer = {
   displayName: string;
   appearance: AppearanceInput;
   samples: Sample[];
+  /** Se le cayó la conexión y la sala le guarda el lugar (§17). */
+  away: boolean;
 };
 
 export type RenderedRemote = {
@@ -31,7 +35,11 @@ export type RenderedRemote = {
   y: number;
   facing: Facing;
   moving: boolean;
+  away: boolean;
 };
+
+/** A dónde te lleva el portal que la sala aceptó (mientras se vuelve a entrar). */
+export type Transfer = RoomTransferMessage['payload']['to'];
 
 /** Estado propio que manda el servidor: con él se corrige la predicción. */
 export type SelfState = { x: number; y: number; seq: number };
@@ -57,6 +65,10 @@ export class RoomState {
   readonly remotes = new Map<string, RemotePlayer>();
   /** Estados propios pendientes de que la escena los use para corregir. */
   private readonly selfStates: SelfState[] = [];
+  /** Errores de la sala sin atender (la escena reacciona a los del portal). */
+  private readonly errors: WsErrorCode[] = [];
+  /** El portal aceptado, hasta que llega la sala nueva. */
+  transfer: Transfer | null = null;
   /** local − servidor, el menor visto (la muestra con menos latencia). */
   private offset: number | null = null;
   private readonly listeners = new Set<Listener>();
@@ -81,8 +93,10 @@ export class RoomState {
         this.observeClock(serverTime, receivedAt);
         this.room = room;
         this.selfId = selfId;
+        this.transfer = null;
         this.remotes.clear();
         this.selfStates.length = 0;
+        this.errors.length = 0;
         for (const p of players) {
           if (p.id === selfId) this.spawn = p;
           else this.remotes.set(p.id, fromView(p, serverTime));
@@ -107,9 +121,24 @@ export class RoomState {
         for (const state of message.payload.states) this.applyState(state);
         return;
       }
+      case 'ROOM_TRANSFER': {
+        this.transfer = message.payload.to;
+        this.changed();
+        return;
+      }
+      case 'ERROR': {
+        this.errors.push(message.payload.code);
+        if (this.errors.length > 8) this.errors.shift();
+        return;
+      }
       default:
         return;
     }
+  }
+
+  /** Errores de la sala llegados desde la última vez (y se vacían). */
+  takeErrors(): WsErrorCode[] {
+    return this.errors.splice(0, this.errors.length);
   }
 
   private applyState(state: PlayerStateView): void {
@@ -119,6 +148,7 @@ export class RoomState {
     }
     const remote = this.remotes.get(state.id);
     if (!remote) return;
+    remote.away = state.away === true;
     const last = remote.samples[remote.samples.length - 1];
     if (last && state.t < last.t) return;
     remote.samples.push({
@@ -164,13 +194,14 @@ export class RoomState {
     if (!first || !last) return null;
     const t = this.serverNow(localNow) - NETWORK.interpolationDelayMs;
 
-    if (t <= first.t) return still(first);
+    const away = remote.away;
+    if (t <= first.t) return still(first, away);
     if (t >= last.t) {
       const moving = last.moveX !== 0 || last.moveY !== 0;
-      if (!moving) return still(last);
+      if (!moving) return still(last, away);
       const dt = Math.min(t - last.t, MAX_EXTRAPOLATION_MS);
       const p = stepMovement(last, { x: last.moveX, y: last.moveY }, dt, grid);
-      return { x: p.x, y: p.y, facing: last.facing, moving: true };
+      return { x: p.x, y: p.y, facing: last.facing, moving: true, away };
     }
     for (let i = samples.length - 1; i > 0; i--) {
       const a = samples[i - 1] as Sample;
@@ -186,10 +217,11 @@ export class RoomState {
           facing: b.facing,
           moving:
             speed > (MOVEMENT.speedTilesPerSecond / 1000) * 0.2 || a.moveX !== 0 || a.moveY !== 0,
+          away,
         };
       }
     }
-    return still(last);
+    return still(last, away);
   }
 }
 
@@ -199,9 +231,10 @@ function fromView(p: PlayerView, t: number): RemotePlayer {
     displayName: p.displayName,
     appearance: p.appearance,
     samples: [{ t, x: p.x, y: p.y, facing: p.facing, moveX: p.moveX, moveY: p.moveY }],
+    away: p.away === true,
   };
 }
 
-function still(s: Sample): RenderedRemote {
-  return { x: s.x, y: s.y, facing: s.facing, moving: false };
+function still(s: Sample, away: boolean): RenderedRemote {
+  return { x: s.x, y: s.y, facing: s.facing, moving: false, away };
 }

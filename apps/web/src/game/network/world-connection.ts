@@ -2,8 +2,18 @@ import { NETWORK } from '@wous/config';
 import { ServerMessage, WS_CLOSE, WS_PING_TEXT, WS_PROTOCOL_VERSION } from '@wous/contracts';
 import type { GameInput } from '@wous/game-core';
 
-/** Estados de la conexión (§17). `ENDED` no reintenta: hace falta que la persona decida. */
-export type ConnectionStatus = 'OFFLINE' | 'CONNECTING' | 'ONLINE' | 'RECONNECTING' | 'ENDED';
+/**
+ * Estados de la conexión (§17). `TRANSFERRING` es el cambio de sala por un
+ * portal (se vuelve a entrar al instante, sin espera). `ENDED` no reintenta:
+ * hace falta que la persona decida.
+ */
+export type ConnectionStatus =
+  | 'OFFLINE'
+  | 'CONNECTING'
+  | 'ONLINE'
+  | 'TRANSFERRING'
+  | 'RECONNECTING'
+  | 'ENDED';
 
 export type EndReason =
   /** La sesión ya no vale: hay que volver a entrar. */
@@ -50,7 +60,9 @@ const OPEN = 1;
  * El cable con la sala. Abre, mantiene vivo con el ping de auto-respuesta,
  * traduce `GameInput` a PLAYER_INPUT (solo intención) y reconecta con espera
  * creciente y azar. Cuando el cierre dice que reintentar no sirve (sesión,
- * otra pestaña, versión), se detiene en ENDED con el motivo.
+ * otra pestaña, versión), se detiene en ENDED con el motivo. Si el cierre es
+ * un cruce de portal, vuelve a entrar de inmediato: el servidor ya sabe a qué
+ * sala va, la URL no cambia.
  */
 export class WorldConnection {
   private socket: SocketLike | null = null;
@@ -108,20 +120,27 @@ export class WorldConnection {
 
   /** Manda la intención. Sin conexión abierta no se encola: la sala no guarda pasado. */
   send(input: GameInput): boolean {
+    return this.write({
+      v: WS_PROTOCOL_VERSION,
+      type: 'PLAYER_INPUT',
+      seq: input.seq,
+      payload: { moveX: input.moveX, moveY: input.moveY },
+    });
+  }
+
+  /** Pide cruzar un portal: solo su ID. La sala decide si alcanzas y a dónde lleva. */
+  enterPortal(portalId: string): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'ENTER_PORTAL', payload: { portalId } });
+  }
+
+  private write(message: unknown): boolean {
     const socket = this.socket;
     if (!socket || this.status !== 'ONLINE' || socket.readyState !== OPEN) return false;
-    socket.send(
-      JSON.stringify({
-        v: WS_PROTOCOL_VERSION,
-        type: 'PLAYER_INPUT',
-        seq: input.seq,
-        payload: { moveX: input.moveX, moveY: input.moveY },
-      }),
-    );
+    socket.send(JSON.stringify(message));
     return true;
   }
 
-  private open(status: 'CONNECTING' | 'RECONNECTING'): void {
+  private open(status: 'CONNECTING' | 'TRANSFERRING' | 'RECONNECTING'): void {
     this.setStatus(status);
     this.opened = false;
     let socket: SocketLike;
@@ -168,6 +187,12 @@ export class WorldConnection {
 
   private async afterClose(code: number, wasOpen: boolean): Promise<void> {
     switch (code) {
+      case WS_CLOSE.TRANSFER:
+        // Cruzaste: se entra otra vez ya, y el servidor te lleva a la otra sala.
+        // Solo desde una sala donde sí estabas; si no, cuenta como corte normal.
+        if (!wasOpen) break;
+        this.attempts = 0;
+        return this.open('TRANSFERRING');
       case WS_CLOSE.REPLACED:
         return this.end('REPLACED');
       case WS_CLOSE.SESSION_ENDED:
