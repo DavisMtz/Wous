@@ -6,6 +6,7 @@ export * from './domain/ids.ts';
 export * from './http/auth.ts';
 export * from './http/characters.ts';
 export * from './http/envelope.ts';
+export * from './http/friends.ts';
 export * from './http/health.ts';
 export * from './http/social.ts';
 export * from './websocket/messages.ts';

@@ -1,5 +1,6 @@
 import { SOCIAL } from '@wous/config';
 import type { AppearanceInput, BlockedPerson, ReportReason } from '@wous/contracts';
+import { canonicalPair } from '../friends/rules.ts';
 
 /**
  * Bloqueos, reportes y la revisión de quien está conectado (ADR-0010). Todo
@@ -37,23 +38,40 @@ export async function loadBlockEdges(
 
 export type BlockResult = 'added' | 'exists' | 'limit';
 
-/** Bloquear es idempotente: repetirlo no cambia nada ni cuenta dos veces. */
+/**
+ * Bloquear es idempotente: repetirlo no cambia nada ni cuenta dos veces. En el
+ * mismo batch, **el bloqueo gana** (ADR-0010, ADR-0011): la amistad o la
+ * solicitud del par termina. Solo se salva una solicitud en la sombra de la
+ * persona bloqueada: ya era invisible, y quitarla la delataría.
+ */
 export async function addBlock(
   db: D1Database,
   blocker: string,
   blocked: string,
   now: number,
 ): Promise<BlockResult> {
-  const inserted = await db
-    .prepare(
-      `INSERT INTO blocks (blocker_account_id, blocked_account_id, created_at)
-       SELECT ?1, ?2, ?3
-        WHERE (SELECT COUNT(*) FROM blocks WHERE blocker_account_id = ?1) < ?4
-       ON CONFLICT DO NOTHING`,
-    )
-    .bind(blocker, blocked, now, SOCIAL.maxBlocksPerAccount)
-    .run();
-  if (inserted.meta.changes === 1) return 'added';
+  const { low, high } = canonicalPair(blocker, blocked);
+  const [inserted] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO blocks (blocker_account_id, blocked_account_id, created_at)
+         SELECT ?1, ?2, ?3
+          WHERE (SELECT COUNT(*) FROM blocks WHERE blocker_account_id = ?1) < ?4
+         ON CONFLICT DO NOTHING`,
+      )
+      .bind(blocker, blocked, now, SOCIAL.maxBlocksPerAccount),
+    db
+      .prepare(
+        `UPDATE friendships
+            SET status = 'REMOVED', ended_at = ?3, ended_reason = 'BLOCKED', updated_at = ?3
+          WHERE account_low = ?4 AND account_high = ?5 AND status IN ('PENDING', 'ACCEPTED')
+            AND (hidden = 0 OR requester_id = ?1)
+            AND EXISTS (SELECT 1 FROM blocks
+                         WHERE blocker_account_id = ?1 AND blocked_account_id = ?2)`,
+      )
+      .bind(blocker, blocked, now, low, high),
+  ]);
+  if (inserted?.meta.changes === 1) return 'added';
   const exists = await db
     .prepare('SELECT 1 AS x FROM blocks WHERE blocker_account_id = ? AND blocked_account_id = ?')
     .bind(blocker, blocked)

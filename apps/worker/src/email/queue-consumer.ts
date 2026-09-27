@@ -1,10 +1,11 @@
 import { type AppConfig, readConfig } from '../config.ts';
+import { socialNoticeProblem } from '../friends/notices.ts';
 import { type Clock, systemClock } from '../lib/clock.ts';
 import { decryptString } from '../lib/crypto.ts';
 import { createLogger, errorFields, type Logger } from '../lib/log.ts';
 import { OUTBOX_SECRET_LABEL } from '../notifications/outbox.ts';
 import { createBrevoProvider } from './brevo.ts';
-import { buildTemplateParams, OutboxType, SOCIAL_TYPES } from './catalog.ts';
+import { buildTemplateParams, isSocialType, OutboxType } from './catalog.ts';
 import { createLogProvider } from './log-provider.ts';
 import { type EmailProvider, EmailSendError } from './provider.ts';
 import { EmailQueueMessage, isDeadLetterQueue } from './queue-messages.ts';
@@ -40,6 +41,14 @@ export type ProcessOutcome =
   | { kind: 'skipped'; reason: string }
   | { kind: 'failed'; reason: string }
   | { kind: 'retry'; reason: string; delaySeconds: number };
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 /** Espera creciente entre reintentos: 30 s, 60 s, 120 s… hasta 15 min. */
 export function retryDelaySeconds(attempts: number): number {
@@ -146,12 +155,22 @@ export async function processOutbox(
   if (recipient.email_deliverability === 'UNDELIVERABLE') {
     return fail('correo marcado como no entregable');
   }
-  if (SOCIAL_TYPES.has(type.data)) {
+  if (isSocialType(type.data)) {
+    // Los de seguridad no pasan por aquí: salen aunque los avisos estén apagados.
     const optedIn =
       type.data === 'FRIEND_REQUEST'
         ? recipient.friend_request_email !== 0
         : recipient.friend_accepted_email !== 0;
     if (!optedIn) return fail('preferencia desactivada');
+    if (recipient.status !== 'ACTIVE') return fail('cuenta no activa: sin avisos sociales');
+    const problem = await socialNoticeProblem(
+      db,
+      type.data,
+      safeJson(row.payload_json),
+      row.account_id,
+      now,
+    );
+    if (problem) return fail(problem);
   }
   if (!isAllowedRecipient(config.email.allowlist, recipient.email_normalized)) {
     return fail('destinatario fuera de la lista permitida del entorno');

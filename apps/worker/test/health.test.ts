@@ -13,7 +13,7 @@ describe('GET /api/v1/health', () => {
     expect(data.status).toBe('ok');
     expect(data.environment).toBe('local');
     expect(data.checks.d1?.status).toBe('ok');
-    expect(data.checks.d1?.detail).toBe('migraciones aplicadas: 4');
+    expect(data.checks.d1?.detail).toBe('migraciones aplicadas: 5');
     expect(data.checks.r2?.status).toBe('ok');
     expect(data.checks.durableObjects?.status).toBe('ok');
     expect(data.checks.secrets?.detail).toBe('5 de 5 configurados');

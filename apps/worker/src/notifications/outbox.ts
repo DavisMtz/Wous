@@ -16,6 +16,12 @@ export type OutboxDraft<T extends OutboxType> = {
   payload: OutboxPayload<T>;
   /** Token en claro; se guarda cifrado y se borra al enviarse. */
   secret?: string;
+  /**
+   * Solo se inserta si esta condición se cumple AL ESCRIBIR, dentro del mismo
+   * batch (p. ej. «la solicitud quedó pendiente y el aviso está encendido»).
+   * SQL con `?` sin número: sus valores van después de los de la fila.
+   */
+  onlyIf?: { sql: string; bindings: unknown[] };
 };
 
 export type PreparedOutbox = { id: string; statement: D1PreparedStatement };
@@ -23,7 +29,8 @@ export type PreparedOutbox = { id: string; statement: D1PreparedStatement };
 /**
  * Prepara la fila del outbox para ir en el MISMO batch que el cambio de
  * dominio: o se guardan los dos, o ninguno. Con `dedupe_key` repetida la
- * inserción no hace nada (no hay segundo correo).
+ * inserción no hace nada (no hay segundo correo). Quien necesite saber si se
+ * insertó mira `meta.changes` de su resultado en el batch.
  */
 export async function prepareOutbox<T extends OutboxType>(
   env: Env,
@@ -35,12 +42,7 @@ export async function prepareOutbox<T extends OutboxType>(
   const secretEnc = draft.secret
     ? await encryptString(env.TOKEN_PEPPER, OUTBOX_SECRET_LABEL, draft.secret)
     : null;
-  const statement = env.DB.prepare(
-    `INSERT INTO notification_outbox (id, account_id, type, dedupe_key, payload_json, secret_enc,
-       status, attempts, available_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)
-     ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING`,
-  ).bind(
+  const row = [
     id,
     draft.accountId,
     draft.type,
@@ -49,7 +51,20 @@ export async function prepareOutbox<T extends OutboxType>(
     secretEnc,
     now,
     now,
-  );
+  ];
+  const columns = `INSERT INTO notification_outbox (id, account_id, type, dedupe_key, payload_json,
+       secret_enc, status, attempts, available_at, created_at)`;
+  const onConflict = 'ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING';
+  // Con INSERT … SELECT, SQLite exige un WHERE para no confundir el ON CONFLICT con un JOIN.
+  const statement = draft.onlyIf
+    ? env.DB.prepare(
+        `${columns}
+         SELECT ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ? WHERE ${draft.onlyIf.sql}
+         ${onConflict}`,
+      ).bind(...row, ...draft.onlyIf.bindings)
+    : env.DB.prepare(`${columns} VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?) ${onConflict}`).bind(
+        ...row,
+      );
   return { id, statement };
 }
 

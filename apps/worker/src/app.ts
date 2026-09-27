@@ -7,6 +7,7 @@ import { authRoutes } from './http/routes/auth.ts';
 import { characterRoutes } from './http/routes/characters.ts';
 import { configRoutes } from './http/routes/config.ts';
 import { devRoutes } from './http/routes/dev.ts';
+import { friendRoutes, preferenceRoutes, userRoutes } from './http/routes/friends.ts';
 import { healthRoutes } from './http/routes/health.ts';
 import { socialRoutes } from './http/routes/social.ts';
 import { webhookRoutes } from './http/routes/webhooks.ts';
@@ -29,6 +30,9 @@ export function createApp(overrides: Partial<Deps> = {}) {
   app.route(`${API_PREFIX}/auth`, authRoutes);
   app.route(`${API_PREFIX}/characters`, characterRoutes);
   app.route(`${API_PREFIX}/blocks`, socialRoutes);
+  app.route(`${API_PREFIX}/friends`, friendRoutes);
+  app.route(`${API_PREFIX}/users`, userRoutes);
+  app.route(`${API_PREFIX}/preferences`, preferenceRoutes);
   app.route(`${API_PREFIX}/webhooks`, webhookRoutes);
   app.route(`${API_PREFIX}/dev`, devRoutes);
   app.route('/ws', worldRoutes);

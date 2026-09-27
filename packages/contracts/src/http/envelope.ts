@@ -35,6 +35,13 @@ export const HttpErrorCode = z.enum([
   'CHARACTER_REQUIRED',
   'INVALID_APPEARANCE',
   'INVALID_DISPLAY_NAME',
+  // Amistades (ADR-0011)
+  /** Tu última solicitud a esa persona terminó hace poco: `retryAfterSeconds` dice cuándo. */
+  'FRIEND_REQUEST_COOLDOWN',
+  /** Llegaste a un tope (amistades, solicitudes sin contestar, bloqueos); la interfaz sabe cuál. */
+  'LIMIT_REACHED',
+  /** Tienes bloqueada a esa persona: primero desbloquéala. */
+  'BLOCKED_BY_YOU',
   // Webhooks
   'WEBHOOK_UNAUTHORIZED',
 ]);

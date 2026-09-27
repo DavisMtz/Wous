@@ -61,6 +61,10 @@ export const RATE_LIMITS = {
   verifyEmailPerIp: { limit: 20, windowMs: 15 * MINUTE },
   /** Conexiones al mundo: cubre tormentas de reconexión y pestañas en bucle. */
   worldConnectPerAccount: { limit: 30, windowMs: MINUTE },
+  /** Solicitudes de amistad mandadas (§20: rate limit por actor). */
+  friendRequestsPerAccount: { limit: 20, windowMs: HOUR },
+  /** Aceptar, rechazar, quitar, bloquear y cambiar avisos, desde la casa o la ficha. */
+  socialActionsPerAccount: { limit: 60, windowMs: 10 * MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 /** Cola de correo y outbox (§7). */
@@ -71,6 +75,11 @@ export const EMAIL = {
   sweepPendingAfterMs: 2 * MINUTE,
   /** Máximo de filas que rescata el barrido en una pasada. */
   sweepBatchSize: 50,
+  /**
+   * Avisos sociales (solicitudes y amistades aceptadas) que recibe una misma
+   * persona al día, vengan de quien vengan (ADR-0011). Lo demás no sale.
+   */
+  socialPerRecipientPerDay: 10,
 } as const;
 
 /** Movimiento autoritativo (§14). Unidades: tiles del mapa y milisegundos. */
@@ -174,4 +183,16 @@ export const SOCIAL = {
    * lados saca a la persona en este plazo como máximo.
    */
   recheckMs: 60 * SECOND,
+} as const;
+
+/** Amistades (§20, ADR-0011). */
+export const FRIENDS = {
+  maxFriends: 500,
+  /** Solicitudes tuyas sin contestar, como mucho. */
+  maxOutgoingPending: 50,
+  /**
+   * Quien mandó la última solicitud del par espera esto, desde que esa vuelta
+   * terminó (rechazo, cancelación, amistad quitada o bloqueo), para pedir otra.
+   */
+  rerequestCooldownMs: DAY,
 } as const;

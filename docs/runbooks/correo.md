@@ -40,11 +40,22 @@ npx wrangler d1 execute DB --remote --env production --command \
 | `token ilegible (¿rotó TOKEN_PEPPER?)` | Se rotó el pepper: la persona debe pedir otro enlace. |
 | `agotó reintentos (DLQ)` | Cinco fallos transitorios seguidos: mirar el `last_error` anterior en la misma celda. |
 
+Los avisos de amistad (FRIEND_REQUEST, FRIEND_ACCEPTED) se revisan justo antes de salir (ADR-0011).
+Estos `FAILED` son **esperados**, no incidentes, y no se reenvían:
+
+| Error | Qué pasó |
+| --- | --- |
+| `preferencia desactivada` | La persona apagó ese aviso después de que se encoló (si ya estaba apagado, ni se crea la fila). |
+| `la amistad ya cambió` | Mientras esperaba en la cola, la solicitud se aceptó, se canceló o hubo un bloqueo. |
+| `tope diario de avisos sociales` | Esa persona ya recibió 10 avisos sociales en 24 h (`EMAIL.socialPerRecipientPerDay`). |
+| `cuenta no activa: sin avisos sociales` | La cuenta está suspendida o baneada. |
+
 ## 2. Reenviar (solo si tiene sentido)
 
 Los enlaces de verificación y reset caducan (30 y 20 min) y su token cifrado se borra al fallar:
 **no se reenvían**; la persona pide otro desde la web. Solo se reenvían correos sin token
-(bienvenida, contraseña cambiada, amistad) una vez corregida la causa:
+(bienvenida, contraseña cambiada y, si la amistad sigue igual, los de amistad: al salir se vuelven a
+revisar) una vez corregida la causa:
 
 ```bash
 npx wrangler d1 execute DB --remote --env production --command \

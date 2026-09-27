@@ -818,6 +818,30 @@ export class RoomDO extends DurableObject<Env> {
   }
 
   /**
+   * Un bloqueo que se hizo fuera de la sala, desde la lista de amigos
+   * (ADR-0011): ya está en D1 y aquí aplica en el acto, como si se hubiera
+   * hecho en la ficha. Solo quien bloquea recibe la confirmación. Si quien
+   * bloquea ya no está, no hay nada que filtrar: al volver lo trae de D1.
+   */
+  async applyBlock(blocker: string, blocked: string, blockedCharacterId: string): Promise<void> {
+    const mine = this.live().filter(({ att }) => att.acc === blocker);
+    if (mine.length === 0) return;
+    const edge = blockEdge(blocker, blocked);
+    if (!this.edges.has(edge)) {
+      this.edges.add(edge);
+      this.saveEdges();
+    }
+    this.log.info('room.block', { characterId: mine[0]?.att.id, targetId: blockedCharacterId });
+    for (const { ws } of mine) {
+      this.send(ws, {
+        v: WS_PROTOCOL_VERSION,
+        type: 'PLAYER_BLOCKED',
+        payload: { characterId: blockedCharacterId, blocked: true },
+      });
+    }
+  }
+
+  /**
    * Reportar (§18). La evidencia sale de la ventana reciente de ESTA sala:
    * el cliente dice qué mensaje (por ID), nunca qué decía. Un mensaje que no
    * es de la persona reportada es un cliente alterado y cuenta como falta.

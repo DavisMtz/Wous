@@ -11,20 +11,39 @@ export const OutboxType = z.enum([
 ]);
 export type OutboxType = z.infer<typeof OutboxType>;
 
+/**
+ * Aviso social: además de los nombres, la amistad y su vuelta. Al enviar se
+ * revisa que siga igual (ADR-0011): una solicitud cancelada o bloqueada
+ * mientras esperaba en la cola ya no avisa.
+ */
+const SocialPayload = z.object({
+  displayName: z.string(),
+  actorDisplayName: z.string(),
+  friendshipId: z.string(),
+  round: z.number().int().positive(),
+});
+
 /** Parámetros NO secretos que se guardan en `payload_json`. */
 export const OutboxPayloads = {
   EMAIL_VERIFY: z.object({ displayName: z.string(), expiresMinutes: z.number().int() }),
   WELCOME_EMAIL: z.object({ displayName: z.string() }),
   PASSWORD_RESET: z.object({ displayName: z.string(), expiresMinutes: z.number().int() }),
   PASSWORD_CHANGED: z.object({ displayName: z.string() }),
-  FRIEND_REQUEST: z.object({ displayName: z.string(), actorDisplayName: z.string() }),
-  FRIEND_ACCEPTED: z.object({ displayName: z.string(), actorDisplayName: z.string() }),
+  FRIEND_REQUEST: SocialPayload,
+  FRIEND_ACCEPTED: SocialPayload,
 } as const satisfies Record<OutboxType, z.ZodType>;
 
 export type OutboxPayload<T extends OutboxType> = z.infer<(typeof OutboxPayloads)[T]>;
 
-/** Seguridad/operación: salen siempre. Sociales: obedecen preferencias (§7). */
-export const SOCIAL_TYPES: ReadonlySet<OutboxType> = new Set(['FRIEND_REQUEST', 'FRIEND_ACCEPTED']);
+/**
+ * Seguridad/operación: salen siempre. Sociales: obedecen preferencias (§7) y
+ * se revisan justo antes de salir (ADR-0011).
+ */
+export type SocialType = 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED';
+
+export function isSocialType(type: OutboxType): type is SocialType {
+  return type === 'FRIEND_REQUEST' || type === 'FRIEND_ACCEPTED';
+}
 
 /** Tipos que necesitan un token de un solo uso (cifrado en `secret_enc`). */
 export const TYPES_WITH_SECRET: ReadonlySet<OutboxType> = new Set([

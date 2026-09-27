@@ -107,6 +107,12 @@ export class RoomDirectoryDO extends DurableObject<Env> {
     await this.ctx.storage.put(STATE_KEY, state);
   }
 
+  /** En qué instancia está alguien ahora (o null): para avisarle a su sala (ADR-0011). */
+  async whereIs(characterId: string): Promise<string | null> {
+    const state = await this.read();
+    return state.presence[characterId] ?? null;
+  }
+
   /** Para pruebas y observabilidad: la ocupación que conoce el directorio. */
   async occupancy(): Promise<DirectoryState> {
     return this.read();

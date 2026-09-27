@@ -88,7 +88,7 @@ const TEMPLATES = [
     intro: `${P('actorDisplayName')} quiere agregarte como amigo en Wous, ${P('displayName')}.`,
     cta: 'Ver solicitud',
     url: 'friendsUrl',
-    note: 'Puedes dejar de recibir estos avisos desde las preferencias de tu cuenta.',
+    note: 'Puedes apagar estos avisos en Wous, al pie de la página de tu banda.',
     reason: 'Te escribimos porque tienes activados los avisos de solicitudes de amistad.',
   },
   {
@@ -100,7 +100,7 @@ const TEMPLATES = [
     intro: `${P('actorDisplayName')} aceptó tu solicitud de amistad, ${P('displayName')}. Ya pueden encontrarse en la plaza.`,
     cta: 'Ir a Wous',
     url: 'friendsUrl',
-    note: 'Puedes dejar de recibir estos avisos desde las preferencias de tu cuenta.',
+    note: 'Puedes apagar estos avisos en Wous, al pie de la página de tu banda.',
     reason: 'Te escribimos porque tienes activados los avisos de amistades aceptadas.',
   },
 ];
