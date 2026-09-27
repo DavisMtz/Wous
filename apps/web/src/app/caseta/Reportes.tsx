@@ -1,3 +1,4 @@
+import { MODERATION } from '@wous/config';
 import type {
   AdminEvidenceLine,
   AdminReportDetail,
@@ -136,6 +137,7 @@ function DetalleDeReporte({ id, onAnuncio }: { id: string; onAnuncio(texto: stri
   const carga = usePedido();
   const descarte = usePedido();
   const [motivo, setMotivo] = useState('');
+  const [errorMotivo, setErrorMotivo] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     const data = await carga.pedir(() =>
@@ -150,9 +152,15 @@ function DetalleDeReporte({ id, onAnuncio }: { id: string; onAnuncio(texto: stri
 
   const descartar = async (event: FormEvent) => {
     event.preventDefault();
+    const limpio = motivo.trim();
+    if (limpio.length < MODERATION.reasonMinChars) {
+      setErrorMotivo('Escribe por qué: queda en la bitácora.');
+      return;
+    }
+    setErrorMotivo(null);
     const data = await descarte.pedir(() =>
       api.post<AdminReportDetail>(`/admin/reports/${encodeURIComponent(id)}/dismiss`, {
-        reason: motivo,
+        reason: limpio,
       }),
     );
     if (!data) return;
@@ -253,7 +261,11 @@ function DetalleDeReporte({ id, onAnuncio }: { id: string; onAnuncio(texto: stri
           <h3 className="caseta-acciones__titulo">Atender</h3>
           <FormaDeSancion
             persona={reporte.target}
-            silenciadoHasta={null}
+            silenciadoHasta={
+              reporte.targetMutedUntil !== null && reporte.targetMutedUntil > Date.now()
+                ? reporte.targetMutedUntil
+                : null
+            }
             reporte={{ id: reporte.id, abiertos: reporte.openAgainstTarget }}
             onHecho={(_, texto) => {
               onAnuncio(texto);
@@ -262,7 +274,7 @@ function DetalleDeReporte({ id, onAnuncio }: { id: string; onAnuncio(texto: stri
           />
           <form className="caseta-descartar" onSubmit={descartar} noValidate>
             <h3 className="caseta-acciones__titulo">O descartar</h3>
-            <div className="campo">
+            <div className={`campo ${errorMotivo ? 'campo--error' : ''}`}>
               <label className="campo__etiqueta" htmlFor="descartar-motivo">
                 Por qué no pasa nada (queda en la bitácora)
               </label>
@@ -270,9 +282,16 @@ function DetalleDeReporte({ id, onAnuncio }: { id: string; onAnuncio(texto: stri
                 id="descartar-motivo"
                 className="campo__entrada"
                 value={motivo}
-                maxLength={300}
+                maxLength={MODERATION.reasonMaxChars}
                 onChange={(e) => setMotivo(e.target.value)}
+                aria-invalid={errorMotivo ? true : undefined}
+                aria-describedby={errorMotivo ? 'descartar-motivo-error' : undefined}
               />
+              {errorMotivo ? (
+                <p className="campo__error" id="descartar-motivo-error">
+                  {errorMotivo}
+                </p>
+              ) : null}
             </div>
             {descarte.error ? <Aviso>{descarte.error}</Aviso> : null}
             <Cartulina type="submit" variante="trazo" cargando={descarte.enCurso}>

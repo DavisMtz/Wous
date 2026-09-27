@@ -8,7 +8,7 @@ import {
   normalizeUsername,
 } from '../accounts/normalize.ts';
 import { checkPassword, PASSWORD_PROBLEM_MESSAGES } from '../accounts/password-policy.ts';
-import { findAccountByEmail, usernameExists } from '../accounts/repo.ts';
+import { findAccountByEmail, holdUsernameStatement, usernameExists } from '../accounts/repo.ts';
 import {
   consumeInvitation,
   invitationCodeHash,
@@ -123,9 +123,11 @@ async function openAccount(
 ): Promise<void> {
   const { env, deps, log } = ctx;
 
-  // El correo NO es público: si existe, se responde igual que si no.
+  // El correo NO es público: si existe, se responde igual que si no, y el
+  // nombre queda apartado igual que si la cuenta se hubiera creado.
   if (await findAccountByEmail(env.DB, emailNormalized)) {
     await deps.hasher.burn(input.password);
+    await holdUsernameStatement(env.DB, usernameNormalized, deps.clock.now()).run();
     log.info('auth.register_existing_email', { to: maskEmail(emailNormalized) });
     return;
   }
@@ -183,8 +185,12 @@ async function openAccount(
     // comprobación y el INSERT. El UNIQUE de D1 es la autoridad final.
     const message = errorFields(err).errorMessage ?? '';
     if (/username_normalized/.test(String(message))) throw AuthErrors.usernameTaken();
-    // Otra petición registró el mismo correo: como si ya existiera (el cupo se queda gastado).
-    if (/email_normalized/.test(String(message))) return;
+    // Otra petición registró el mismo correo: como si ya existiera (el cupo se
+    // queda gastado y el nombre, apartado).
+    if (/email_normalized/.test(String(message))) {
+      await holdUsernameStatement(env.DB, usernameNormalized, now).run();
+      return;
+    }
     throw err;
   }
 

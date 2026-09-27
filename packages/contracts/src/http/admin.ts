@@ -151,6 +151,8 @@ export const AdminReportDetail = AdminReportSummary.extend({
   }),
   resolvedAt: Epoch.nullable(),
   resolution: z.string().nullable(),
+  /** Silencio de chat que tiene ahora la persona reportada (la caseta no lo acorta sin querer). */
+  targetMutedUntil: Epoch.nullable(),
 });
 export type AdminReportDetail = z.infer<typeof AdminReportDetail>;
 

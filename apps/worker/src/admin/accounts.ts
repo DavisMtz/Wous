@@ -29,10 +29,6 @@ export type Actor = { accountId: string; username: string };
 
 // ─── Buscar ──────────────────────────────────────────────────────────────
 
-function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (m) => `\\${m}`);
-}
-
 /**
  * Por `acc_…`, `chr_…`, correo exacto, o un nombre: prefijo del usuario
  * (`@ana` o `ana`, por su índice) o parte del nombre del personaje.
@@ -54,9 +50,11 @@ export async function searchAccounts(db: D1Database, raw: string): Promise<Admin
   } else {
     const name = q.replace(/^@/, '');
     const user = normalizeUsername(name);
+    // instr y no LIKE: D1 rechaza patrones LIKE de más de 50 bytes, e instr no
+    // necesita escapar nada. lower() solo toca ASCII, igual que LIKE.
     where = `(a.username_normalized >= ? AND a.username_normalized < ?)
-      OR c.display_name LIKE ? ESCAPE '\\'`;
-    binds = [user, `${user}￿`, `%${escapeLike(name)}%`];
+      OR instr(lower(c.display_name), lower(?)) > 0`;
+    binds = [user, `${user}￿`, name];
   }
   const { results } = await db
     .prepare(
@@ -267,13 +265,19 @@ function planSanction(
   switch (input.action) {
     case 'MUTE': {
       const until = now + (input.hours ?? 0) * TIME.HOUR;
+      // Nunca acorta: si ya tiene un silencio igual o más largo, no cambia nada.
+      // Para acortarlo, primero se quita y luego se pone el nuevo.
+      if (target.chat_muted_until !== null && target.chat_muted_until >= until) return null;
+      const shorter = 'AND (chat_muted_until IS NULL OR chat_muted_until < ?)';
       return {
         audit: 'CHAT_MUTED',
-        guard: exists(''),
+        guard: exists(shorter, until),
         statements: [
           db
-            .prepare('UPDATE accounts SET chat_muted_until = ?, updated_at = ? WHERE id = ?')
-            .bind(until, now, id),
+            .prepare(
+              `UPDATE accounts SET chat_muted_until = ?, updated_at = ? WHERE id = ? ${shorter}`,
+            )
+            .bind(until, now, id, until),
         ],
         metadata: { hours: input.hours ?? null, until },
         notifyRoom: true,
@@ -331,9 +335,13 @@ function planSanction(
         audit: 'ACCOUNT_REINSTATED',
         guard: exists(`AND status = 'SUSPENDED'`),
         statements: [
+          // Sin correo confirmado vuelve a esperar la confirmación: reactivar
+          // nunca se salta la verificación.
           db
             .prepare(
-              `UPDATE accounts SET status = 'ACTIVE', suspended_until = NULL, updated_at = ?
+              `UPDATE accounts SET status = CASE WHEN email_verified_at IS NULL
+                  THEN 'PENDING_EMAIL' ELSE 'ACTIVE' END,
+                  suspended_until = NULL, updated_at = ?
                 WHERE id = ? AND status = 'SUSPENDED'`,
             )
             .bind(now, id),
@@ -433,25 +441,33 @@ export async function sanction(
       ...plan.statements,
     );
   }
+  // Cada reporte que se cierra deja su fila en la bitácora, con la misma
+  // condición que su cambio (aunque la sanción ya estuviera puesta).
   const resolution = `${resolutionOf(input)} · @${actor.username}`;
-  if (input.reportId) {
+  for (const reportId of await reportsToClose(db, accountId, input)) {
     statements.push(
+      auditStatementIf(
+        db,
+        deps,
+        {
+          actorAccountId: actor.accountId,
+          action: 'REPORT_ACTIONED',
+          targetType: 'report',
+          targetId: reportId,
+          reason: input.reason,
+          metadata: { via: 'caseta', sanction: input.action },
+        },
+        {
+          sql: `EXISTS (SELECT 1 FROM reports WHERE id = ? AND status = 'OPEN')`,
+          binds: [reportId],
+        },
+      ),
       db
         .prepare(
           `UPDATE reports SET status = 'ACTIONED', resolved_at = ?, resolution = ?
             WHERE id = ? AND status = 'OPEN'`,
         )
-        .bind(now, resolution, input.reportId),
-    );
-  }
-  if (input.closeOpenReports) {
-    statements.push(
-      db
-        .prepare(
-          `UPDATE reports SET status = 'ACTIONED', resolved_at = ?, resolution = ?
-            WHERE target_account_id = ? AND status = 'OPEN'`,
-        )
-        .bind(now, resolution, accountId),
+        .bind(now, resolution, reportId),
     );
   }
   const results = statements.length > 0 ? await db.batch(statements) : [];
@@ -468,6 +484,27 @@ export async function sanction(
     await recheckRoom(ctx, target.character_id);
   }
   return { changed };
+}
+
+/** El reporte que motivó la acción y, si se pidió, los demás abiertos contra esa persona. */
+async function reportsToClose(
+  db: D1Database,
+  accountId: string,
+  input: SanctionRequest,
+): Promise<string[]> {
+  const ids = new Set<string>();
+  if (input.reportId) ids.add(input.reportId);
+  if (input.closeOpenReports) {
+    const { results } = await db
+      .prepare(
+        `SELECT id FROM reports WHERE target_account_id = ? AND status = 'OPEN'
+          ORDER BY created_at LIMIT ?`,
+      )
+      .bind(accountId, MODERATION.closeReportsMax)
+      .all<{ id: string }>();
+    for (const row of results) ids.add(row.id);
+  }
+  return [...ids];
 }
 
 /** Que su sala lo vuelva a revisar ya. Si falla, la revisión del minuto es la red. */

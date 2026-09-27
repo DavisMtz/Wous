@@ -37,16 +37,17 @@ Arriba dice en qué entorno estás (**Local**, **Staging** o **Producción**). C
   vigentes, reportes y la **bitácora** (quién hizo qué y por qué).
 - **Invitaciones:** crear, copiar el enlace y revocar (ver abajo).
 
-Todo lo que cambia algo pide **motivo** y queda en `audit_log` con quien actuó. Nadie puede
+Todo lo que cambia algo pide **motivo** y queda en `audit_log` con quien actuó; cada reporte que
+se da por atendido deja además su propia fila (`REPORT_ACTIONED`). Nadie puede
 sancionarse a sí mismo ni sancionar a otra persona del staff desde la caseta (primero se le quita
 el rol con el script).
 
 | Acción | Efecto | En quien está conectado |
 | --- | --- | --- |
-| Silenciar (1 h, 1 día, 3 días, 1 semana) | No escribe en el chat; sí camina y hace gestos. | En el acto: la caseta le pide a su sala que revise. |
+| Silenciar (1 h, 1 día, 3 días, 1 semana) | No escribe en el chat; sí camina y hace gestos. Nunca acorta un silencio más largo: para acortarlo, primero se quita. | En el acto: la caseta le pide a su sala que revise. |
 | Quitar el silencio | Vuelve a escribir. | En el acto. |
 | Suspender (1 día … 30 días, o hasta nuevo aviso) | `SUSPENDED` y sesiones cerradas. Al intentar entrar ve «suspendida hasta el …». **Con fecha, se levanta sola** (cron de 5 min o al intentar entrar). | Sale de la sala en el acto. |
-| Reactivar | De `SUSPENDED` a `ACTIVE`. | Entra con sesión nueva. |
+| Reactivar | De `SUSPENDED` a `ACTIVE` (a `PENDING_EMAIL` si nunca confirmó su correo). | Entra con sesión nueva. |
 | Cerrar sus sesiones | Cierra todas sus sesiones (p. ej., le robaron la contraseña). | Sale en el acto; puede volver a entrar. |
 | Cerrar la cuenta | `BANNED`, definitivo (la caseta no la reabre). Pide confirmar. | Sale en el acto. |
 
@@ -65,8 +66,8 @@ Con `REGISTRATION_MODE=invite` (staging y producción) solo se crea cuenta con u
 
 El código se guarda cifrado y con HMAC (`TOKEN_PEPPER`): rotar ese secreto invalida las
 invitaciones pendientes. Una invitación inexistente, vencida, agotada o revocada responde siempre
-el mismo error; un correo que ya tenía cuenta gasta el cupo igual (así no sirve para averiguar
-quién está registrado).
+el mismo error; un correo que ya tenía cuenta gasta el cupo igual y el nombre elegido queda
+apartado (así ni la invitación ni el nombre sirven para averiguar quién está registrado).
 
 ## El script
 
@@ -84,9 +85,9 @@ deja fila en `audit_log` con el moderador en `metadata_json` (`--moderador <nomb
 | `reporte rpt_…` | La evidencia completa de un reporte. |
 | `silenciar <persona> <horas> --motivo …` | Silencio de chat hasta 90 días. |
 | `quitar-silencio <persona> --motivo …` | Quita el silencio. |
-| `suspender <persona> [--horas N] --motivo …` | Suspende; con `--horas`, se levanta sola al vencer. |
+| `suspender <persona> [--horas N] --motivo …` | Suspende una cuenta activa (o ya suspendida); con `--horas`, se levanta sola al vencer. |
 | `banear <persona> --motivo …` | Cierra la cuenta. |
-| `reactivar <persona> --motivo …` | De `SUSPENDED` a `ACTIVE`. |
+| `reactivar <persona> --motivo …` | De `SUSPENDED` a `ACTIVE` (a `PENDING_EMAIL` sin correo confirmado). |
 | `descartar rpt_… --motivo …` | Reporte `DISMISSED`. |
 | `caseta` | Quién atiende la caseta. |
 | `dar-caseta <persona> --motivo …` / `quitar-caseta …` | Da o quita el rol. |

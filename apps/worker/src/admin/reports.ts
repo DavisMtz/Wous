@@ -139,12 +139,15 @@ type DetailRow = ReportRow & {
   evidence_json: string;
   resolved_at: number | null;
   resolution: string | null;
+  target_muted_until: number | null;
 };
 
 export async function reportDetail(db: D1Database, id: string): Promise<AdminReportDetail | null> {
   const row = await db
     .prepare(
-      `SELECT ${SUMMARY_COLUMNS}, r.note, r.evidence_json, r.resolved_at, r.resolution
+      `SELECT ${SUMMARY_COLUMNS}, r.note, r.evidence_json, r.resolved_at, r.resolution,
+              (SELECT chat_muted_until FROM accounts WHERE id = r.target_account_id)
+                AS target_muted_until
          FROM reports r WHERE r.id = ?`,
     )
     .bind(id)
@@ -158,6 +161,7 @@ export async function reportDetail(db: D1Database, id: string): Promise<AdminRep
     evidence: parseEvidence(row.evidence_json, row.created_at),
     resolvedAt: row.resolved_at,
     resolution: row.resolution,
+    targetMutedUntil: row.target_muted_until,
   };
 }
 

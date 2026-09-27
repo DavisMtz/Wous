@@ -1,4 +1,4 @@
-import { INVITATIONS } from '@wous/config';
+import { INVITATIONS, MODERATION } from '@wous/config';
 import type {
   AdminInvitation,
   AdminInvitationListResponse,
@@ -222,15 +222,22 @@ function FilaDeInvitacion({
   const { copiado, copiar } = useCopiar();
   const [revocando, setRevocando] = useState(false);
   const [motivo, setMotivo] = useState('');
+  const [errorMotivo, setErrorMotivo] = useState<string | null>(null);
   const { enCurso, error, pedir } = usePedido();
   const vigente = invitacion.status === 'ACTIVE';
 
   const revocar = async (event: FormEvent) => {
     event.preventDefault();
+    const limpio = motivo.trim();
+    if (limpio.length < MODERATION.reasonMinChars) {
+      setErrorMotivo('Escribe por qué: queda en la bitácora.');
+      return;
+    }
+    setErrorMotivo(null);
     const data = await pedir(() =>
       api.post<AdminInvitationResponse>(
         `/admin/invitations/${encodeURIComponent(invitacion.id)}/revoke`,
-        { reason: motivo },
+        { reason: limpio },
       ),
     );
     if (!data) return;
@@ -279,17 +286,24 @@ function FilaDeInvitacion({
       ) : null}
       {revocando ? (
         <form className="caseta-descartar" onSubmit={revocar} noValidate>
-          <div className="campo">
+          <div className={`campo ${errorMotivo ? 'campo--error' : ''}`}>
             <label className="campo__etiqueta" htmlFor={`${id}-motivo`}>
               Por qué se revoca (queda en la bitácora)
             </label>
             <input
               id={`${id}-motivo`}
               className="campo__entrada"
-              maxLength={300}
+              maxLength={MODERATION.reasonMaxChars}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
+              aria-invalid={errorMotivo ? true : undefined}
+              aria-describedby={errorMotivo ? `${id}-motivo-error` : undefined}
             />
+            {errorMotivo ? (
+              <p className="campo__error" id={`${id}-motivo-error`}>
+                {errorMotivo}
+              </p>
+            ) : null}
           </div>
           {error ? <Aviso>{error}</Aviso> : null}
           <Cartulina type="submit" variante="trazo" cargando={enCurso}>

@@ -18,6 +18,7 @@ export type AuditAction =
   | 'ACCOUNT_BANNED'
   | 'ACCOUNT_REINSTATED'
   | 'REPORT_DISMISSED'
+  | 'REPORT_ACTIONED'
   // Caseta y alpha cerrada (ADR-0012). El rol solo lo da y lo quita el script.
   | 'STAFF_GRANTED'
   | 'STAFF_REVOKED'

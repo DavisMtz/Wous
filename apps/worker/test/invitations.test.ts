@@ -209,6 +209,35 @@ describe('registro en la alpha cerrada', () => {
   );
 
   it(
+    'el nombre elegido con un correo ya registrado queda apartado: el nombre tampoco delata el correo',
+    async () => {
+      const staff = await admin();
+      const existente = await createVerifiedUser();
+      const invitacion = await newInvitation(staff.cookie, { maxUses: 3 });
+      const { username } = inviteIdentity();
+      const intento = await registerWithInvite({
+        email: existente.email,
+        username,
+        invitationCode: invitacion.code,
+      });
+      expect(intento.status).toBe(202);
+
+      // Como si la cuenta se hubiera creado: el nombre ya no está libre, ni con
+      // un código inventado ni con uno bueno (que no se gasta).
+      const conCodigoFalso = await registerWithInvite({ username, invitationCode: '00000-00000' });
+      expect(conCodigoFalso.status).toBe(409);
+      expect(await errorCode(conCodigoFalso)).toBe('USERNAME_TAKEN');
+      const conCodigoBueno = await registerWithInvite({
+        username,
+        invitationCode: invitacion.code,
+      });
+      expect(await errorCode(conCodigoBueno)).toBe('USERNAME_TAKEN');
+      expect(await uses(invitacion.id)).toBe(1);
+    },
+    PESADA,
+  );
+
+  it(
     'dos registros con el último cupo: solo pasa uno',
     async () => {
       const staff = await admin();

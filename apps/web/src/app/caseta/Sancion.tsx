@@ -187,7 +187,9 @@ export function FormaDeSancion({ persona, silenciadoHasta, reporte, onHecho }: P
       respuesta,
       respuesta.changed
         ? `Listo: ${hecho.toLowerCase()} · ${nombreDe(persona)}.`
-        : `${nombreDe(persona)} ya estaba así; no cambió nada.`,
+        : opcion.accion === 'MUTE'
+          ? `${nombreDe(persona)} ya tenía un silencio igual o más largo; no cambió nada. Para acortarlo, primero quítalo.`
+          : `${nombreDe(persona)} ya estaba así; no cambió nada.`,
     );
   };
 

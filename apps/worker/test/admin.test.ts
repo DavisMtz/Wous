@@ -139,6 +139,29 @@ describe('la caseta', () => {
   );
 });
 
+describe('buscar en la caseta', () => {
+  it(
+    'un texto largo o con comodines no truena (D1 no acepta LIKE de más de 50 bytes)',
+    async () => {
+      const admin = await staffMember('Sol Busca');
+      const persona = await playerWithCharacter('Tadeo Porciento');
+      const largo = `pegué una oración completa en la búsqueda ${'y sigue '.repeat(6)}`;
+      const res = await adminGet(`/accounts?q=${encodeURIComponent(largo)}`, admin.cookie);
+      expect(res.status).toBe(200);
+      expect((await data<AdminAccountSearchResponse>(res)).results).toEqual([]);
+      const comodin = await data<AdminAccountSearchResponse>(
+        await adminGet(`/accounts?q=${encodeURIComponent('%_')}`, admin.cookie),
+      );
+      expect(comodin.results).toEqual([]);
+      const parte = await data<AdminAccountSearchResponse>(
+        await adminGet(`/accounts?q=${encodeURIComponent('porCIEN')}`, admin.cookie),
+      );
+      expect(parte.results.map((r) => r.accountId)).toContain(persona.accountId);
+    },
+    PESADA,
+  );
+});
+
 describe('reportes en la caseta', () => {
   it(
     'lista, muestra la evidencia de la sala y se descarta con motivo (una sola vez en la bitácora)',
@@ -266,6 +289,65 @@ describe('sanciones desde la caseta', () => {
   );
 
   it(
+    'silenciar nunca acorta un silencio más largo; atender reportes deja una fila por reporte',
+    async () => {
+      const admin = await staffMember('Ulises Largo');
+      const persona = await playerWithCharacter('Vero Reincide');
+      const reporta = await playerWithCharacter('Wendy Avisa');
+      const semana = await data<SanctionResponse>(
+        await adminPost(`/accounts/${persona.accountId}/sanction`, admin.cookie, {
+          action: 'MUTE',
+          hours: 168,
+          reason: 'Insultos',
+        }),
+      );
+      const hasta = semana.account.chatMutedUntil ?? 0;
+      expect(hasta).toBeGreaterThan(Date.now() + 167 * 3600_000);
+
+      const reportes = [reportId(), reportId(), reportId()];
+      for (const id of reportes) {
+        await insertReport({
+          id,
+          reporterAccountId: reporta.accountId,
+          reporterCharacterId: reporta.characterId,
+          targetAccountId: persona.accountId,
+          targetCharacterId: persona.characterId,
+          targetName: persona.displayName,
+          text: 'otra vez',
+        });
+      }
+      const detalle = await data<AdminReportDetail>(
+        await adminGet(`/reports/${reportes[0]}`, admin.cookie),
+      );
+      expect(detalle.targetMutedUntil).toBe(hasta);
+
+      // Un día sobre una semana: no cambia el silencio, pero los reportes sí se atienden.
+      const dia = await data<SanctionResponse>(
+        await adminPost(`/accounts/${persona.accountId}/sanction`, admin.cookie, {
+          action: 'MUTE',
+          hours: 24,
+          reason: 'Reincide',
+          reportId: reportes[0],
+          closeOpenReports: true,
+        }),
+      );
+      expect(dia.changed).toBe(false);
+      expect(dia.account.chatMutedUntil).toBe(hasta);
+      expect(await auditRows(persona.accountId, 'CHAT_MUTED')).toHaveLength(1);
+      for (const id of reportes) {
+        const fila = await auditRows(id, 'REPORT_ACTIONED');
+        expect(fila).toHaveLength(1);
+        expect(fila[0]).toMatchObject({ actor_account_id: admin.accountId, reason: 'Reincide' });
+        const estado = await env.DB.prepare('SELECT status FROM reports WHERE id = ?')
+          .bind(id)
+          .first<{ status: string }>();
+        expect(estado?.status).toBe('ACTIONED');
+      }
+    },
+    PESADA,
+  );
+
+  it(
     'suspender con fin saca de la sala en el acto; el login dice cuánto falta; al vencer se levanta sola',
     async () => {
       const admin = await staffMember('Iris Suspende');
@@ -341,6 +423,20 @@ describe('sanciones desde la caseta', () => {
       expect(await estado(vigente.accountId)).toBe('SUSPENDED');
       expect(await estado(indefinida.accountId)).toBe('SUSPENDED');
       expect(await auditRows(vencida.accountId, 'ACCOUNT_REINSTATED')).toHaveLength(1);
+
+      // Sin correo confirmado no se levanta sola (ni el cron ni el login): no
+      // puede volver a ACTIVE saltándose la verificación.
+      const sinCorreo = await createVerifiedUser();
+      await env.DB.prepare(
+        `UPDATE accounts SET status = 'SUSPENDED', suspended_until = ?, email_verified_at = NULL
+          WHERE id = ?`,
+      )
+        .bind(now - 60_000, sinCorreo.accountId)
+        .run();
+      expect(await liftExpiredSuspensions(env, deps, log)).toBe(0);
+      const intento = await login(sinCorreo.email);
+      expect(await errorCode(intento)).toBe('ACCOUNT_SUSPENDED');
+      expect(await estado(sinCorreo.accountId)).toBe('SUSPENDED');
     },
     PESADA,
   );

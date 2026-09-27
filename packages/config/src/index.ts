@@ -210,6 +210,8 @@ export const MODERATION = {
   searchLimit: 20,
   /** Entradas de auditoría en la ficha de una persona. */
   auditEntries: 30,
+  /** Reportes abiertos que una sanción cierra de una vez (cada uno con su fila en la bitácora). */
+  closeReportsMax: 50,
 } as const;
 
 /** Alpha cerrada: invitaciones (Fase 9, ADR-0012). */

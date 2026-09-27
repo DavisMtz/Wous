@@ -140,7 +140,7 @@ function d1(sql: string): Fila[] {
 }
 
 /** A qué cuenta se refiere «persona» (chr_…, acc_… o @usuario). */
-function cuentaDe(persona: string | undefined): { cuenta: string; nombre: string } {
+function cuentaDe(persona: string | undefined): { cuenta: string; nombre: string; estado: string } {
   if (!persona) fallar('Falta a quién (chr_…, acc_… o @usuario).');
   let where: string;
   if (persona.startsWith('chr_')) where = `c.id = ${id(persona, 'chr')}`;
@@ -154,7 +154,7 @@ function cuentaDe(persona: string | undefined): { cuenta: string; nombre: string
   );
   if (!fila) fallar(`No existe: ${persona}`);
   const nombre = `${fila.display_name ?? '(sin personaje)'} (@${fila.username}, ${fila.status})`;
-  return { cuenta: String(fila.cuenta), nombre };
+  return { cuenta: String(fila.cuenta), nombre, estado: String(fila.status) };
 }
 
 function motivoObligatorio(): string {
@@ -163,6 +163,11 @@ function motivoObligatorio(): string {
   return motivo;
 }
 
+/**
+ * Fila de auditoría. Con `si` (condición sobre `accounts`), solo se escribe
+ * si la cuenta la cumple: va ANTES del cambio, así no queda constancia de
+ * algo que no pasó.
+ */
 function auditoria(
   accion: string,
   tipo: 'account' | 'report',
@@ -170,11 +175,16 @@ function auditoria(
   motivo: string,
   extra: Record<string, unknown>,
   ahora: number,
+  si?: string,
 ): string {
   const metadata = JSON.stringify({ moderador, ...extra });
-  return `INSERT INTO audit_log (id, actor_account_id, action, target_type, target_id, reason,
-    metadata_json, created_at) VALUES ('aud_${ulid(ahora)}', NULL, ${texto(accion)}, '${tipo}',
-    '${objetivo}', ${texto(motivo)}, ${texto(metadata)}, ${ahora})`;
+  const valores = `'aud_${ulid(ahora)}', NULL, ${texto(accion)}, '${tipo}', '${objetivo}',
+    ${texto(motivo)}, ${texto(metadata)}, ${ahora}`;
+  const columnas = `audit_log (id, actor_account_id, action, target_type, target_id, reason,
+    metadata_json, created_at)`;
+  return si
+    ? `INSERT INTO ${columnas} SELECT ${valores} WHERE EXISTS (SELECT 1 FROM accounts WHERE ${si})`
+    : `INSERT INTO ${columnas} VALUES (${valores})`;
 }
 
 /** Cierra el reporte que motivó la acción (si se dijo cuál). */
@@ -283,9 +293,22 @@ switch (orden) {
 
   case 'suspender':
   case 'banear': {
-    const { cuenta, nombre } = cuentaDe(resto[0]);
+    const { cuenta, nombre, estado: antes } = cuentaDe(resto[0]);
     const motivo = motivoObligatorio();
     const estado = orden === 'suspender' ? 'SUSPENDED' : 'BANNED';
+    // Igual que la caseta: se suspende una cuenta activa (o ya suspendida, para
+    // cambiarle el fin); cerrar vale para todo menos lo ya cerrado o borrado.
+    // Suspender una cerrada o sin correo confirmado la reabriría al vencer.
+    const desde =
+      orden === 'suspender' ? ['ACTIVE', 'SUSPENDED'] : ['ACTIVE', 'SUSPENDED', 'PENDING_EMAIL'];
+    if (!desde.includes(antes)) {
+      fallar(
+        orden === 'suspender'
+          ? `Solo se suspende una cuenta activa o suspendida; esta está ${antes}.`
+          : `Esa cuenta ya está ${antes}.`,
+      );
+    }
+    const condicion = `id = '${cuenta}' AND status IN (${desde.map((e) => `'${e}'`).join(', ')})`;
     // Suspender con --horas se levanta solo al vencer (ADR-0012); sin horas, hasta reactivar.
     const horasTexto = opcionTexto('horas');
     const horas = orden === 'suspender' && horasTexto !== null ? Number(horasTexto) : null;
@@ -293,20 +316,24 @@ switch (orden) {
       fallar('Las horas van de más de 0 a 2160 (90 días).');
     }
     const hasta = horas !== null ? ahora + Math.round(horas * HORA) : null;
-    d1(
-      `UPDATE accounts SET status = '${estado}', suspended_until = ${hasta ?? 'NULL'},
-         updated_at = ${ahora} WHERE id = '${cuenta}'; ` +
-        `UPDATE sessions SET revoked_at = ${ahora} WHERE account_id = '${cuenta}' AND revoked_at IS NULL; ` +
-        auditoria(
-          orden === 'suspender' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_BANNED',
-          'account',
-          cuenta,
-          motivo,
-          hasta !== null ? { horas, hasta } : {},
-          ahora,
-        ) +
-        cerrarReporte(orden === 'suspender' ? 'Suspensión' : 'Cuenta cerrada', ahora),
+    const [despues] = d1(
+      `${auditoria(
+        orden === 'suspender' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_BANNED',
+        'account',
+        cuenta,
+        motivo,
+        hasta !== null ? { horas, hasta } : {},
+        ahora,
+        condicion,
+      )}; ` +
+        `UPDATE accounts SET status = '${estado}', suspended_until = ${hasta ?? 'NULL'},
+           updated_at = ${ahora} WHERE ${condicion}; ` +
+        `UPDATE sessions SET revoked_at = ${ahora} WHERE account_id = '${cuenta}' AND revoked_at IS NULL` +
+        cerrarReporte(orden === 'suspender' ? 'Suspensión' : 'Cuenta cerrada', ahora) +
+        `; SELECT status FROM accounts WHERE id = '${cuenta}'`,
     );
+    // Otra persona pudo cambiarla entre la consulta y el cambio.
+    if (despues?.status !== estado) fallar(`No cambió: la cuenta quedó ${despues?.status ?? '—'}.`);
     console.log(
       `✓ ${nombre}: ${estado}${hasta !== null ? ` hasta el ${fecha(hasta)}` : ''}. ` +
         'Sus sesiones se cerraron; si está en una sala, sale en menos de un minuto.',
@@ -315,16 +342,19 @@ switch (orden) {
   }
 
   case 'reactivar': {
-    const { cuenta, nombre } = cuentaDe(resto[0]);
+    const { cuenta, nombre, estado: antes } = cuentaDe(resto[0]);
     const motivo = motivoObligatorio();
-    d1(
-      `UPDATE accounts SET status = 'ACTIVE', suspended_until = NULL, updated_at = ${ahora}
-         WHERE id = '${cuenta}' AND status = 'SUSPENDED'; ` +
-        auditoria('ACCOUNT_REINSTATED', 'account', cuenta, motivo, {}, ahora),
+    if (antes !== 'SUSPENDED')
+      fallar(`Solo se reactiva una cuenta suspendida; esta está ${antes}.`);
+    // Sin correo confirmado vuelve a esperar la confirmación, no a ACTIVE.
+    const condicion = `id = '${cuenta}' AND status = 'SUSPENDED'`;
+    const [despues] = d1(
+      `${auditoria('ACCOUNT_REINSTATED', 'account', cuenta, motivo, {}, ahora, condicion)}; ` +
+        `UPDATE accounts SET status = CASE WHEN email_verified_at IS NULL THEN 'PENDING_EMAIL'
+           ELSE 'ACTIVE' END, suspended_until = NULL, updated_at = ${ahora} WHERE ${condicion}; ` +
+        `SELECT status FROM accounts WHERE id = '${cuenta}'`,
     );
-    console.log(
-      `✓ ${nombre}: si estaba suspendida, vuelve a estar activa (una cerrada no se reabre así).`,
-    );
+    console.log(`✓ ${nombre}: ahora ${despues?.status ?? '—'} (una cerrada no se reabre así).`);
     break;
   }
 

@@ -6,10 +6,12 @@ import { auditStatementIf } from './audit.ts';
 /**
  * Suspensiones con fin (ADR-0012). Una cuenta SUSPENDED cuyo
  * `suspended_until` ya pasó vuelve a ACTIVE sola: la levanta el cron cada
- * cinco minutos o el login, lo que llegue primero.
+ * cinco minutos o el login, lo que llegue primero. Solo si confirmó su
+ * correo: volver a ACTIVE nunca se salta la verificación.
  */
 
-const EXPIRED = `status = 'SUSPENDED' AND suspended_until IS NOT NULL AND suspended_until <= ?`;
+const EXPIRED = `status = 'SUSPENDED' AND suspended_until IS NOT NULL AND suspended_until <= ?
+  AND email_verified_at IS NOT NULL`;
 
 /**
  * Levanta UNA suspensión vencida. La auditoría va primero en el batch porque
@@ -63,8 +65,13 @@ export async function liftExpiredSuspensions(
   const outcome = await env.DB.batch(
     results.flatMap((row) => liftSuspensionStatements(env.DB, deps, row.id, now, 'cron')),
   );
-  // Cada cuenta son dos sentencias; la segunda es el cambio.
-  const lifted = outcome.filter((result, i) => i % 2 === 1 && result.meta.changes === 1).length;
-  if (lifted > 0) log.info('moderation.suspension_lifted', { count: lifted, via: 'cron' });
+  // Cada cuenta son dos sentencias; la segunda es el cambio. Un evento por
+  // cuenta, igual que el login: el tablero los cuenta uno a uno.
+  let lifted = 0;
+  results.forEach((row, i) => {
+    if (outcome[i * 2 + 1]?.meta.changes !== 1) return;
+    lifted += 1;
+    log.info('moderation.suspension_lifted', { accountId: row.id, via: 'cron' });
+  });
   return lifted;
 }

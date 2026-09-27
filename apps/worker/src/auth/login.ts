@@ -27,7 +27,8 @@ function checkCanLogin(account: AccountRow, now: number): 'ok' | 'lift' {
     case 'PENDING_EMAIL':
       throw AuthErrors.emailNotVerified();
     case 'SUSPENDED': {
-      const until = account.suspended_until;
+      // Sin correo confirmado no se levanta sola (ver suspensions.ts): no tiene fin.
+      const until = account.email_verified_at !== null ? account.suspended_until : null;
       if (until !== null && until <= now) return 'lift';
       throw AuthErrors.accountSuspended(
         until === null ? undefined : Math.max(1, Math.ceil((until - now) / 1000)),
@@ -97,7 +98,7 @@ export async function login(
   statements.push(session.statement);
   await env.DB.batch(statements);
 
-  if (lift) log.info('moderation.suspension_lifted', { count: 1, via: 'login' });
+  if (lift) log.info('moderation.suspension_lifted', { accountId: account.id, via: 'login' });
   log.info('auth.login_success', { accountId: account.id });
   return {
     session,

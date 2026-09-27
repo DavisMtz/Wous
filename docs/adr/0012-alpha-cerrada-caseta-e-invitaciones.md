@@ -37,7 +37,10 @@
    con fila de auditoría, y el login también la levanta si llega antes que el cron. El login de una
    cuenta suspendida responde `ACCOUNT_SUSPENDED` con `retryAfterSeconds` hasta el fin: solo
    después de verificar la contraseña, así que no delata nada a quien no es dueño. `BANNED` sigue
-   siendo definitivo; la caseta no lo reabre.
+   siendo definitivo; la caseta no lo reabre. Solo se suspende una cuenta `ACTIVE` (o ya
+   suspendida, para cambiarle el fin), en la caseta y en el script, y volver de una suspensión
+   —sola o con «reactivar»— nunca se salta la verificación del correo: sin correo confirmado, la
+   cuenta regresa a `PENDING_EMAIL`. Un silencio nuevo nunca acorta uno más largo.
 4. **Alpha cerrada con invitaciones.** Var `REGISTRATION_MODE` por entorno (`open` | `invite`):
    staging y producción en `invite`, local en `open` (desarrollo y E2E no cambian).
    - Tabla `invitations`: código de 10 caracteres Crockford (50 bits) mostrado como `XXXXX-XXXXX`,
@@ -50,6 +53,10 @@
      atómico ante dos registros a la vez. Se gasta **antes** de mirar si el correo ya existe: un
      correo registrado consume la invitación igual y la respuesta es la misma, así una invitación
      no sirve para enumerar cuentas. Si el alta pierde una carrera de nombre, el cupo se devuelve.
+   - Con un correo que ya tenía cuenta, el nombre elegido queda **apartado**
+     (`username_holds`, migración 0007) igual que si la cuenta se hubiera creado: preguntar
+     después por ese nombre no dice si el correo estaba registrado. Esa fuga ya existía con el
+     registro abierto; aquí se cierra. Un nombre apartado no se libera.
    - `accounts.invitation_id` dice con qué invitación entró cada quien.
    - Código nuevo `INVITATION_INVALID` (400, campo `invitationCode`), con el mismo mensaje para una
      invitación inexistente, vencida, agotada o revocada.
@@ -79,7 +86,8 @@
   red, en menos de un minuto). Una suspensión con fin se levanta sola.
 - Sin invitación válida no se crea cuenta en staging ni en producción, y una invitación no
   permite averiguar si un correo está registrado.
-- Toda acción de la caseta queda en `audit_log` con quién, qué, a quién y por qué.
+- Toda acción de la caseta queda en `audit_log` con quién, qué, a quién y por qué, incluido
+  cada reporte que se da por atendido (`REPORT_ACTIONED`), aunque la sanción ya estuviera puesta.
 - Carga medida en staging —10, 25 y 45 personas en una sala, y varias instancias a la vez— con
   p95 de input→broadcast, CPU del DO, mensajes por persona, reconexiones, errores y D1, anotada en
   `docs/carga/`.
