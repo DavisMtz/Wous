@@ -42,8 +42,9 @@ export function CortinaDeSala({
     const el = ref.current;
     if (!el || !montada) return;
     if (inicial.current && cubre) {
-      // Primera entrada: la lona ya estaba abajo.
+      // Primera entrada: la lona ya estaba abajo (con valor explícito, o al subir no se enrolla).
       inicial.current = false;
+      gsap.set(el, { clipPath: ABAJO });
       return;
     }
     inicial.current = false;
