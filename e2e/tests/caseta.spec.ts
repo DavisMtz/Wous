@@ -149,7 +149,9 @@ test('una invitación se crea en la caseta y su enlace llega al registro con el 
   darCaseta(username);
 
   await caseta.goto('/caseta?seccion=invitaciones');
-  await caseta.getByLabel('¿Para quién es?').fill('Primos del norte');
+  // Nombre propio de esta corrida: la D1 local guarda las invitaciones de las anteriores.
+  const para = `Primos del norte ${Date.now().toString(36)}`;
+  await caseta.getByLabel('¿Para quién es?').fill(para);
   await caseta.getByLabel('1 persona', { exact: true }).check();
   await caseta.getByLabel('7 días', { exact: true }).check();
   await caseta.getByRole('button', { name: 'Crear invitación' }).click();
@@ -157,7 +159,7 @@ test('una invitación se crea en la caseta y su enlace llega al registro con el 
   expect(codigo).toMatch(/^[0-9A-HJKMNP-TV-Z]{5}-[0-9A-HJKMNP-TV-Z]{5}$/);
   const enlace = ((await caseta.locator('.caseta-recien__enlace').textContent()) ?? '').trim();
   expect(enlace).toContain(`/register?invitacion=${codigo}`);
-  const fila = caseta.locator('.caseta-invitacion', { hasText: 'Primos del norte' });
+  const fila = caseta.locator('.caseta-invitacion', { hasText: para });
   await expect(fila).toContainText('0 de 1 usos');
   await expect(fila).toContainText('Vigente');
 
