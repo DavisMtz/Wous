@@ -18,6 +18,7 @@ export const ID_PREFIXES = {
   request: 'req',
   friendship: 'frn',
   message: 'msg',
+  report: 'rpt',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -37,3 +38,5 @@ export const AccountId = idSchema('account');
 export const CharacterId = idSchema('character');
 export const FriendshipId = idSchema('friendship');
 export const RequestId = idSchema('request');
+export const MessageId = idSchema('message');
+export const ReportId = idSchema('report');

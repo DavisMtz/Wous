@@ -125,3 +125,53 @@ export const PORTALS = {
 
 /** Capacidad por instancia de sala (§13). */
 export const ROOM_CAPACITY = { softLimit: 35, hardLimit: 45 } as const;
+
+/** Chat de sala (§18). */
+export const CHAT = {
+  /** Largo máximo de un mensaje ya saneado, en caracteres (code points). */
+  maxChars: 120,
+  /** Lo más que puede traer el cable antes de sanear (espacios o marcas de más). */
+  maxRawChars: 400,
+  /** Flood (§18: 5 mensajes / 10 s), ventana deslizante por conexión. */
+  rate: { limit: 5, windowMs: 10 * SECOND },
+  /** El mismo texto otra vez dentro de esta ventana se rechaza. */
+  repeatWindowMs: 20 * SECOND,
+  /** Marcas combinantes seguidas sobre una misma letra (corta el texto «zalgo»). */
+  maxCombiningMarks: 3,
+  /**
+   * Ventana reciente de la sala: la evidencia de los reportes sale de aquí.
+   * Vive en el storage de la sala, no en D1, y se borra al vaciarse la sala.
+   */
+  recent: { max: 60, ttlMs: 10 * MINUTE },
+  /** Cuánto se ve un globo de chat sobre la cabeza (más un poco por letra). */
+  bubbleMs: 4_500,
+  bubblePerCharMs: 45,
+} as const;
+
+/** Gestos (§19). */
+export const EMOTE = {
+  /** Entre dos gestos de la misma persona, como mínimo. */
+  cooldownMs: 1_200,
+  /** Lo que dura un gesto sobre la cabeza. */
+  showMs: 1_800,
+} as const;
+
+/** Bloqueos, reportes y moderación básica (§18, ADR-0010). */
+export const SOCIAL = {
+  /** Bloquear, desbloquear y reportar, por minuto y por conexión. */
+  actionsPerMinute: 12,
+  maxBlocksPerAccount: 500,
+  /** Un reporte de la misma persona a la misma persona cada tanto. */
+  reportCooldownMs: 10 * MINUTE,
+  /** Contexto de un reporte: mensajes de la sala antes del reportado. */
+  reportContext: { messages: 10, windowMs: 2 * MINUTE },
+  /** Mensajes de la persona reportada que acompañan un reporte sin mensaje elegido. */
+  reportTargetMessages: 5,
+  reportNoteMaxChars: 280,
+  /**
+   * Cada tanto la sala revisa en D1 a quien está conectado: cuenta activa,
+   * sesión vigente y silencio de moderación. Suspender o cerrar sesión en todos
+   * lados saca a la persona en este plazo como máximo.
+   */
+  recheckMs: 60 * SECOND,
+} as const;

@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import type { AppearanceInput, CharacterView, ServerMessage } from '@wous/contracts';
 import { expect } from 'vitest';
-import { IDENTITY_HEADER, type RoomIdentity } from '../src/world/players.ts';
+import { encodeIdentity, IDENTITY_HEADER, type RoomIdentity } from '../src/world/players.ts';
 import { call, postJson } from './helpers.ts';
 import { createVerifiedUser } from './support.ts';
 
@@ -134,7 +134,7 @@ export async function joinRoomDirectly(roomName: string, overrides: Partial<Room
   const stub = env.ROOM.get(env.ROOM.idFromName(`room:${identity.mapId}:${roomName}`));
   const res = await stub.fetch(
     new Request('https://sala.wous.internal/entrar', {
-      headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: JSON.stringify(identity) },
+      headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: encodeIdentity(identity) },
     }),
   );
   if (!res.webSocket) throw new Error(`La sala respondió ${res.status}`);

@@ -1,10 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
-import { NETWORK, PORTALS } from '@wous/config';
+import { CHAT, EMOTE, NETWORK, PORTALS, SOCIAL, TIME } from '@wous/config';
 import {
+  type ChatSendMessage,
   ClientMessage,
+  type EmotePlayMessage,
   type EnterPortalMessage,
   type PlayerInputMessage,
+  type ReportPlayerMessage,
   type ServerMessage,
+  sanitizeChat,
   WS_CLOSE,
   WS_MAX_CLIENT_MESSAGE,
   WS_PING_TEXT,
@@ -23,11 +27,24 @@ import {
   type MapId,
   spawnOf,
 } from '@wous/world-data';
+import { systemClock } from '../lib/clock.ts';
+import { createIdGenerator } from '../lib/ids.ts';
 import { createLogger, type Logger } from '../lib/log.ts';
+import {
+  buildEvidence,
+  CHAT_PREFIX,
+  type ChatRecord,
+  pruneRecent,
+  type ReportTarget,
+  slidingWindow,
+  textPrint,
+  toLine,
+} from '../world/chat.ts';
 import { moveCharacter } from '../world/location.ts';
 import {
   applyInput,
   chooseSpawn,
+  decodeIdentity,
   directoryObjectName,
   type GoneReason,
   IDENTITY_HEADER,
@@ -39,6 +56,15 @@ import {
   toPlayerView,
   toStateView,
 } from '../world/players.ts';
+import {
+  addBlock,
+  type BlockEdge,
+  blockEdge,
+  insertReport,
+  loadBlockEdges,
+  removeBlock,
+  reviewStanding,
+} from '../world/social.ts';
 
 type RoomMeta = { mapId: MapId; instance: string };
 const META_KEY = 'meta';
@@ -51,12 +77,17 @@ const META_KEY = 'meta';
 type Ghost = { att: PlayerAttachment; until: number };
 const GHOST_PREFIX = 'ghost:';
 
+/** Bloqueos entre la gente presente (ADR-0010): sobreviven a la hibernación. */
+const EDGES_KEY = 'blocks';
+
 /**
  * Cierres con despedida: «Salir» (1000), cerrar o dejar la pestaña (1001) y
  * cierre sin código (1005). Todo lo demás (1006, 1011…) es una caída y se le
  * guarda el lugar.
  */
 const GOODBYE_CODES: ReadonlySet<number> = new Set([1000, 1001, 1005]);
+
+type ErrorExtra = { about?: string; retryAfterMs?: number };
 
 /**
  * Una instancia de sala (§13) con la WebSocket Hibernation API.
@@ -67,10 +98,14 @@ const GOODBYE_CODES: ReadonlySet<number> = new Set([1000, 1001, 1005]);
  * - No hay bucle: el movimiento se calcula al llegar cada input, y los
  *   estados se mandan en lotes con un temporizador que solo existe mientras
  *   hay cambios pendientes. El ping lo contesta el runtime sin despertarla.
- * - Una alarma limpia presencias muertas y lugares vencidos, y solo existe
- *   mientras hay alguien (conectado o con lugar guardado).
+ * - Una alarma limpia presencias muertas y lugares vencidos, revisa en D1 que
+ *   quien sigue conectado pueda seguir (ADR-0010) y solo existe mientras hay
+ *   alguien (conectado o con lugar guardado).
  * - Los portales se validan aquí (§16) y el cambio de sala se confirma en D1
  *   con el turno de presencia del socket (ADR-0009).
+ * - El chat (§18) se sanea aquí y se reparte por destinatario: nada cruza un
+ *   bloqueo. La ventana reciente vive en storage unos minutos: de ahí, y solo
+ *   de ahí, sale la evidencia de un reporte.
  */
 export class RoomDO extends DurableObject<Env> {
   private meta: RoomMeta | null = null;
@@ -79,6 +114,13 @@ export class RoomDO extends DurableObject<Env> {
   private readonly ghosts = new Map<string, Ghost>();
   private readonly dirty = new Set<string>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Mensajes recientes, del más viejo al más nuevo (espejo de `chat:*` en storage). */
+  private readonly recent: ChatRecord[] = [];
+  /** Bloqueos «cuenta>cuenta» entre gente presente (o entrando). */
+  private readonly edges = new Set<BlockEdge>();
+  /** Cuentas que están entrando (consultando sus bloqueos en D1). */
+  private readonly joining = new Map<string, number>();
+  private readonly ids = createIdGenerator(systemClock);
   private readonly log: Logger;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -91,6 +133,10 @@ export class RoomDO extends DurableObject<Env> {
       if (meta) this.useMap(meta);
       const ghosts = await ctx.storage.list<Ghost>({ prefix: GHOST_PREFIX });
       for (const [key, ghost] of ghosts) this.ghosts.set(key.slice(GHOST_PREFIX.length), ghost);
+      const chat = await ctx.storage.list<ChatRecord>({ prefix: CHAT_PREFIX });
+      this.recent.push(...[...chat.values()].sort((a, b) => a.at - b.at));
+      for (const edge of (await ctx.storage.get<BlockEdge[]>(EDGES_KEY)) ?? [])
+        this.edges.add(edge);
     });
   }
 
@@ -129,7 +175,7 @@ export class RoomDO extends DurableObject<Env> {
     }
     const raw = request.headers.get(IDENTITY_HEADER);
     if (!raw) return new Response('Sin identidad.', { status: 400 });
-    const identity = JSON.parse(raw) as RoomIdentity;
+    const identity = decodeIdentity(raw);
 
     if (!this.meta) {
       const meta = { mapId: identity.mapId, instance: identity.instance };
@@ -138,19 +184,22 @@ export class RoomDO extends DurableObject<Env> {
     }
     const map = this.map as MapDef;
     const grid = this.grid as CollisionGrid;
-    const now = Date.now();
-    this.reapStale(now);
-    await this.reapGhosts(now);
+    this.reapStale(Date.now());
+    await this.reapGhosts(Date.now());
 
     // Una conexión con turno más viejo que la que ya está no gana (ADR-0009):
     // llegó tarde, y la persona ya entró desde otro lado.
-    const ghost = this.ghosts.get(identity.characterId);
-    const newer =
-      this.live().some(({ att }) => att.id === identity.characterId && att.ep > identity.epoch) ||
-      (ghost !== undefined && ghost.att.ep > identity.epoch);
-    if (newer) {
+    if (this.isOutdated(identity)) {
       return this.reject('CONNECTION_REPLACED', WS_CLOSE.REPLACED, 'Entraste desde otro lado.');
     }
+    // Los bloqueos con quien ya está, ANTES de tocar nada: si D1 falla, la
+    // sala queda como estaba y la persona reintenta (ADR-0010).
+    const edges = await this.edgesFor(identity.accountId);
+    // Mientras se consultaba D1 pudo llegar otra conexión suya, más nueva.
+    if (this.isOutdated(identity)) {
+      return this.reject('CONNECTION_REPLACED', WS_CLOSE.REPLACED, 'Entraste desde otro lado.');
+    }
+    const now = Date.now();
 
     // La misma persona en otra pestaña: la conexión nueva gana y hereda el lugar.
     let heredado: { x: number; y: number; f: Facing } | null = null;
@@ -163,6 +212,7 @@ export class RoomDO extends DurableObject<Env> {
       this.retire(old, att, 'replaced', WS_CLOSE.REPLACED, 'CONNECTION_REPLACED');
     }
     // Volvió dentro de la ventana de gracia: su lugar lo esperaba (§17).
+    const ghost = this.ghosts.get(identity.characterId);
     if (ghost) {
       heredado ??= { x: ghost.att.x, y: ghost.att.y, f: ghost.att.f };
       from ??= 'ghost';
@@ -200,14 +250,22 @@ export class RoomDO extends DurableObject<Env> {
       n: 0,
       strikes: 0,
       ep: identity.epoch,
+      ...(identity.mutedUntil !== undefined && identity.mutedUntil > now
+        ? { mu: identity.mutedUntil }
+        : {}),
     };
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.ctx.acceptWebSocket(server, [identity.characterId]);
     server.serializeAttachment(att);
+    this.addEdges(edges);
 
     const others = present.filter((p) => p.att.id !== att.id);
+    const ghostViews = [...this.ghosts.values()].map((g) => g.att);
+    const blockedHere = [...others.map((p) => p.att), ...ghostViews]
+      .filter((o) => this.edges.has(blockEdge(att.acc, o.acc)))
+      .map((o) => o.id);
     this.send(server, {
       v: WS_PROTOCOL_VERSION,
       type: 'ROOM_SNAPSHOT',
@@ -217,9 +275,10 @@ export class RoomDO extends DurableObject<Env> {
         players: [
           toPlayerView(att),
           ...others.map((p) => toPlayerView(p.att)),
-          ...[...this.ghosts.values()].map((g) => toPlayerView(g.att, true)),
+          ...ghostViews.map((g) => toPlayerView(g, true)),
         ],
         serverTime: now,
+        ...(blockedHere.length > 0 ? { blocked: blockedHere } : {}),
       },
     });
     // También a quien vuelve: así los demás le quitan la marca de «se le cayó».
@@ -227,6 +286,15 @@ export class RoomDO extends DurableObject<Env> {
       { v: WS_PROTOCOL_VERSION, type: 'PLAYER_JOINED', payload: { player: toPlayerView(att) } },
       server,
     );
+    // Quien ya estaba y bloqueó a quien llega lo sabe; la persona bloqueada no.
+    for (const other of others) {
+      if (!this.edges.has(blockEdge(other.att.acc, att.acc))) continue;
+      this.send(other.ws, {
+        v: WS_PROTOCOL_VERSION,
+        type: 'PLAYER_BLOCKED',
+        payload: { characterId: att.id, blocked: true },
+      });
+    }
     this.log.info('room.joined', {
       room: identity.instance,
       map: map.id,
@@ -239,6 +307,15 @@ export class RoomDO extends DurableObject<Env> {
     await this.scheduleAlarm(now);
     this.reportOccupancy({ joined: att.id });
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** ¿Ya hay una conexión de esta persona con un turno más nuevo? */
+  private isOutdated(identity: RoomIdentity): boolean {
+    const ghost = this.ghosts.get(identity.characterId);
+    return (
+      this.live().some(({ att }) => att.id === identity.characterId && att.ep > identity.epoch) ||
+      (ghost !== undefined && ghost.att.ep > identity.epoch)
+    );
   }
 
   /** Rechazo con código: se acepta el socket solo para decir por qué y se cierra. */
@@ -276,7 +353,9 @@ export class RoomDO extends DurableObject<Env> {
       return this.retire(ws, att, 'stale', WS_CLOSE.POLICY);
     }
     const parsed = ClientMessage.safeParse(raw);
-    if (!parsed.success) return this.strike(ws, att, 'INVALID_MESSAGE');
+    if (!parsed.success) {
+      return this.strike(ws, att, 'INVALID_MESSAGE', header.success ? header.data.type : undefined);
+    }
 
     switch (parsed.data.type) {
       case 'PING':
@@ -288,6 +367,16 @@ export class RoomDO extends DurableObject<Env> {
         return this.onInput(ws, att, parsed.data, now);
       case 'ENTER_PORTAL':
         return this.onPortal(ws, att, parsed.data, now);
+      case 'CHAT_SEND':
+        return this.onChat(ws, att, parsed.data, now);
+      case 'EMOTE_PLAY':
+        return this.onEmote(ws, att, parsed.data, now);
+      case 'REPORT_PLAYER':
+        return this.onReport(ws, att, parsed.data, now);
+      case 'BLOCK_PLAYER':
+        return this.onBlock(ws, att, parsed.data.payload.characterId, true, now);
+      case 'UNBLOCK_PLAYER':
+        return this.onBlock(ws, att, parsed.data.payload.characterId, false, now);
     }
   }
 
@@ -308,7 +397,7 @@ export class RoomDO extends DurableObject<Env> {
     }
     att.n += 1;
     if (att.n > NETWORK.maxInputsPerSecond) {
-      this.strike(ws, att, 'RATE_LIMITED');
+      this.strike(ws, att, 'RATE_LIMITED', 'PLAYER_INPUT');
       return;
     }
     // Secuencias viejas o repetidas no cuentan (§14.1).
@@ -334,13 +423,14 @@ export class RoomDO extends DurableObject<Env> {
     msg: EnterPortalMessage,
     now: number,
   ): Promise<void> {
+    const about = { about: 'ENTER_PORTAL' };
     if (att.tr) {
       ws.serializeAttachment(att);
-      this.sendError(ws, 'INVALID_STATE', 'Ya vas en camino.');
+      this.sendError(ws, 'INVALID_STATE', 'Ya vas en camino.', about);
       return;
     }
     if (att.pt !== undefined && now - att.pt < PORTALS.minIntervalMs) {
-      this.strike(ws, att, 'RATE_LIMITED');
+      this.strike(ws, att, 'RATE_LIMITED', 'ENTER_PORTAL');
       return;
     }
     att.pt = now;
@@ -350,13 +440,13 @@ export class RoomDO extends DurableObject<Env> {
     const destination = portal ? getMap(portal.to.map) : undefined;
     if (!portal || !destination) {
       ws.serializeAttachment(att);
-      this.sendError(ws, 'PORTAL_NOT_FOUND', 'Aquí no hay esa puerta.');
+      this.sendError(ws, 'PORTAL_NOT_FOUND', 'Aquí no hay esa puerta.', about);
       return;
     }
     const here = positionAt(att, now, grid);
     if (!canReachPortal(here, portal)) {
       ws.serializeAttachment(att);
-      this.sendError(ws, 'PORTAL_NOT_REACHABLE', 'Acércate más a la puerta.');
+      this.sendError(ws, 'PORTAL_NOT_REACHABLE', 'Acércate más a la puerta.', about);
       return;
     }
 
@@ -384,7 +474,7 @@ export class RoomDO extends DurableObject<Env> {
       if (latest && !latest.gone) {
         delete latest.tr;
         ws.serializeAttachment(latest);
-        this.sendError(ws, 'INVALID_STATE', 'No se pudo cruzar. Intenta otra vez.');
+        this.sendError(ws, 'INVALID_STATE', 'No se pudo cruzar. Intenta otra vez.', about);
       }
       return;
     }
@@ -427,17 +517,428 @@ export class RoomDO extends DurableObject<Env> {
     this.retire(ws, latest, 'portal', WS_CLOSE.TRANSFER);
   }
 
+  // ─── Chat y gestos ──────────────────────────────────────────────────────
+
+  /**
+   * Decir algo (§18). Silencio de moderación, flood, saneado y repetición, en
+   * ese orden. Lo que se reparte es el texto saneado del servidor, a cada
+   * quien por separado: entre dos personas con un bloqueo no cruza nada.
+   * Quien habla también lo recibe: es su confirmación.
+   */
+  private onChat(ws: WebSocket, att: PlayerAttachment, msg: ChatSendMessage, now: number): void {
+    const about = 'CHAT_SEND';
+    if (att.mu !== undefined && att.mu > now) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'CHAT_MUTED', 'Moderación te pidió una pausa en el chat.', {
+        about,
+        retryAfterMs: att.mu - now,
+      });
+      return;
+    }
+    const flood = slidingWindow(att.cw, now, CHAT.rate);
+    att.cw = flood.stamps;
+    if (!flood.allowed) {
+      this.log.warn('room.chat_flood', { characterId: att.id });
+      this.strike(ws, att, 'RATE_LIMITED', about, 'Vas muy rápido. Espera tantito.', {
+        retryAfterMs: flood.retryAfterMs,
+      });
+      return;
+    }
+    const clean = sanitizeChat(msg.payload.text);
+    if (!clean.ok) {
+      ws.serializeAttachment(att);
+      const texto =
+        clean.reason === 'TOO_LONG'
+          ? `Cabe hasta ${CHAT.maxChars} caracteres.`
+          : 'Ese mensaje está vacío.';
+      this.sendError(ws, 'CHAT_REJECTED', texto, { about });
+      return;
+    }
+    const print = textPrint(clean.text);
+    if (att.cp === print && att.ct !== undefined && now - att.ct < CHAT.repeatWindowMs) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'CHAT_REJECTED', 'Eso ya lo dijiste.', {
+        about,
+        retryAfterMs: att.ct + CHAT.repeatWindowMs - now,
+      });
+      return;
+    }
+    att.cp = print;
+    att.ct = now;
+    ws.serializeAttachment(att);
+
+    const record: ChatRecord = {
+      id: this.ids.next('message'),
+      from: att.id,
+      name: att.name,
+      text: clean.text,
+      at: now,
+      acc: att.acc,
+    };
+    this.remember(record, now);
+    this.deliver(
+      { v: WS_PROTOCOL_VERSION, type: 'CHAT_MESSAGE', payload: { message: toLine(record) } },
+      att.acc,
+    );
+  }
+
+  /** Un gesto del catálogo (§19), con enfriamiento. Tampoco cruza bloqueos. */
+  private onEmote(ws: WebSocket, att: PlayerAttachment, msg: EmotePlayMessage, now: number): void {
+    if (att.tr) {
+      ws.serializeAttachment(att);
+      return;
+    }
+    if (att.eg !== undefined && now - att.eg < EMOTE.cooldownMs) {
+      this.strike(ws, att, 'RATE_LIMITED', 'EMOTE_PLAY', 'Un gesto a la vez.', {
+        retryAfterMs: att.eg + EMOTE.cooldownMs - now,
+      });
+      return;
+    }
+    att.eg = now;
+    ws.serializeAttachment(att);
+    this.deliver(
+      {
+        v: WS_PROTOCOL_VERSION,
+        type: 'EMOTE_PLAYED',
+        payload: { id: att.id, emote: msg.payload.emote },
+      },
+      att.acc,
+    );
+  }
+
+  /** Guarda un mensaje en la ventana reciente (memoria y storage) y tira lo vencido. */
+  private remember(record: ChatRecord, now: number): void {
+    this.recent.push(record);
+    const dropped = pruneRecent(this.recent, now);
+    const storage = this.ctx.storage;
+    // Sin confirmar: el chat no espera a que el disco conteste para repartirse.
+    storage
+      .put(CHAT_PREFIX + record.id, record, { allowUnconfirmed: true })
+      .catch((err: unknown) => this.log.warn('room.chat_store_failed', { error: String(err) }));
+    if (dropped.length > 0) {
+      storage
+        .delete(
+          dropped.map((id) => CHAT_PREFIX + id),
+          { allowUnconfirmed: true },
+        )
+        .catch((err: unknown) => this.log.warn('room.chat_store_failed', { error: String(err) }));
+    }
+  }
+
+  private pruneChat(now: number): void {
+    const dropped = pruneRecent(this.recent, now);
+    if (dropped.length === 0) return;
+    this.ctx.waitUntil(this.ctx.storage.delete(dropped.map((id) => CHAT_PREFIX + id)));
+  }
+
+  /** Sala vacía: la conversación no se queda guardada para nadie (§30). */
+  private async forgetChat(): Promise<void> {
+    this.recent.length = 0;
+    const keys = [...(await this.ctx.storage.list({ prefix: CHAT_PREFIX })).keys()];
+    for (let i = 0; i < keys.length; i += 128) {
+      await this.ctx.storage.delete(keys.slice(i, i + 128));
+    }
+  }
+
+  // ─── Bloqueos y reportes ────────────────────────────────────────────────
+
+  /**
+   * Bloqueos entre quien entra y la gente de la sala (presente, con lugar
+   * guardado o entrando a la vez). Quien entra se anota ANTES de consultar:
+   * así, si dos personas entran a la vez, al menos una de las dos consultas
+   * incluye a la otra.
+   */
+  private async edgesFor(accountId: string): Promise<BlockEdge[]> {
+    const others = new Set<string>();
+    for (const { att } of this.live()) others.add(att.acc);
+    for (const ghost of this.ghosts.values()) others.add(ghost.att.acc);
+    for (const acc of this.joining.keys()) others.add(acc);
+    others.delete(accountId);
+    this.joining.set(accountId, (this.joining.get(accountId) ?? 0) + 1);
+    try {
+      return await loadBlockEdges(this.env.DB, accountId, [...others]);
+    } finally {
+      const left = (this.joining.get(accountId) ?? 1) - 1;
+      if (left > 0) this.joining.set(accountId, left);
+      else this.joining.delete(accountId);
+    }
+  }
+
+  private addEdges(edges: readonly BlockEdge[]): void {
+    let changed = false;
+    for (const edge of edges) {
+      if (this.edges.has(edge)) continue;
+      this.edges.add(edge);
+      changed = true;
+    }
+    if (changed) this.saveEdges();
+  }
+
+  /** Sin bloqueo en ninguna dirección entre dos cuentas. */
+  private blocked(a: string, b: string): boolean {
+    return this.edges.has(blockEdge(a, b)) || this.edges.has(blockEdge(b, a));
+  }
+
+  /** Solo quedan los bloqueos entre gente que sigue aquí (o entrando). */
+  private pruneEdges(): void {
+    if (this.edges.size === 0) return;
+    const here = new Set<string>(this.joining.keys());
+    for (const { att } of this.live()) here.add(att.acc);
+    for (const ghost of this.ghosts.values()) here.add(ghost.att.acc);
+    let changed = false;
+    for (const edge of this.edges) {
+      const [a = '', b = ''] = edge.split('>');
+      if (here.has(a) && here.has(b)) continue;
+      this.edges.delete(edge);
+      changed = true;
+    }
+    if (changed) this.saveEdges();
+  }
+
+  private saveEdges(): void {
+    const storage = this.ctx.storage;
+    const write =
+      this.edges.size > 0 ? storage.put(EDGES_KEY, [...this.edges]) : storage.delete(EDGES_KEY);
+    this.ctx.waitUntil(
+      Promise.resolve(write).catch((err: unknown) =>
+        this.log.error('room.edges_store_failed', { error: String(err) }),
+      ),
+    );
+  }
+
+  /** ¿Cabe otra acción social en el minuto? Si no, cuenta como falta. */
+  private socialAllowed(ws: WebSocket, att: PlayerAttachment, now: number, about: string): boolean {
+    const check = slidingWindow(att.sw, now, {
+      limit: SOCIAL.actionsPerMinute,
+      windowMs: TIME.MINUTE,
+    });
+    att.sw = check.stamps;
+    if (!check.allowed) {
+      this.strike(ws, att, 'RATE_LIMITED', about, 'Con calma: espera un momento.', {
+        retryAfterMs: check.retryAfterMs,
+      });
+      return false;
+    }
+    ws.serializeAttachment(att);
+    return true;
+  }
+
+  /**
+   * A quién se refiere un ID: alguien presente, con lugar guardado o que
+   * habló hace poco (se puede bloquear o reportar a quien acaba de irse).
+   */
+  private whoIs(characterId: string): ReportTarget | null {
+    for (const { att } of this.live()) {
+      if (att.id === characterId) {
+        return {
+          characterId,
+          accountId: att.acc,
+          displayName: att.name,
+          appearance: att.look,
+        };
+      }
+    }
+    const ghost = this.ghosts.get(characterId);
+    if (ghost) {
+      return {
+        characterId,
+        accountId: ghost.att.acc,
+        displayName: ghost.att.name,
+        appearance: ghost.att.look,
+      };
+    }
+    for (let i = this.recent.length - 1; i >= 0; i--) {
+      const record = this.recent[i] as ChatRecord;
+      if (record.from === characterId) {
+        return { characterId, accountId: record.acc, displayName: record.name, appearance: null };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Bloquear o desbloquear (ADR-0010). Se escribe en D1 y se aplica en el
+   * acto en esta sala. Solo quien bloquea recibe la confirmación.
+   */
+  private async onBlock(
+    ws: WebSocket,
+    att: PlayerAttachment,
+    characterId: string,
+    block: boolean,
+    now: number,
+  ): Promise<void> {
+    const about = block ? 'BLOCK_PLAYER' : 'UNBLOCK_PLAYER';
+    if (!this.socialAllowed(ws, att, now, about)) return;
+    if (characterId === att.id) {
+      this.sendError(ws, 'FORBIDDEN', 'No puedes bloquearte a ti.', { about });
+      return;
+    }
+    const target = this.whoIs(characterId);
+    if (!target) {
+      this.sendError(ws, 'PLAYER_NOT_FOUND', 'Esa persona ya no está aquí.', { about });
+      return;
+    }
+    let limited = false;
+    try {
+      if (block)
+        limited = (await addBlock(this.env.DB, att.acc, target.accountId, now)) === 'limit';
+      else await removeBlock(this.env.DB, att.acc, target.accountId);
+    } catch (err) {
+      this.log.error('room.block_failed', { characterId: att.id, error: String(err) });
+      if (isLive(ws))
+        this.sendError(ws, 'INVALID_STATE', 'No se pudo. Intenta otra vez.', { about });
+      return;
+    }
+    if (limited) {
+      if (isLive(ws)) {
+        this.sendError(ws, 'LIMIT_REACHED', 'Ya bloqueaste a demasiadas personas.', { about });
+      }
+      return;
+    }
+    const edge = blockEdge(att.acc, target.accountId);
+    if (block !== this.edges.has(edge)) {
+      if (block) this.edges.add(edge);
+      else this.edges.delete(edge);
+      this.saveEdges();
+    }
+    this.log.info(block ? 'room.block' : 'room.unblock', {
+      characterId: att.id,
+      targetId: characterId,
+    });
+    if (!isLive(ws)) return;
+    this.send(ws, {
+      v: WS_PROTOCOL_VERSION,
+      type: 'PLAYER_BLOCKED',
+      payload: { characterId, blocked: block },
+    });
+  }
+
+  /**
+   * Reportar (§18). La evidencia sale de la ventana reciente de ESTA sala:
+   * el cliente dice qué mensaje (por ID), nunca qué decía. Un mensaje que no
+   * es de la persona reportada es un cliente alterado y cuenta como falta.
+   */
+  private async onReport(
+    ws: WebSocket,
+    att: PlayerAttachment,
+    msg: ReportPlayerMessage,
+    now: number,
+  ): Promise<void> {
+    const about = 'REPORT_PLAYER';
+    if (!this.socialAllowed(ws, att, now, about)) return;
+    const { characterId, reason, messageId, note } = msg.payload;
+    if (characterId === att.id) {
+      this.sendError(ws, 'FORBIDDEN', 'No puedes reportarte a ti.', { about });
+      return;
+    }
+    const target = this.whoIs(characterId);
+    if (!target) {
+      this.sendError(ws, 'PLAYER_NOT_FOUND', 'Esa persona ya no está aquí.', { about });
+      return;
+    }
+    const built = buildEvidence(this.recent, target, messageId, now);
+    if (!built.ok) {
+      this.strike(ws, att, 'FORBIDDEN', about, 'Ese mensaje no es de esa persona.');
+      return;
+    }
+    const meta = this.meta as RoomMeta;
+    let outcome: 'created' | 'duplicate';
+    try {
+      outcome = await insertReport(this.env.DB, {
+        id: this.ids.next('report'),
+        reporterAccountId: att.acc,
+        reporterCharacterId: att.id,
+        targetAccountId: target.accountId,
+        targetCharacterId: characterId,
+        reason,
+        note: cleanNote(note),
+        messageId: built.evidence.message?.id ?? null,
+        room: `${meta.mapId}:${meta.instance}`,
+        evidence: built.evidence,
+        createdAt: now,
+      });
+    } catch (err) {
+      this.log.error('room.report_failed', { characterId: att.id, error: String(err) });
+      if (isLive(ws))
+        this.sendError(ws, 'INVALID_STATE', 'No se pudo enviar. Intenta otra vez.', { about });
+      return;
+    }
+    this.log.info('room.report', {
+      characterId: att.id,
+      targetId: characterId,
+      reason,
+      duplicate: outcome === 'duplicate',
+    });
+    if (!isLive(ws)) return;
+    // Repetido o nuevo, la respuesta es la misma: el que ya estaba sigue abierto.
+    this.send(ws, { v: WS_PROTOCOL_VERSION, type: 'REPORT_ACCEPTED', payload: { characterId } });
+  }
+
+  /** Reparte a cada quien, salvo a quien tiene un bloqueo con `from` (en cualquier dirección). */
+  private deliver(message: ServerMessage, from: string): void {
+    const text = JSON.stringify(message);
+    for (const { ws, att } of this.live()) {
+      if (att.acc !== from && this.blocked(from, att.acc)) continue;
+      try {
+        ws.send(text);
+      } catch {
+        // Se está cerrando.
+      }
+    }
+  }
+
+  /**
+   * Revisión de quien sigue conectado (ADR-0010): cuenta activa, sesión
+   * vigente y silencio de moderación. Suspender o «cerrar sesión en todos
+   * lados» saca a la persona aquí; un silencio nuevo aplica al siguiente
+   * mensaje. Si D1 no contesta, se deja para la próxima vuelta.
+   */
+  private async review(now: number): Promise<void> {
+    const people = this.live().map(({ att }) => ({ accountId: att.acc, sessionId: att.ses }));
+    if (people.length === 0) return;
+    let standing: Awaited<ReturnType<typeof reviewStanding>>;
+    try {
+      standing = await reviewStanding(this.env.DB, people, now);
+    } catch (err) {
+      this.log.warn('room.review_failed', { error: String(err) });
+      return;
+    }
+    for (const { ws, att } of this.live()) {
+      const st = standing.get(`${att.acc}|${att.ses}`);
+      if (!st) continue;
+      if (!st.allowed) {
+        this.log.info('room.session_ended', { characterId: att.id });
+        this.sendError(ws, 'ACCOUNT_NOT_ACTIVE', 'Tu sesión terminó.');
+        this.retire(ws, att, 'stale', WS_CLOSE.SESSION_ENDED);
+        continue;
+      }
+      const muted = st.mutedUntil ?? undefined;
+      if (att.mu === muted) continue;
+      if (muted === undefined) delete att.mu;
+      else att.mu = muted;
+      ws.serializeAttachment(att);
+    }
+  }
+
   /** Falta: se avisa con código; demasiadas cierran el socket (§23). */
-  private strike(ws: WebSocket, att: PlayerAttachment, code: WsErrorCode): void {
+  private strike(
+    ws: WebSocket,
+    att: PlayerAttachment,
+    code: WsErrorCode,
+    about?: string,
+    message?: string,
+    extra: { retryAfterMs?: number } = {},
+  ): void {
     att.strikes += 1;
     if (att.strikes > NETWORK.maxStrikes) {
-      this.sendError(ws, code, 'Demasiados mensajes inválidos.');
+      this.sendError(ws, code, 'Demasiados mensajes inválidos.', { ...(about ? { about } : {}) });
       this.log.warn('room.policy_close', { characterId: att.id, code });
       this.retire(ws, att, 'stale', WS_CLOSE.POLICY);
       return;
     }
     ws.serializeAttachment(att);
-    this.sendError(ws, code, code === 'RATE_LIMITED' ? 'Vas muy rápido.' : 'Mensaje no válido.');
+    const text = message ?? (code === 'RATE_LIMITED' ? 'Vas muy rápido.' : 'Mensaje no válido.');
+    this.sendError(ws, code, text, { ...(about ? { about } : {}), ...extra });
   }
 
   // ─── Lotes de estado ────────────────────────────────────────────────────
@@ -556,8 +1057,13 @@ export class RoomDO extends DurableObject<Env> {
     const remaining = this.occupants();
     this.log.info('room.left', { characterId: id, reason, players: remaining });
     this.reportOccupancy({ left: id });
-    // Sala vacía: sin alarma pendiente, nada la vuelve a despertar.
-    if (remaining === 0) this.ctx.waitUntil(this.ctx.storage.deleteAlarm());
+    this.pruneEdges();
+    // Sala vacía: sin alarma pendiente, nada la vuelve a despertar, y la
+    // conversación reciente se borra.
+    if (remaining === 0) {
+      this.ctx.waitUntil(this.ctx.storage.deleteAlarm());
+      this.ctx.waitUntil(this.forgetChat());
+    }
   }
 
   /** Presencias sin ping ni mensajes dentro de la ventana: se van (§17). */
@@ -588,9 +1094,12 @@ export class RoomDO extends DurableObject<Env> {
 
   // ─── Alarma solo con gente ──────────────────────────────────────────────
 
-  /** La próxima revisión: la mitad de la ventana de presencia o el lugar guardado que vence antes. */
+  /**
+   * La próxima revisión: la mitad de la ventana de presencia (o la revisión
+   * de moderación, si es antes) o el lugar guardado que vence antes.
+   */
   private async scheduleAlarm(now: number): Promise<void> {
-    let next = now + NETWORK.staleAfterMs / 2;
+    let next = now + Math.min(NETWORK.staleAfterMs / 2, SOCIAL.recheckMs);
     for (const ghost of this.ghosts.values()) next = Math.min(next, ghost.until);
     const current = await this.ctx.storage.getAlarm();
     if (current === null || current > next) await this.ctx.storage.setAlarm(next);
@@ -600,7 +1109,9 @@ export class RoomDO extends DurableObject<Env> {
     const now = Date.now();
     this.reapStale(now);
     await this.reapGhosts(now);
-    if (this.occupants() > 0) await this.scheduleAlarm(now);
+    this.pruneChat(now);
+    await this.review(now);
+    if (this.occupants() > 0) await this.scheduleAlarm(Date.now());
   }
 
   // ─── Directorio ─────────────────────────────────────────────────────────
@@ -634,8 +1145,24 @@ export class RoomDO extends DurableObject<Env> {
     }
   }
 
-  private sendError(ws: WebSocket, code: WsErrorCode, message: string): void {
-    this.send(ws, { v: WS_PROTOCOL_VERSION, type: 'ERROR', payload: { code, message } });
+  private sendError(
+    ws: WebSocket,
+    code: WsErrorCode,
+    message: string,
+    extra: ErrorExtra = {},
+  ): void {
+    this.send(ws, {
+      v: WS_PROTOCOL_VERSION,
+      type: 'ERROR',
+      payload: {
+        code,
+        message,
+        ...(extra.about ? { about: extra.about } : {}),
+        ...(extra.retryAfterMs !== undefined
+          ? { retryAfterMs: Math.max(0, Math.ceil(extra.retryAfterMs)) }
+          : {}),
+      },
+    });
   }
 
   private broadcast(message: ServerMessage, except?: WebSocket): void {
@@ -653,4 +1180,18 @@ export class RoomDO extends DurableObject<Env> {
 
 function attachmentOf(ws: WebSocket): PlayerAttachment | null {
   return ws.deserializeAttachment() as PlayerAttachment | null;
+}
+
+/** Tras esperar a D1, ¿el socket sigue representando a alguien? */
+function isLive(ws: WebSocket): boolean {
+  const att = attachmentOf(ws);
+  return att !== null && !att.gone;
+}
+
+/** La nota de un reporte: saneada como el chat y recortada al tope. */
+function cleanNote(note: string | undefined): string | null {
+  if (!note) return null;
+  const clean = sanitizeChat(note, Number.POSITIVE_INFINITY);
+  if (!clean.ok) return null;
+  return Array.from(clean.text).slice(0, SOCIAL.reportNoteMaxChars).join('');
 }

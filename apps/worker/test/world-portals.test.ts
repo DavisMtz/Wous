@@ -136,7 +136,7 @@ describe('nunca en dos salas (ADR-0009)', () => {
     await d1.next('ROOM_SNAPSHOT');
 
     // Otra pestaña ya leyó en D1 a dónde ir (tomó turno) y aún no llega a la sala.
-    const turno = await claimPresence(env.DB, dani.characterId);
+    const turno = await claimPresence(env.DB, dani.characterId, dani.accountId);
     expect(turno?.mapId).toBe('plaza');
 
     d1.send(enterPortal('plaza-cafe'));

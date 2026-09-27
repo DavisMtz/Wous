@@ -1,6 +1,8 @@
+import { CHAT, SOCIAL } from '@wous/config';
 import { z } from 'zod';
 import { AppearanceInput } from '../domain/appearance.ts';
-import { CharacterId } from '../domain/ids.ts';
+import { Emote, ReportReason } from '../domain/chat.ts';
+import { CharacterId, MessageId } from '../domain/ids.ts';
 import { WS_PROTOCOL_VERSION, WsErrorCode, wsEnvelope } from './protocol.ts';
 
 /**
@@ -72,9 +74,59 @@ export const EnterPortalMessage = wsEnvelope(
 );
 export type EnterPortalMessage = z.infer<typeof EnterPortalMessage>;
 
+/**
+ * Decir algo en la sala (§18). El texto llega crudo; el servidor lo sanea con
+ * `sanitizeChat` y es SU versión la que se reparte y la que queda de evidencia.
+ */
+export const ChatSendMessage = wsEnvelope(
+  'CHAT_SEND',
+  z.strictObject({ text: z.string().min(1).max(CHAT.maxRawChars) }),
+);
+export type ChatSendMessage = z.infer<typeof ChatSendMessage>;
+
+/** Hacer un gesto (§19): solo el ID del catálogo. */
+export const EmotePlayMessage = wsEnvelope('EMOTE_PLAY', z.strictObject({ emote: Emote }));
+export type EmotePlayMessage = z.infer<typeof EmotePlayMessage>;
+
+/**
+ * Reportar a alguien (§18). El cliente dice a quién, por qué y, si quiere,
+ * QUÉ mensaje (por su ID): nunca manda el texto. La evidencia la arma la sala
+ * con lo que ella misma repartió.
+ */
+export const ReportPlayerMessage = wsEnvelope(
+  'REPORT_PLAYER',
+  z.strictObject({
+    characterId: CharacterId,
+    reason: ReportReason,
+    messageId: MessageId.optional(),
+    note: z
+      .string()
+      .max(SOCIAL.reportNoteMaxChars * 2)
+      .optional(),
+  }),
+);
+export type ReportPlayerMessage = z.infer<typeof ReportPlayerMessage>;
+
+/** Bloquear o desbloquear a alguien de la sala (ADR-0010). */
+export const BlockPlayerMessage = wsEnvelope(
+  'BLOCK_PLAYER',
+  z.strictObject({ characterId: CharacterId }),
+);
+export const UnblockPlayerMessage = wsEnvelope(
+  'UNBLOCK_PLAYER',
+  z.strictObject({ characterId: CharacterId }),
+);
+export type BlockPlayerMessage = z.infer<typeof BlockPlayerMessage>;
+export type UnblockPlayerMessage = z.infer<typeof UnblockPlayerMessage>;
+
 export const ClientMessage = z.discriminatedUnion('type', [
   PlayerInputMessage,
   EnterPortalMessage,
+  ChatSendMessage,
+  EmotePlayMessage,
+  ReportPlayerMessage,
+  BlockPlayerMessage,
+  UnblockPlayerMessage,
   PingMessage,
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
@@ -128,6 +180,8 @@ export const RoomSnapshotMessage = wsEnvelope(
     selfId: CharacterId,
     players: z.array(PlayerView),
     serverTime: z.number().int(),
+    /** Quiénes de los presentes bloqueaste tú (solo lo sabe quien bloquea). */
+    blocked: z.array(CharacterId).optional(),
   }),
 );
 
@@ -158,12 +212,58 @@ export const PlayerStateMessage = wsEnvelope(
   z.object({ states: z.array(PlayerStateView), serverTime: z.number().int() }),
 );
 
+/**
+ * Un mensaje del chat, ya saneado por el servidor. Lleva el nombre de quien
+ * lo dijo para que el registro se lea aunque esa persona ya se haya ido.
+ */
+export const ChatLine = z.object({
+  id: MessageId,
+  from: CharacterId,
+  name: z.string().max(40),
+  text: z.string().max(CHAT.maxChars * 2),
+  /** Hora del servidor. */
+  at: z.number().int(),
+});
+export type ChatLine = z.infer<typeof ChatLine>;
+
+/** Alguien dijo algo. No llega entre personas con un bloqueo de por medio. */
+export const ChatMessageMessage = wsEnvelope('CHAT_MESSAGE', z.object({ message: ChatLine }));
+
+/** Alguien hizo un gesto. Tampoco cruza un bloqueo. */
+export const EmotePlayedMessage = wsEnvelope(
+  'EMOTE_PLAYED',
+  z.object({ id: CharacterId, emote: Emote }),
+);
+
+/**
+ * Solo para quien bloquea: confirma el cambio o, al entrar alguien que
+ * bloqueaste, te lo recuerda. La persona bloqueada nunca recibe esto.
+ */
+export const PlayerBlockedMessage = wsEnvelope(
+  'PLAYER_BLOCKED',
+  z.object({ characterId: CharacterId, blocked: z.boolean() }),
+);
+
+/** Tu reporte quedó guardado (o ya lo habías hecho hace poco: la respuesta es la misma). */
+export const ReportAcceptedMessage = wsEnvelope(
+  'REPORT_ACCEPTED',
+  z.object({ characterId: CharacterId }),
+);
+
 export const PongMessage = z.object({ v: z.literal(WS_PROTOCOL_VERSION), type: z.literal('PONG') });
 
 export const ErrorMessage = wsEnvelope(
   'ERROR',
-  z.object({ code: WsErrorCode, message: z.string().max(200) }),
+  z.object({
+    code: WsErrorCode,
+    message: z.string().max(200),
+    /** Qué pedido lo causó (`CHAT_SEND`, `ENTER_PORTAL`…): la interfaz decide dónde decirlo. */
+    about: z.string().max(40).optional(),
+    /** Cuándo vale la pena volver a intentar (flood, silencio de moderación). */
+    retryAfterMs: z.number().int().nonnegative().optional(),
+  }),
 );
+export type ErrorPayload = z.infer<typeof ErrorMessage>['payload'];
 
 export const ServerMessage = z.discriminatedUnion('type', [
   RoomSnapshotMessage,
@@ -171,6 +271,10 @@ export const ServerMessage = z.discriminatedUnion('type', [
   PlayerLeftMessage,
   PlayerStateMessage,
   RoomTransferMessage,
+  ChatMessageMessage,
+  EmotePlayedMessage,
+  PlayerBlockedMessage,
+  ReportAcceptedMessage,
   PongMessage,
   ErrorMessage,
 ]);

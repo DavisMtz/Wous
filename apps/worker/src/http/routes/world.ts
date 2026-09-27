@@ -6,6 +6,7 @@ import { identityRateKey } from '../../security/rate-limit.ts';
 import { claimPresence } from '../../world/location.ts';
 import {
   directoryObjectName,
+  encodeIdentity,
   IDENTITY_HEADER,
   type RoomIdentity,
   roomObjectName,
@@ -56,9 +57,10 @@ export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
     return c.text('Demasiadas conexiones seguidas. Espera un momento.', 429);
   }
 
-  const claim = await claimPresence(c.env.DB, character.id);
+  const claim = await claimPresence(c.env.DB, character.id, session.account.id);
   if (!claim) return c.text('Primero arma tu personaje.', 409);
-  const { mapId, epoch } = claim;
+  const { mapId, epoch, chatMutedUntil } = claim;
+  const now = clock.now();
   const limits = c.get('config').roomCapacity;
   const directory = c.env.ROOM_DIRECTORY.get(
     c.env.ROOM_DIRECTORY.idFromName(directoryObjectName(mapId)),
@@ -75,6 +77,7 @@ export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
     instance,
     epoch,
     ...(spawn ? { spawn } : {}),
+    ...(chatMutedUntil !== null && chatMutedUntil > now ? { mutedUntil: chatMutedUntil } : {}),
     softLimit: limits.softLimit,
     hardLimit: limits.hardLimit,
   };
@@ -88,7 +91,7 @@ export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
   });
   return room.fetch(
     new Request('https://sala.wous.internal/entrar', {
-      headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: JSON.stringify(identity) },
+      headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: encodeIdentity(identity) },
     }),
   );
 });

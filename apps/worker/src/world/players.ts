@@ -35,11 +35,26 @@ export type RoomIdentity = {
   epoch: number;
   /** Punto de llegada con nombre, si vienes de un portal (lo guarda el directorio). */
   spawn?: string;
+  /** Silencio de moderación vigente (epoch ms), si lo hay (ADR-0010). */
+  mutedUntil?: number;
   softLimit: number;
   hardLimit: number;
 };
 
 export const IDENTITY_HEADER = 'X-Wous-Identity';
+
+/**
+ * La identidad viaja en una cabecera: se codifica en ASCII porque los nombres
+ * llevan acentos («Ñandú») y una cabecera con bytes fuera de ASCII solo pasa
+ * por una tolerancia del runtime.
+ */
+export function encodeIdentity(identity: RoomIdentity): string {
+  return encodeURIComponent(JSON.stringify(identity));
+}
+
+export function decodeIdentity(header: string): RoomIdentity {
+  return JSON.parse(decodeURIComponent(header)) as RoomIdentity;
+}
 
 /**
  * Estado de un jugador, guardado en el attachment de SU socket: sobrevive a
@@ -74,6 +89,16 @@ export type PlayerAttachment = {
   tr?: 1;
   /** Último intento de cruzar un portal (hora del servidor). */
   pt?: number;
+  /** Chat (§18): marcas de los últimos intentos (flood) y huella y hora del último aceptado. */
+  cw?: number[];
+  cp?: number;
+  ct?: number;
+  /** Último gesto (enfriamiento, §19). */
+  eg?: number;
+  /** Silencio de moderación vigente hasta (epoch ms). */
+  mu?: number;
+  /** Acciones sociales (bloquear, reportar): marcas de la última ventana. */
+  sw?: number[];
   /** Si el socket ya no representa a nadie en la sala. */
   gone?: GoneReason;
 };

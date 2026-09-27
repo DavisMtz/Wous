@@ -1,4 +1,4 @@
-import { MOVEMENT } from '@wous/config';
+import { CHAT, MOVEMENT, NETWORK, SOCIAL } from '@wous/config';
 import { canReachPortal, collisionGrid, PLAZA, portalOf, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
 import {
@@ -93,5 +93,25 @@ describe('attachment', () => {
       y: 987.654,
     });
     expect(new TextEncoder().encode(JSON.stringify(att)).length).toBeLessThan(1024);
+  });
+
+  it('sigue cabiendo con todo lo del chat, los gestos y la moderación poblado (Fase 7)', () => {
+    const t = 1_790_000_000_000;
+    const att = attachment({
+      name: 'Ñandú Pérez Ruíz Ávila',
+      look: { ...APPEARANCE, accessory: 'audifonos.amarillo' },
+      gone: 'replaced',
+      ep: 2 ** 40,
+      tr: 1,
+      pt: t,
+      cw: Array.from({ length: CHAT.rate.limit }, (_, i) => t + i),
+      cp: 0xffffffff,
+      ct: t,
+      eg: t,
+      mu: t + 86_400_000,
+      sw: Array.from({ length: SOCIAL.actionsPerMinute }, (_, i) => t + i),
+      strikes: NETWORK.maxStrikes,
+    });
+    expect(new TextEncoder().encode(JSON.stringify(att)).length).toBeLessThan(1400);
   });
 });

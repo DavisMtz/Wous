@@ -9,12 +9,19 @@ export type AuditAction =
   | 'PASSWORD_RESET_REQUESTED'
   | 'PASSWORD_CHANGED'
   | 'EMAIL_MARKED_UNDELIVERABLE'
-  | 'CHARACTER_CREATED';
+  | 'CHARACTER_CREATED'
+  // Moderación (ADR-0010): las escribe scripts/moderacion, con el moderador en metadata.
+  | 'CHAT_MUTED'
+  | 'CHAT_UNMUTED'
+  | 'ACCOUNT_SUSPENDED'
+  | 'ACCOUNT_BANNED'
+  | 'ACCOUNT_REINSTATED'
+  | 'REPORT_DISMISSED';
 
 export type AuditEntry = {
   actorAccountId: string | null;
   action: AuditAction;
-  targetType: 'account' | 'session' | 'character';
+  targetType: 'account' | 'session' | 'character' | 'report';
   targetId: string;
   reason?: string;
   metadata?: Record<string, string | number | boolean | null>;

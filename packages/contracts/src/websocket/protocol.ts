@@ -20,8 +20,14 @@ export const WsErrorCode = z.enum([
   'PORTAL_NOT_FOUND',
   'PORTAL_NOT_REACHABLE',
   'CHAT_REJECTED',
+  /** Silencio de moderación: no puedes escribir en el chat hasta `retryAfterMs`. */
+  'CHAT_MUTED',
   'FORBIDDEN',
   'CONNECTION_REPLACED',
+  /** La persona que nombraste no está (ni habló hace poco) en esta sala. */
+  'PLAYER_NOT_FOUND',
+  /** Llegaste al tope de algo (por ejemplo, de personas bloqueadas). */
+  'LIMIT_REACHED',
 ]);
 export type WsErrorCode = z.infer<typeof WsErrorCode>;
 
