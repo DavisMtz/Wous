@@ -95,8 +95,12 @@ export function wrap(ws: WebSocket): TestSocket {
 }
 
 /** Entra al mundo por el Worker completo, como el navegador. */
-export async function connect(cookie: string, headers: Record<string, string> = {}) {
-  const res = await call('/ws/world', {
+export async function connect(
+  cookie: string,
+  headers: Record<string, string> = {},
+  path = '/ws/world',
+) {
+  const res = await call(path, {
     headers: { Upgrade: 'websocket', Cookie: cookie, ...headers },
   });
   if (res.status !== 101 || !res.webSocket) return { res, socket: null };
@@ -122,11 +126,12 @@ export async function joinRoomDirectly(roomName: string, overrides: Partial<Room
     appearance: APPEARANCE,
     mapId: 'plaza',
     instance: roomName,
+    epoch: 0,
     softLimit: 2,
     hardLimit: 3,
     ...overrides,
   };
-  const stub = env.ROOM.get(env.ROOM.idFromName(`room:plaza:${roomName}`));
+  const stub = env.ROOM.get(env.ROOM.idFromName(`room:${identity.mapId}:${roomName}`));
   const res = await stub.fetch(
     new Request('https://sala.wous.internal/entrar', {
       headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: JSON.stringify(identity) },
@@ -135,6 +140,25 @@ export async function joinRoomDirectly(roomName: string, overrides: Partial<Room
   if (!res.webSocket) throw new Error(`La sala respondió ${res.status}`);
   return { identity, stub, socket: wrap(res.webSocket) };
 }
+
+/** El directorio de una sala lógica (para anotar llegadas o mirar la ocupación). */
+export function directory(mapId: string) {
+  return env.ROOM_DIRECTORY.get(env.ROOM_DIRECTORY.idFromName(`directory:${mapId}`));
+}
+
+/** La sala lógica guardada en D1 para un personaje. */
+export async function lastRoom(characterId: string): Promise<string | null> {
+  const row = await env.DB.prepare('SELECT last_room_id FROM characters WHERE id = ?')
+    .bind(characterId)
+    .first<{ last_room_id: string | null }>();
+  return row?.last_room_id ?? null;
+}
+
+export const enterPortal = (portalId: string) => ({
+  v: 1,
+  type: 'ENTER_PORTAL',
+  payload: { portalId },
+});
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

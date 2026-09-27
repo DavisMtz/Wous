@@ -29,6 +29,11 @@ export const WS_CLOSE = {
   REPLACED: 4009,
   /** Sin señales de vida (ni ping ni mensajes) dentro de la ventana. */
   STALE: 4010,
+  /**
+   * Cruzaste un portal: esta sala ya no te tiene. El cliente vuelve a abrir
+   * /ws/world de inmediato y el servidor lo lleva a la sala de destino.
+   */
+  TRANSFER: 4011,
 } as const;
 export type WsCloseCode = (typeof WS_CLOSE)[keyof typeof WS_CLOSE];
 
@@ -57,7 +62,21 @@ export type PlayerInputMessage = z.infer<typeof PlayerInputMessage>;
 
 export const PingMessage = z.object({ v: z.literal(WS_PROTOCOL_VERSION), type: z.literal('PING') });
 
-export const ClientMessage = z.discriminatedUnion('type', [PlayerInputMessage, PingMessage]);
+/**
+ * Cruzar un portal (§16). Solo el ID del portal: ni sala, ni instancia, ni
+ * punto de llegada. El servidor decide si alcanzas la puerta y a dónde lleva.
+ */
+export const EnterPortalMessage = wsEnvelope(
+  'ENTER_PORTAL',
+  z.strictObject({ portalId: z.string().min(1).max(40) }),
+);
+export type EnterPortalMessage = z.infer<typeof EnterPortalMessage>;
+
+export const ClientMessage = z.discriminatedUnion('type', [
+  PlayerInputMessage,
+  EnterPortalMessage,
+  PingMessage,
+]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
 
 // ─── Servidor → cliente ────────────────────────────────────────────────────
@@ -81,6 +100,8 @@ export const PlayerView = z.object({
   facing: Facing,
   moveX: Axis,
   moveY: Axis,
+  /** Se le cayó la conexión y la sala le guarda el lugar (ventana de gracia, §17). */
+  away: z.boolean().optional(),
 });
 export type PlayerView = z.infer<typeof PlayerView>;
 
@@ -95,6 +116,8 @@ export const PlayerStateView = z.object({
   seq: Seq,
   /** Hora del servidor en que se calculó este estado (para interpolar). */
   t: z.number().int(),
+  /** Presente solo si se le cayó la conexión: sigue ahí, quieto, esperando volver. */
+  away: z.boolean().optional(),
 });
 export type PlayerStateView = z.infer<typeof PlayerStateView>;
 
@@ -112,8 +135,22 @@ export const PlayerJoinedMessage = wsEnvelope('PLAYER_JOINED', z.object({ player
 
 export const PlayerLeftMessage = wsEnvelope(
   'PLAYER_LEFT',
-  z.object({ id: CharacterId, reason: z.enum(['left', 'stale', 'replaced']) }),
+  z.object({ id: CharacterId, reason: z.enum(['left', 'stale', 'replaced', 'portal']) }),
 );
+
+/**
+ * Tu cruce por el portal se aceptó (§16). Solo informa: la sala cierra el
+ * socket con `WS_CLOSE.TRANSFER` y el servidor ya sabe a dónde vas. `to` sirve
+ * para que la cortina diga «Entrando al Café» mientras se reconecta.
+ */
+export const RoomTransferMessage = wsEnvelope(
+  'ROOM_TRANSFER',
+  z.object({
+    portalId: z.string().max(40),
+    to: z.object({ mapId: z.string().max(40), name: z.string().max(60) }),
+  }),
+);
+export type RoomTransferMessage = z.infer<typeof RoomTransferMessage>;
 
 /** Estados agrupados: la sala junta los cambios y los manda por lotes (ADR-0008). */
 export const PlayerStateMessage = wsEnvelope(
@@ -133,6 +170,7 @@ export const ServerMessage = z.discriminatedUnion('type', [
   PlayerJoinedMessage,
   PlayerLeftMessage,
   PlayerStateMessage,
+  RoomTransferMessage,
   PongMessage,
   ErrorMessage,
 ]);

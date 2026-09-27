@@ -107,6 +107,20 @@ export const NETWORK = {
   maxStrikes: 20,
   /** Reconexión con espera creciente y azar (§17). */
   reconnect: { baseMs: 600, maxMs: 10_000 },
+  /**
+   * Ventana de gracia (§17): si la conexión se cae sin despedirse, la sala le
+   * guarda el lugar este tiempo. Los demás lo ven quieto y, si vuelve, sigue
+   * donde estaba en vez de reaparecer en la entrada.
+   */
+  graceAfterDropMs: 30_000,
+} as const;
+
+/** Portales y cambio de sala (§16). */
+export const PORTALS = {
+  /** Entre dos intentos de cruzar, como mínimo (más seguido cuenta como falta). */
+  minIntervalMs: 700,
+  /** Lo que la sala de destino espera a quien cruzó antes de olvidar su punto de llegada. */
+  arrivalTtlMs: 30_000,
 } as const;
 
 /** Capacidad por instancia de sala (§13). */

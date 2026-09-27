@@ -1,9 +1,9 @@
 import { RATE_LIMITS } from '@wous/config';
-import { STARTING_MAP } from '@wous/world-data';
 import { Hono } from 'hono';
 import { readSessionCookie, resolveSession } from '../../auth/sessions.ts';
 import { findCharacterByAccount } from '../../characters/characters.ts';
 import { identityRateKey } from '../../security/rate-limit.ts';
+import { claimPresence } from '../../world/location.ts';
 import {
   directoryObjectName,
   IDENTITY_HEADER,
@@ -20,8 +20,11 @@ import type { AppHono } from '../types.ts';
  * 1. Origin exacto (esta ruta vive fuera de /api: el guardia no la cubre).
  * 2. Cookie de sesión válida y cuenta ACTIVE.
  * 3. Personaje creado.
- * 4. El directorio de la sala elige instancia; la petición se reenvía al
- *    Durable Object con cabeceras NUEVAS: nada del cliente llega tal cual.
+ * 4. Turno de presencia nuevo y sala guardada en D1 (ADR-0009): la sala NO
+ *    viene de la petición. Query, cabeceras o cuerpo no cambian el destino.
+ * 5. El directorio de esa sala elige instancia (y el punto de llegada si
+ *    vienes de un portal); la petición se reenvía al Durable Object con
+ *    cabeceras NUEVAS: nada del cliente llega tal cual.
  */
 export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
   const log = c.get('log');
@@ -53,13 +56,14 @@ export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
     return c.text('Demasiadas conexiones seguidas. Espera un momento.', 429);
   }
 
-  // Fase 5: todos entran a la Plaza. La Fase 6 recordará la última sala.
-  const mapId = STARTING_MAP;
+  const claim = await claimPresence(c.env.DB, character.id);
+  if (!claim) return c.text('Primero arma tu personaje.', 409);
+  const { mapId, epoch } = claim;
   const limits = c.get('config').roomCapacity;
   const directory = c.env.ROOM_DIRECTORY.get(
     c.env.ROOM_DIRECTORY.idFromName(directoryObjectName(mapId)),
   );
-  const { instance } = await directory.assign(character.id, limits);
+  const { instance, spawn } = await directory.assign(character.id, limits);
 
   const identity: RoomIdentity = {
     characterId: character.id,
@@ -69,11 +73,19 @@ export const worldRoutes = new Hono<AppHono>().get('/world', async (c) => {
     appearance: character.appearance,
     mapId,
     instance,
+    epoch,
+    ...(spawn ? { spawn } : {}),
     softLimit: limits.softLimit,
     hardLimit: limits.hardLimit,
   };
   const room = c.env.ROOM.get(c.env.ROOM.idFromName(roomObjectName(mapId, instance)));
-  log.info('world.connect', { characterId: character.id, map: mapId, instance });
+  log.info('world.connect', {
+    characterId: character.id,
+    map: mapId,
+    instance,
+    epoch,
+    arrival: spawn ?? null,
+  });
   return room.fetch(
     new Request('https://sala.wous.internal/entrar', {
       headers: { Upgrade: 'websocket', [IDENTITY_HEADER]: JSON.stringify(identity) },

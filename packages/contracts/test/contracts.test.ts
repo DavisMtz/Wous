@@ -59,6 +59,17 @@ describe('mensajes del mundo', () => {
     expect(ClientMessage.safeParse(sinSeq).success).toBe(false);
   });
 
+  it('ENTER_PORTAL solo lleva la puerta: ni sala, ni instancia, ni punto de llegada', async () => {
+    const { ClientMessage } = await import('../src/index.ts');
+    const ok = { v: 1, type: 'ENTER_PORTAL', payload: { portalId: 'plaza-cafe' } };
+    expect(ClientMessage.safeParse(ok).success).toBe(true);
+    for (const extra of [{ to: 'cafe' }, { roomId: 'room:cafe:01' }, { spawn: 'desde-plaza' }]) {
+      const hack = { ...ok, payload: { ...ok.payload, ...extra } };
+      expect(ClientMessage.safeParse(hack).success).toBe(false);
+    }
+    expect(ClientMessage.safeParse({ ...ok, payload: { portalId: '' } }).success).toBe(false);
+  });
+
   it('el texto del ping es el que la auto-respuesta espera', async () => {
     const { ClientMessage, WS_PING_TEXT, WS_PONG_TEXT } = await import('../src/index.ts');
     expect(WS_PING_TEXT).toBe('{"v":1,"type":"PING"}');

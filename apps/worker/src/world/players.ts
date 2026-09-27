@@ -31,7 +31,9 @@ export type RoomIdentity = {
   mapId: MapId;
   /** Instancia elegida por el directorio («01»). */
   instance: string;
-  /** Punto de aparición con nombre (los portales de la Fase 6 lo usan). */
+  /** Turno de presencia de esta conexión (ADR-0009): el más alto es el vigente. */
+  epoch: number;
+  /** Punto de llegada con nombre, si vienes de un portal (lo guarda el directorio). */
   spawn?: string;
   softLimit: number;
   hardLimit: number;
@@ -66,9 +68,18 @@ export type PlayerAttachment = {
   win: number;
   n: number;
   strikes: number;
-  /** Si el socket ya no representa a nadie en la sala (reemplazado o vencido). */
-  gone?: 'replaced' | 'stale';
+  /** Turno de presencia (ADR-0009). */
+  ep: number;
+  /** Cruzando un portal: ya no camina ni vuelve a pedir otro. */
+  tr?: 1;
+  /** Último intento de cruzar un portal (hora del servidor). */
+  pt?: number;
+  /** Si el socket ya no representa a nadie en la sala. */
+  gone?: GoneReason;
 };
+
+/** Por qué un socket dejó de representar a alguien en la sala. */
+export type GoneReason = 'left' | 'replaced' | 'stale' | 'portal';
 
 /** Tres decimales de tile bastan en el cable (≈0.05 px de arte). */
 export function round3(v: number): number {
@@ -87,8 +98,7 @@ export function applyInput(
   now: number,
   grid: CollisionGrid,
 ): PlayerAttachment {
-  const dt = Math.max(0, Math.min(now - att.at, MOVEMENT.maxStepMs));
-  const next = stepMovement({ x: att.x, y: att.y }, { x: att.mx, y: att.my }, dt, grid);
+  const next = positionAt(att, now, grid);
   const intent = normalizeInput(input.moveX, input.moveY);
   return {
     ...att,
@@ -100,6 +110,17 @@ export function applyInput(
     seq: input.seq,
     at: now,
   };
+}
+
+/**
+ * Dónde está alguien AHORA para el servidor: su último punto más lo que avanzó
+ * con la intención vigente desde entonces (con el mismo tope que un input).
+ * Quien camina hacia la puerta y pide cruzar se mide aquí, no donde mandó su
+ * último input.
+ */
+export function positionAt(att: PlayerAttachment, now: number, grid: CollisionGrid): Vec {
+  const dt = Math.max(0, Math.min(now - att.at, MOVEMENT.maxStepMs));
+  return stepMovement({ x: att.x, y: att.y }, { x: att.mx, y: att.my }, dt, grid);
 }
 
 /**
@@ -123,7 +144,7 @@ export function chooseSpawn(
   return { ...base };
 }
 
-export function toPlayerView(att: PlayerAttachment): PlayerView {
+export function toPlayerView(att: PlayerAttachment, away = false): PlayerView {
   return {
     id: att.id,
     displayName: att.name,
@@ -133,10 +154,11 @@ export function toPlayerView(att: PlayerAttachment): PlayerView {
     facing: att.f,
     moveX: att.mx,
     moveY: att.my,
+    ...(away ? { away: true } : {}),
   };
 }
 
-export function toStateView(att: PlayerAttachment): PlayerStateView {
+export function toStateView(att: PlayerAttachment, away = false): PlayerStateView {
   return {
     id: att.id,
     x: round3(att.x),
@@ -146,6 +168,7 @@ export function toStateView(att: PlayerAttachment): PlayerStateView {
     moveY: att.my,
     seq: att.seq,
     t: att.at,
+    ...(away ? { away: true } : {}),
   };
 }
 

@@ -1,7 +1,12 @@
 import { MOVEMENT } from '@wous/config';
-import { collisionGrid, PLAZA, spawnOf } from '@wous/world-data';
+import { canReachPortal, collisionGrid, PLAZA, portalOf, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
-import { applyInput, chooseSpawn, type PlayerAttachment } from '../src/world/players.ts';
+import {
+  applyInput,
+  chooseSpawn,
+  type PlayerAttachment,
+  positionAt,
+} from '../src/world/players.ts';
 import { APPEARANCE } from './world-support.ts';
 
 const grid = collisionGrid(PLAZA);
@@ -25,6 +30,7 @@ function attachment(overrides: Partial<PlayerAttachment> = {}): PlayerAttachment
     win: 1000,
     n: 0,
     strikes: 0,
+    ep: 1,
     ...overrides,
   };
 }
@@ -49,6 +55,22 @@ describe('aplicar un input', () => {
   });
 });
 
+describe('alcance de un portal (§16)', () => {
+  it('se mide donde el servidor te tiene AHORA, no donde mandaste el último input', () => {
+    const portal = portalOf(PLAZA, 'plaza-cafe');
+    // Un tile y medio abajo de la puerta, caminando hacia ella.
+    const att = attachment({ x: portal.x, y: portal.y + 1.6, mx: 0, my: -1, at: 1000 });
+    expect(canReachPortal(att, portal)).toBe(false);
+    const ahora = positionAt(att, 1000 + MOVEMENT.maxStepMs, grid);
+    expect(canReachPortal(ahora, portal)).toBe(true);
+    // Esperar más no acerca más: el tope es el mismo que el de un input.
+    expect(positionAt(att, 1000 + 60_000, grid)).toEqual(ahora);
+    // Quieto, lejos, no alcanza por mucho que espere.
+    const quieto = attachment({ x: portal.x, y: portal.y + 1.6, at: 1000 });
+    expect(canReachPortal(positionAt(quieto, 9_000, grid), portal)).toBe(false);
+  });
+});
+
 describe('dónde aparece alguien', () => {
   it('en el punto del mapa si está libre y cerca si ya hay alguien', () => {
     const base = spawnOf(PLAZA);
@@ -64,6 +86,9 @@ describe('attachment', () => {
       name: 'Ñandú Pérez Ruíz Ávila',
       look: { ...APPEARANCE, accessory: 'audifonos.amarillo' },
       gone: 'replaced',
+      ep: 2 ** 40,
+      tr: 1,
+      pt: 1_790_000_000_000,
       x: 123.456,
       y: 987.654,
     });
