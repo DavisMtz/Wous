@@ -77,14 +77,88 @@ export const LAMINA = { base: '#bec5cc', light: '#dde3e8', shade: '#98a1aa', dee
 /** Agua de las fuentes. */
 export const AGUA = { base: '#5ea6c6', light: '#8fcfe6', shade: '#3e84a6', foam: '#e6f6fb' };
 
-/** Laurel de la India recortado: follaje oscuro y apretado. */
+/**
+ * Laurel de la India (ficus) recortado en bloque: verde brillante, lima donde
+ * le da el sol (la firma de la Plaza de Armas).
+ */
 export const LAUREL = {
+  base: '#5f9432',
+  light: '#77ab3c',
+  lighter: '#93c64c',
+  shade: '#467628',
+  deep: '#2f5424',
+};
+
+/** Naranjo: hoja oscura y brillosa, y su fruta. */
+export const NARANJO = {
   base: '#2f6b35',
   light: '#438a44',
-  lighter: '#63a95a',
   shade: '#23522a',
   deep: '#173b1d',
+  fruta: '#f28a1f',
+  frutaLuz: '#ffb44f',
 };
+
+/** Bugambilias de las jardineras de la Melchor Ocampo. */
+export const BUGAMBILIA = {
+  magenta: '#d23c8c',
+  light: '#f070b4',
+  morada: '#9b3fa8',
+  deep: '#86205c',
+  hoja: '#3f7a34',
+};
+
+/** Losas gris rosado de los andadores de la Plaza de Armas, en hilada corrida. */
+export const ENLOSADO = {
+  base: '#c3afa3',
+  light: '#cdbbaf',
+  lighter: '#d8c8bd',
+  shade: '#b29e93',
+  joint: '#a08c81',
+};
+
+/** La explanada de la Melchor Ocampo: losas grises con su retícula de bandas oscuras. */
+export const EXPLANADA = {
+  base: '#aca59b',
+  light: '#b8b1a7',
+  lighter: '#c5bfb5',
+  shade: '#9c958b',
+  joint: '#928b81',
+  band: '#77726a',
+  bandLight: '#847f76',
+  /** Piso mojado junto a las fuentes danzantes (se pinta encima, translúcido). */
+  wet: 'rgb(70 90 110 / 0.28)',
+};
+
+/** Piedra gris oscura: la pileta y el dado de la estatua de Ocampo. */
+export const PIEDRA_OSCURA = {
+  base: '#57545c',
+  light: '#6f6b75',
+  lighter: '#87838d',
+  shade: '#423f47',
+  deep: '#2e2c33',
+};
+
+/** Cantera gris-café: la base del kiosko y las fuentes de la Plaza de Armas. */
+export const CANTERA_GRIS = {
+  base: '#a99b8f',
+  light: '#bcaea2',
+  lighter: '#cec2b7',
+  shade: '#8e8075',
+  deep: '#706459',
+  joint: '#7e7167',
+};
+
+/** Bronce oscuro, casi negro azulado (la estatua de Ocampo). */
+export const BRONCE_OSCURO = {
+  base: '#303642',
+  light: '#4c5564',
+  shade: '#1d212a',
+  patina: '#4f6f63',
+};
+
+/** Madera color miel del plafón del kiosko. */
+export const MIEL = { base: '#b36b2c', light: '#cc8743', shade: '#84491e' };
 
 /** Cal con que se pinta el pie de los troncos. */
 export const CAL_TRONCO = { base: '#f1eee7', shade: '#d4cfc4' };

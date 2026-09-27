@@ -247,11 +247,39 @@ describe('asientos y letreros', () => {
 
   it('la Catedral todavía no se abre: su puerta es un letrero que lo dice', () => {
     const puerta = PLAZA.signs.find((s) => s.id === 'puerta-catedral');
-    expect(puerta?.body.join(' ')).toMatch(/Pronto se podrá entrar/);
+    expect(puerta?.body.join(' ')).toMatch(/pronto se podrá entrar/i);
     expect(PLAZA.portals.map((p) => p.id)).toEqual(['plaza-cafe']);
     expect(nearestInteraction(PLAZA, spawnOf(PLAZA, 'entrada'), 1.3)).toBeNull();
     const frente = nearestInteraction(PLAZA, { x: 34, y: 36.3 }, 1.3);
     expect(frente?.type === 'sign' && frente.sign.id).toBe('puerta-catedral');
+  });
+
+  it('en la Melchor Ocampo, las fuentes danzantes y la losa de los Liberales se pisan', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const chorros = objeto(PLAZA, 'fuentes-danzantes');
+    expect(bloqueado(grid, chorros.x + chorros.w / 2, chorros.y + chorros.h / 2)).toBe(false);
+    const losa = objeto(PLAZA, 'losa-liberales');
+    expect(bloqueado(grid, losa.x + losa.w / 2, losa.y + losa.h / 2)).toBe(false);
+    // La estatua y su pileta sí estorban; en su orilla hay dos lugares y la placa en medio.
+    expect(bloqueado(grid, 11.5, 16.5)).toBe(true);
+    expect(seatOf(PLAZA, 'monumento-ocampo-borde-1')).toBeDefined();
+    const frente = nearestInteraction(PLAZA, { x: 11.5, y: 18.7 }, 1.3);
+    expect(frente?.type === 'sign' && frente.sign.id).toBe('placa-ocampo');
+    const liberales = nearestInteraction(PLAZA, { x: 6.3, y: 19.2 }, 1.3);
+    expect(liberales?.type === 'sign' && liberales.sign.title).toBe('Árbol de los Liberales');
+  });
+
+  it('el kiosko: su jardinera cercada estorba y un andadorcito llega a su puerta y a su placa', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    expect(bloqueado(grid, 80.5, 30.6)).toBe(true); // la jardinera, a un lado de la base
+    expect(bloqueado(grid, 83.5, 33.8)).toBe(false); // el andadorcito
+    // Caminando por el eje norte hacia el kiosko se llega hasta su puertita.
+    let p: Vec = { x: 83.5, y: 38 };
+    for (let i = 0; i < 40; i++) p = stepMovement(p, { x: 0, y: -1 }, 100, grid);
+    expect(p.y).toBeGreaterThan(33.1);
+    expect(p.y).toBeLessThan(33.5);
+    const placa = nearestInteraction(PLAZA, p, 1.3);
+    expect(placa?.type === 'sign' && placa.sign.id).toBe('placa-armas');
   });
 
   it('en el Café, cada mesa tiene sus dos sillas', () => {

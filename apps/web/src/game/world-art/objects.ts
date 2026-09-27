@@ -11,15 +11,25 @@ import {
   fuenteDeTaza,
   kiosko,
   laurel,
-  pileta,
   placa,
   portal,
   porton,
   portonLado,
-  puesto,
   reja,
 } from './morelia.ts';
 import { hash, type Painter, painter } from './paint.ts';
+import {
+  asta,
+  chorros,
+  churros,
+  farolDeCampanas,
+  fuenteDeColumna,
+  globos,
+  jardinera,
+  losaLiberales,
+  monumentoOcampo,
+  pilastra,
+} from './plazas.ts';
 import {
   CORTEZA,
   hundido,
@@ -68,14 +78,23 @@ export function paintObject(o: MapObject): ObjectArt | null {
     case 'kiosko':
       return at(kiosko(), true);
     case 'fuente':
-      if (o.variant === 'ocampo' || o.variant === 'pileta') {
-        return at(pileta(o.variant === 'ocampo'), o.variant === 'ocampo');
-      }
+      if (o.variant === 'ocampo') return at(monumentoOcampo(o.w, o.h), true);
+      if (o.variant === 'columna') return at(fuenteDeColumna(o.w / 2), true);
       return at(fuenteDeTaza(o.w / 2));
+    case 'chorros':
+      // A ras de piso: quien pasa por en medio va encima.
+      return { ...chorros(o.w, o.h), depth: o.y * TILE, occluder: false };
     case 'estatua':
       return at(estatua(), true);
     case 'placa':
+      if (o.variant === 'losa') {
+        return { ...losaLiberales(o.w, o.h), depth: o.y * TILE, occluder: false };
+      }
       return at(placa());
+    case 'asta':
+      return at(asta(), true);
+    case 'pilastra':
+      return at(pilastra(o.variant), true);
     case 'banca': {
       const art = banca(o.variant);
       // De canto, quien se sienta queda encima del asiento: la banca va al fondo.
@@ -88,11 +107,11 @@ export function paintObject(o: MapObject): ObjectArt | null {
     case 'jacaranda':
       return at(jacaranda(o.id), true);
     case 'farol':
-      return at(farol());
+      return at(o.variant === 'campanas' ? farolDeCampanas() : farol());
     case 'puesto':
-      return at(puesto(o.variant, o.id));
+      return at(o.variant === 'globos' ? globos(o.id) : churros(o.id), o.variant === 'globos');
     case 'jardinera':
-      return null;
+      return at(jardinera(o.variant, o.w, o.h, o.id), o.variant === 'naranjo');
     case 'mesa':
       return at(mesa(o.variant));
     case 'barra':
@@ -233,15 +252,28 @@ export function objectShadow(p: Painter, o: MapObject): void {
       }
       break;
     case 'kiosko':
-      // La sombra de la cúpula cae detrás y a la derecha, bajo la plataforma.
-      p.ellipse(x + w / 2 + 8, y + h - 20, w / 2 + 2, 26, SOMBRA_SUAVE);
+      // El techo da su sombra detrás y a la derecha, sobre la jardinera.
+      p.ellipse(x + w / 2 + 10, y + h / 2 - 2, w / 2 + 4, h / 2 + 2, SOMBRA_SUAVE);
       break;
     case 'fuente':
-      if (o.variant === 'ocampo' || o.variant === 'pileta') {
-        p.rect(x + 2, y + h, w, 4, SOMBRA);
+      if (o.variant === 'ocampo') {
+        p.rect(x + 2, y + h, w, 3, SOMBRA);
       } else {
         p.ellipse(x + w / 2 + 2, y + h / 2 + 3, w / 2 + 1, h / 2, SOMBRA_SUAVE);
       }
+      break;
+    case 'jardinera':
+      p.rect(x + 2, y + h, w - 1, 3, SOMBRA_SUAVE);
+      if (o.variant === 'naranjo') p.ellipse(x + w / 2 + 6, y + h - 6, 14, 6, SOMBRA_SUAVE);
+      break;
+    case 'pilastra':
+      p.ellipse(x + 10, y + 13, 6, 2, SOMBRA);
+      p.rect(x + 11, y + 10, 10, 3, SOMBRA_SUAVE);
+      break;
+    case 'asta':
+      p.ellipse(x + 9, y + 14, 6, 2, SOMBRA);
+      // La sombra larga del mástil sobre la explanada.
+      p.rect(x + 12, y + 12, 40, 1, SOMBRA_SUAVE);
       break;
     case 'estatua':
       p.ellipse(x + w / 2 + 3, y + h - 2, w / 2 + 2, 4, SOMBRA);
@@ -274,7 +306,8 @@ export function objectShadow(p: Painter, o: MapObject): void {
       p.ellipse(x + 9, y + 15, 6, 2, SOMBRA);
       break;
     case 'puesto':
-      p.rect(x, y + h - 2, w, 3, SOMBRA);
+      if (o.variant === 'globos') p.ellipse(x + 10, y + 13, 12, 3, SOMBRA_SUAVE);
+      else p.rect(x + 2, y + h - 2, w - 2, 3, SOMBRA_SUAVE);
       break;
     case 'reja':
       if (o.variant === 'parada' || o.variant === 'porton-lado') {

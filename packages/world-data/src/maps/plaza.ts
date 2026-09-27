@@ -31,7 +31,7 @@ const H = 49;
 
 // ─── Suelo ────────────────────────────────────────────────────────────────
 
-const ground = groundBuilder(W, H, 'adoquin')
+const ground = groundBuilder(W, H, 'enlosado')
   // Orillas: azoteas y las calles de los lados; Madero abajo.
   .fill(0, 0, 2, H, 'azotea')
   .fill(2, 0, 2, H, 'calle') // Av. Morelos
@@ -46,8 +46,9 @@ const ground = groundBuilder(W, H, 'adoquin')
   // Banquetas de Morelos y de Abasolo.
   .fill(4, 11, 1, 34, 'banqueta')
   .fill(99, 11, 1, 34, 'banqueta')
-  // Plaza Melchor Ocampo y el atrio: losas grandes de cantera.
-  .fill(5, 11, 17, 34, 'losa')
+  // Plaza Melchor Ocampo: explanada de losas grises con su retícula oscura.
+  .fill(5, 11, 17, 34, 'explanada')
+  // El atrio: losas de cantera clara.
   .fill(22, 11, 34, 31, 'losa')
   // Madero: banqueta y avenida.
   .fill(4, 45, 96, 1, 'banqueta')
@@ -184,10 +185,10 @@ function fuente(id: string, cx: number, cy: number, variant: string, r = 1.4): M
   };
 }
 
-function bordeDeFuente(f: MapObject, lift = 3): Seat[] {
+function bordeDeFuente(f: MapObject, lift = 3, lugares: readonly number[] = [-0.55, 0.55]): Seat[] {
   const cx = f.x + f.w / 2;
   const y = f.y + f.h + 0.08;
-  return [-0.55, 0.55].map((dx, i) => ({
+  return lugares.map((dx, i) => ({
     id: `${f.id}-borde-${i + 1}`,
     x: cx + dx,
     y,
@@ -217,14 +218,48 @@ function arbol(
   };
 }
 
-function farol(id: string, x: number, y: number): MapObject {
-  return { id, kind: 'farol', x, y, w: 1, h: 1, solid: [{ x: 0.3, y: 0.6, w: 0.4, h: 0.35 }] };
+/** Poste de hierro con sus faroles: de tres brazos, o de dos campanas (los de la Melchor Ocampo). */
+function farol(id: string, x: number, y: number, variant?: 'campanas'): MapObject {
+  return {
+    id,
+    kind: 'farol',
+    x,
+    y,
+    w: 1,
+    h: 1,
+    ...(variant ? { variant } : {}),
+    solid: [{ x: 0.3, y: 0.6, w: 0.4, h: 0.35 }],
+  };
+}
+
+/**
+ * Pilastra de cantera (≈4.5 m) con su farol negro de brazo: van en pares en
+ * las entradas de las esquinas de la Plaza de Armas y en fila por su orilla.
+ * `x`, `y` es el centro de su base; `brazo` dice hacia dónde sale el farol.
+ */
+function pilastra(id: string, x: number, y: number, brazo: 'izquierda' | 'derecha'): MapObject {
+  return {
+    id,
+    kind: 'pilastra',
+    x: x - 0.5,
+    y: y - 0.5,
+    w: 1,
+    h: 1,
+    variant: brazo,
+    solid: [{ x: 0.2, y: 0.2, w: 0.6, h: 0.6 }],
+  };
+}
+
+function jacaranda(id: string, x: number, y: number): MapObject {
+  return { id, kind: 'jacaranda', x, y, w: 1, h: 1, solid: [{ x: 0.3, y: 0.55, w: 0.4, h: 0.4 }] };
 }
 
 // ─── Plaza de Armas ───────────────────────────────────────────────────────
 
 /** El kiosko: centro de la estrella de andadores (un poco al norte del centro, como el real). */
 const KIOSKO = { x: 83.5, y: 30.5 };
+/** Centro de la base octagonal de cantera del kiosko (su huella en el piso) y su radio. */
+const KIOSKO_BASE = { y: KIOSKO.y + 0.1, r: 2.55 };
 /** Radio del anillo de losa alrededor del kiosko. */
 const ANILLO = 6.2;
 /** Medio ancho de los ejes (andadores norte–sur y oriente–poniente). */
@@ -247,7 +282,7 @@ const armasSuelo: GroundShape[] = [
   { kind: 'jardin', rect: JARDIN },
   // Los ejes: norte–sur y oriente–poniente, de orilla a orilla.
   {
-    kind: 'adoquin',
+    kind: 'enlosado',
     path: {
       points: [
         [KIOSKO.x, JARDIN.y - 0.5],
@@ -257,7 +292,7 @@ const armasSuelo: GroundShape[] = [
     },
   },
   {
-    kind: 'adoquin',
+    kind: 'enlosado',
     path: {
       points: [
         [JARDIN.x - 0.5, KIOSKO.y],
@@ -269,7 +304,7 @@ const armasSuelo: GroundShape[] = [
   // Las diagonales, del kiosko a las esquinas.
   ...ESQUINAS.map(
     ([x, y]): GroundShape => ({
-      kind: 'adoquin',
+      kind: 'enlosado',
       path: {
         points: [
           [KIOSKO.x, KIOSKO.y],
@@ -282,6 +317,10 @@ const armasSuelo: GroundShape[] = [
   // Glorietas de las fuentes y el anillo del kiosko, en losa.
   ...FUENTES.map((f): GroundShape => ({ kind: 'losa', circle: { x: f.x, y: f.y, r: 2.6 } })),
   { kind: 'losa', circle: { x: KIOSKO.x, y: KIOSKO.y, r: ANILLO } },
+  // El kiosko se levanta en medio de una jardinera redonda con su reja baja;
+  // un andadorcito cruza el pasto hasta la puertita de su base.
+  { kind: 'jardin', circle: { x: KIOSKO.x, y: KIOSKO_BASE.y, r: 3.6 } },
+  { kind: 'enlosado', rect: { x: KIOSKO.x - 0.55, y: KIOSKO_BASE.y + 2.2, w: 1.1, h: 2 } },
 ];
 
 /**
@@ -343,12 +382,26 @@ const armasArboles: MapObject[] = [
 const armasFaroles: MapObject[] = [
   farol('farol-armas-1', 78.4, 29.0),
   farol('farol-armas-2', 88.0, 29.0),
-  farol('farol-armas-3', 69.2, 13.2),
-  farol('farol-armas-4', 97.0, 13.2),
-  farol('farol-armas-5', 69.2, 43.0),
-  farol('farol-armas-6', 97.0, 43.0),
   farol('farol-armas-7', 81.5, 12.4),
   farol('farol-armas-8', 84.6, 43.2),
+];
+
+/**
+ * Pilastras-farol: un par en la boca de cada diagonal (a los lados, sobre la
+ * reja) y una fila por la orilla que da al andador Juárez.
+ */
+const armasPilastras: MapObject[] = [
+  pilastra('pilastra-armas-1', 73.05, JARDIN.y, 'izquierda'),
+  pilastra('pilastra-armas-2', JARDIN.x, 16.45, 'izquierda'),
+  pilastra('pilastra-armas-3', 93.95, JARDIN.y, 'derecha'),
+  pilastra('pilastra-armas-4', JARDIN.x + JARDIN.w, 16.45, 'derecha'),
+  pilastra('pilastra-armas-5', 73.25, JARDIN.y + JARDIN.h, 'izquierda'),
+  pilastra('pilastra-armas-6', JARDIN.x, 39.85, 'izquierda'),
+  pilastra('pilastra-armas-7', 93.75, JARDIN.y + JARDIN.h, 'derecha'),
+  pilastra('pilastra-armas-8', JARDIN.x + JARDIN.w, 39.85, 'derecha'),
+  pilastra('pilastra-andador-1', 69.0, 17.0, 'izquierda'),
+  pilastra('pilastra-andador-2', 69.0, 25.5, 'izquierda'),
+  pilastra('pilastra-andador-3', 69.0, 35.5, 'izquierda'),
 ];
 
 // ─── Plaza Juárez (entre la Plaza de Armas y el atrio) ─────────────────────
@@ -378,52 +431,143 @@ const juarezArboles: MapObject[] = [
   arbol('fresno-juarez-2', 66.2, 33.0, 'fresno'),
 ];
 
-const fuenteJuarez = fuente('fuente-juarez', 61, 41.6, 'chica', 0.9);
+/** La fuente de columna del andador, cerca de Madero: pileta de tableros, columna anillada, copa y jarrón. */
+const fuenteJuarez = fuente('fuente-juarez', 61, 41.6, 'columna', 1.3);
 
 // ─── Plaza Melchor Ocampo ─────────────────────────────────────────────────
 
-/** Las dos fuentes de pileta cuadrada, bajita, de cantera gris; la del sur con la estatua. */
-const fuenteOcampoSur: MapObject = {
-  id: 'fuente-ocampo-sur',
+/**
+ * La estatua de Melchor Ocampo (bronce, 1888, de Primitivo Miranda): de pie
+ * sobre un dado de piedra oscura con su placa, en una pileta baja de piedra
+ * gris oscura en cuya orilla se sienta la gente. Desde 2008 ya no hay fuente
+ * al norte: ahí brotan del piso las fuentes danzantes.
+ */
+const monumentoOcampo: MapObject = {
+  id: 'monumento-ocampo',
   kind: 'fuente',
-  x: 10,
+  x: 9.5,
   y: 15,
-  w: 3,
+  w: 4,
   h: 3,
   variant: 'ocampo',
-  solid: [{ x: 0, y: 0.1, w: 3, h: 2.9 }],
+  solid: [{ x: 0, y: 0.2, w: 4, h: 2.8 }],
 };
-const fuenteOcampoNorte: MapObject = {
-  id: 'fuente-ocampo-norte',
-  kind: 'fuente',
-  x: 10,
-  y: 37.6,
-  w: 3,
-  h: 3,
-  variant: 'pileta',
-  solid: [{ x: 0, y: 0.1, w: 3, h: 2.9 }],
+const fuentesDanzantes: MapObject = {
+  id: 'fuentes-danzantes',
+  kind: 'chorros',
+  x: 9.5,
+  y: 36.5,
+  w: 4,
+  h: 4,
 };
 
-const ocampoBancas: MapObject[] = [
-  banca('banca-ocampo-1', 6.3, 23.5, 'derecha'),
-  banca('banca-ocampo-2', 6.3, 30.0, 'derecha'),
-  banca('banca-ocampo-3', 16.0, 20.0, 'abajo'),
-  banca('banca-ocampo-4', 16.0, 33.0, 'arriba'),
-  banca('banca-ocampo-5', 19.9, 26.0, 'izquierda'),
+/** Por la reja del atrio: bancas-cubo de cantera clara y macetones, uno y uno. */
+const ocampoCubos: MapObject[] = [12.2, 16.2, 24.2, 28.2, 32.2, 36.2, 40.2].map((y, i) =>
+  cubo(`cubo-ocampo-${i + 1}`, 20.3, y),
+);
+const macetones: MapObject[] = [14.2, 26.2, 30.2, 34.2, 38.2].map((y, i) => ({
+  id: `maceton-ocampo-${i + 1}`,
+  kind: 'jardinera',
+  x: 20.3,
+  y,
+  w: 1,
+  h: 1,
+  variant: 'maceton',
+}));
+
+/** Del lado de Morelos: jardineras de cantera con bugambilias y un naranjo. */
+const jardineras: MapObject[] = [
+  {
+    id: 'jardinera-ocampo-1',
+    kind: 'jardinera',
+    x: 5.3,
+    y: 12.3,
+    w: 2,
+    h: 3.6,
+    variant: 'naranjo',
+  },
+  {
+    id: 'jardinera-ocampo-2',
+    kind: 'jardinera',
+    x: 5.3,
+    y: 21.6,
+    w: 2,
+    h: 3.6,
+    variant: 'bugambilia',
+  },
+  {
+    id: 'jardinera-ocampo-3',
+    kind: 'jardinera',
+    x: 5.3,
+    y: 27.6,
+    w: 2,
+    h: 3.6,
+    variant: 'naranjo',
+  },
+  {
+    id: 'jardinera-ocampo-4',
+    kind: 'jardinera',
+    x: 5.3,
+    y: 33.6,
+    w: 2,
+    h: 3.6,
+    variant: 'bugambilia',
+  },
 ];
+
+/**
+ * Donde estuvo el Árbol de los Liberales (una acacia que ya no existe) queda
+ * una losa de cantera con la frase de Ocampo. Está a ras de piso: se pisa.
+ */
+const losaLiberales: MapObject = {
+  id: 'losa-liberales',
+  kind: 'placa',
+  x: 5.5,
+  y: 18.3,
+  w: 1.6,
+  h: 1,
+  variant: 'losa',
+  solid: [],
+};
+
+/** El asta bandera, muy alta y delgada, al centro de la explanada. */
+const astaBandera: MapObject = {
+  id: 'asta-bandera',
+  kind: 'asta',
+  x: 14,
+  y: 27,
+  w: 1,
+  h: 1,
+  solid: [{ x: 0.25, y: 0.45, w: 0.5, h: 0.5 }],
+};
 
 const ocampoArboles: MapObject[] = [
-  ...[13.0, 27.0, 33.5].map((y, i) => arbol(`laurel-morelos-${i + 1}`, 5.1, y)),
-  ...[8.0, 14.5, 18.5].map((x, i) => arbol(`laurel-madero-oriente-${i + 1}`, x, 43.2)),
+  // Jacarandas del lado de Madero.
+  ...[8.0, 14.5, 18.5].map((x, i) => jacaranda(`jacaranda-ocampo-${i + 1}`, x, 42.9)),
   arbol('fresno-ocampo-1', 18.8, 13.2, 'fresno'),
-  // El Árbol de los Liberales: el viejo del rincón, con su placa.
-  { ...arbol('arbol-liberales', 5.6, 18.0, 'liberales') },
 ];
 
-/** La vendimia de la Melchor Ocampo: dulces morelianos, ates y artesanía bajo sus lonas. */
-const puestos: MapObject[] = [
-  { id: 'puesto-dulces', kind: 'puesto', x: 8, y: 26, w: 4, h: 2, variant: 'dulces' },
-  { id: 'puesto-ates', kind: 'puesto', x: 13, y: 26, w: 4, h: 2, variant: 'ates' },
+/** Postes negros con dos faroles de campana en su travesaño. */
+const ocampoFaroles: MapObject[] = [
+  farol('farol-ocampo-1', 8.6, 20.0, 'campanas'),
+  farol('farol-ocampo-2', 8.6, 32.6, 'campanas'),
+  farol('farol-ocampo-3', 17.4, 22.6, 'campanas'),
+  farol('farol-ocampo-4', 17.4, 34.4, 'campanas'),
+];
+
+/** La vendimia de la explanada: el globero con su racimo y el carrito de churros. */
+const vendimia: MapObject[] = [
+  {
+    id: 'globero',
+    kind: 'puesto',
+    x: 11,
+    y: 24,
+    w: 1,
+    h: 1,
+    variant: 'globos',
+    solid: [{ x: 0.2, y: 0.45, w: 0.6, h: 0.5 }],
+  },
+  { id: 'carrito-churros', kind: 'puesto', x: 16.5, y: 29.4, w: 2, h: 1, variant: 'churros' },
 ];
 
 // ─── El atrio y la Catedral ───────────────────────────────────────────────
@@ -624,7 +768,7 @@ const signs: Sign[] = [
     title: 'Patrimonio Cultural de la Humanidad',
     body: [
       'México · UNESCO. Centro Histórico de la Ciudad de Morelia, Patrimonio Cultural de la Humanidad. Diciembre de 1991.',
-      'Más de mil edificios de cantera rosa, casi todos de los siglos XVII y XVIII, guardan el trazo de la antigua Valladolid.',
+      'Más de doscientos edificios históricos, todos de la cantera rosa de la región, guardan el trazo de la antigua Valladolid.',
     ],
   },
   {
@@ -635,8 +779,8 @@ const signs: Sign[] = [
     label: 'Ver la Catedral',
     title: 'Catedral de Morelia',
     body: [
-      'Dedicada a la Transfiguración del Señor, se levantó en cantera rosa entre 1660 y 1744. Sus dos torres, de unos 70 metros, se ven desde toda la ciudad.',
-      'Por ahora está cerrada. Pronto se podrá entrar.',
+      'Dedicada a la Transfiguración del Señor, se levantó en cantera rosa entre 1660 y 1744. Sus dos torres miden 62 metros, 66 con sus cruces, y se ven desde toda la ciudad.',
+      'Su fachada no mira a una plaza sino a la Avenida Madero. Por ahora está cerrada: pronto se podrá entrar.',
     ],
   },
   {
@@ -647,40 +791,43 @@ const signs: Sign[] = [
     label: 'Leer la placa',
     title: 'Benito Juárez',
     body: [
-      'Presidente de México y defensor de la República y de las Leyes de Reforma. Su estatua de bronce mira hacia la Plaza de Armas desde la plaza que lleva su nombre.',
+      'Presidente de México, defensor de la República y de las Leyes de Reforma. Su estatua, de 1962, está en la punta del andador que lleva su nombre, frente a la calle Allende.',
     ],
   },
   {
     id: 'placa-ocampo',
     x: 11.5,
     y: 18.7,
-    reach: 1.6,
+    reach: 1.2,
     label: 'Leer la placa',
     title: 'Melchor Ocampo',
     body: [
-      'Liberal michoacano, gobernador del estado y autor de reformas que separaron a la Iglesia del Estado. Por él, el nombre oficial es Michoacán de Ocampo.',
+      'Liberal michoacano, gobernador del estado y uno de los autores de las Leyes de Reforma. Por él, el nombre oficial del estado es Michoacán de Ocampo.',
+      'Su estatua de bronce, de 1888, es obra de Primitivo Miranda.',
     ],
   },
   {
     id: 'placa-liberales',
-    x: 6.6,
-    y: 19.6,
+    x: 6.3,
+    y: 18.9,
     reach: 1.4,
-    label: 'Leer la placa',
+    label: 'Leer la losa',
     title: 'Árbol de los Liberales',
     body: [
-      'Un árbol que la ciudad cuida como monumento, en la esquina de la Plaza Melchor Ocampo. Su nombre recuerda a los liberales michoacanos de la Reforma.',
+      'Aquí estuvo el Árbol de los Liberales, una acacia que plantaron los masones. Se perdió hace años, y el que lo reemplazó cayó en 2022.',
+      'Queda esta losa con la frase de Melchor Ocampo: «Ser liberal en todo cuesta trabajo porque se requiere ser hombre en todo».',
     ],
   },
   {
     id: 'placa-armas',
     x: KIOSKO.x,
-    y: KIOSKO.y + 3.1,
+    y: KIOSKO_BASE.y + 3.0,
     reach: 1.5,
     label: 'Leer la placa',
     title: 'Plaza de Armas',
     body: [
-      'También llamada Plaza de los Mártires, por los insurgentes que fueron ejecutados aquí durante la Independencia. El kiosko de hierro es el corazón de la plaza.',
+      'También la llaman Plaza de los Mártires, por los insurgentes que fueron fusilados aquí durante la guerra de Independencia.',
+      'Su kiosko octagonal de hierro fundido, con el plafón de madera y el cupulín de lámina, llegó en 1887.',
     ],
   },
 ];
@@ -690,8 +837,8 @@ const cameraZones: CameraZone[] = [{ x: 22, y: 33, w: 34, h: 13, lookUp: 6 }];
 
 // ─── El mapa ──────────────────────────────────────────────────────────────
 
-const bancas = [...armasBancas, ...juarezBancas, ...ocampoBancas, ...atrioCubos];
-const fuentesConBorde = [...armasFuentes, fuenteOcampoNorte];
+const bancas = [...armasBancas, ...juarezBancas, ...ocampoCubos, ...atrioCubos];
+const fuentesConBorde = [...armasFuentes, fuenteJuarez];
 
 export const PLAZA: MapDef = {
   id: 'plaza',
@@ -710,28 +857,35 @@ export const PLAZA: MapDef = {
     ...rejaOriente,
     ...rejaPoniente,
     {
+      // Kiosko octagonal de hierro fundido (1887) sobre su base de cantera.
+      // Lo sólido es la base: el octágono, casi un círculo.
       id: 'kiosko',
       kind: 'kiosko',
       x: KIOSKO.x - 3,
-      y: KIOSKO.y - 2.5,
+      y: KIOSKO_BASE.y - 2.8,
       w: 6,
-      h: 5,
-      // La tapa de la plataforma (5.5 × 4 tiles) más su escalinata al frente.
-      solid: [{ circle: { x: 3, y: 2.35, r: 2.3 } }, { x: 1.9, y: 4, w: 2.2, h: 0.95 }],
+      h: 5.6,
+      solid: [{ circle: { x: 3, y: 2.8, r: KIOSKO_BASE.r } }],
     },
     ...armasFuentes,
     fuenteJuarez,
-    fuenteOcampoSur,
-    fuenteOcampoNorte,
+    monumentoOcampo,
+    fuentesDanzantes,
     estatuaJuarez,
     placaUnesco,
-    ...puestos,
+    losaLiberales,
+    astaBandera,
+    ...jardineras,
+    ...macetones,
+    ...vendimia,
     ...bancas,
     ...armasArboles,
     ...juarezArboles,
     ...ocampoArboles,
     ...atrioArboles,
     ...armasFaroles,
+    ...armasPilastras,
+    ...ocampoFaroles,
     ...atrioFaroles,
     ...maderoFaroles,
   ],
@@ -752,7 +906,12 @@ export const PLAZA: MapDef = {
       label: 'Entrar al Café',
     },
   ],
-  seats: [...bancas.flatMap(lugaresDe), ...fuentesConBorde.flatMap((f) => bordeDeFuente(f))],
+  seats: [
+    ...bancas.flatMap(lugaresDe),
+    ...fuentesConBorde.flatMap((f) => bordeDeFuente(f)),
+    // En la orilla de la pileta de Ocampo, a los lados de la placa.
+    ...bordeDeFuente(monumentoOcampo, 3, [-1.3, 1.3]),
+  ],
   signs,
   cameraZones,
   paint: [

@@ -19,6 +19,9 @@ cambies la arquitectura en silencio (§38).
 | 8 · Amigos + correo social | ✅ hecha · tu banda (`/friends`, la foto de grupo), solicitudes con vueltas y en la sombra, avisos por correo (ADR-0011) |
 | 9 · Alpha cerrada | ✅ hecha · la caseta (`/caseta`), invitaciones, suspensiones con fin, carga medida y observabilidad (ADR-0012) |
 
+La Plaza es el centro de Morelia (ADR-0013): Catedral, Plaza de Armas, Melchor Ocampo y el Café
+bajo los portales de Allende, con asientos y placas.
+
 No se empieza una fase sin cumplir el Definition of Done de la anterior (§1.15).
 
 ## Comandos
@@ -107,5 +110,11 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
 - Desplegar sin `secrets.*.json` (otra máquina o token): `wrangler deploy --env <entorno>` hereda los
   secretos de `secrets.required`; uno que no esté en esa lista se perdería.
 - API de Workers Observability: sin `parameters.limit` devuelve solo 10 grupos (el script pide 200).
-- En un contenedor sin GPU, `portales.spec.ts` se atora caminando hacia la puerta del Café también
-  en `main`: es el entorno, no una regresión.
+- La Plaza (ADR-0013) mira al sur desde Madero y su colisión tiene `cellsPerTile` 4: `isBlocked`
+  recibe CELDAS (tile × 4), no tiles. `validateWorld` exige que desde la entrada se llegue a pie a
+  cada puerta, asiento y placa: una reja sin portón rompe la prueba. Sentarse es `SIT`/`STAND` y
+  lo decide la sala. `dev-plaza.html?quieto&en=x,y&zoom=N` abre cualquier punto (`zoom=1`, el mapa
+  entero); lo que no se ve en un plano sale de la investigación (fotos, IMPLAN), no de memoria.
+- Caminar en E2E: soltar una tecla tarda (sin GPU, casi un tile). `caminarHasta` de
+  `portales.spec.ts` camina a toquecitos midiendo, y cada tramo pide la holgura que su pasillo
+  permite; una ruta nueva va por pasillos anchos (la del Café cruza el atrio poniente).

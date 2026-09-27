@@ -264,6 +264,6 @@ test('en una banca se sienta con E, caminar la levanta y las placas se leen (ban
   await expect(accion).toContainText('Ver la Catedral');
   await page.keyboard.press('KeyE');
   await expect(page.getByRole('complementary', { name: 'Catedral de Morelia' })).toContainText(
-    'Pronto se podrá entrar',
+    /pronto se podrá entrar/i,
   );
 });

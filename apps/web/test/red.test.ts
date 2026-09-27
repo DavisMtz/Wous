@@ -384,26 +384,26 @@ describe('estado de la sala', () => {
       if (!r) throw new Error('sin remoto');
       return r;
     };
-    expect(room.seatTaken('banca-ocampo-3-1')).toBe(false);
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(false);
     room.apply(estado(5100, 16.5, 21.55), 1100); // de pie, frente a la banca
-    room.apply(estado(5200, 16.5, 21.05, 'banca-ocampo-3-1'), 1200); // sentado
-    expect(room.seatTaken('banca-ocampo-3-1')).toBe(true);
-    expect(room.seatTaken('banca-ocampo-3-2')).toBe(false);
+    room.apply(estado(5200, 16.5, 21.05, 'cubo-ocampo-2'), 1200); // sentado
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(true);
+    expect(room.seatTaken('cubo-ocampo-3')).toBe(false);
     // A medio camino entre las dos muestras no se dibuja a medio sentarse.
     const antes = room.render(remoto(), 1240, grid);
     expect(antes).toMatchObject({ y: 21.55, seat: null, moving: false });
     const despues = room.render(remoto(), 1260, grid);
-    expect(despues).toMatchObject({ y: 21.05, seat: 'banca-ocampo-3-1', moving: false });
+    expect(despues).toMatchObject({ y: 21.05, seat: 'cubo-ocampo-2', moving: false });
     // Otro estado en el mismo asiento (se le cayó la conexión): sigue sentado todo el tramo.
-    room.apply(estado(5300, 16.5, 21.05, 'banca-ocampo-3-1', true), 1300);
+    room.apply(estado(5300, 16.5, 21.05, 'cubo-ocampo-2', true), 1300);
     expect(room.render(remoto(), 1350, grid)).toMatchObject({
-      seat: 'banca-ocampo-3-1',
+      seat: 'cubo-ocampo-2',
       moving: false,
       away: true,
     });
     // Se levanta: el asiento se libera.
     room.apply(estado(5400, 16.5, 21.55), 1400);
-    expect(room.seatTaken('banca-ocampo-3-1')).toBe(false);
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(false);
   });
 
   it('quien se va desaparece', () => {

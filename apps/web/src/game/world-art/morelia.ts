@@ -5,6 +5,7 @@ import {
   BRONCE,
   CAL,
   CAL_TRONCO,
+  CANTERA_GRIS,
   CANTERA_ROSA,
   CORTEZA,
   FAROL,
@@ -14,7 +15,7 @@ import {
   LAMINA,
   LAUREL,
   LONAS,
-  type LonaId,
+  MIEL,
   PLUMON,
   TILE,
 } from './world-palette.ts';
@@ -24,13 +25,14 @@ import {
  * el mundo (ADR-0007): los portales de Allende con sus comercios y el Café,
  * las casas de cantera, la reja del atrio con sus portones, el kiosko, las
  * fuentes de taza, las estatuas, la placa de la UNESCO, las bancas de
- * cantera, los laureles recortados con el pie encalado, los fresnos, los
- * faroles de hierro y los puestos de dulces.
+ * cantera, los laureles recortados con el pie encalado, los fresnos y los
+ * faroles de hierro. El mobiliario de cada plaza va en `plazas.ts`.
  */
 
 export type Art = { canvas: HTMLCanvasElement; ox: number; oy: number };
 
 const C = CANTERA_ROSA;
+const G = CANTERA_GRIS;
 const VIDRIO = { dark: '#3b3552', light: '#8f84b8' };
 const LUZ = { warm: '#ffd98a', warmDeep: '#f2a24e', glow: '#fff4d6' };
 
@@ -157,7 +159,9 @@ export function portal(wTiles: number): Art {
   const pilar = 12;
   const imposta = H - 44;
 
-  sillar(p, 0, 0, W, H, 401);
+  // El Portal Allende va aplanado y pintado de crema; la cantera rosa queda
+  // en los arcos, los pilares, las cornisas y los marcos.
+  aplanado(p, 0, 0, W, H, '#efe3cd', 401);
   // Cornisa y pretil arriba.
   p.rect(0, 0, W, 2, C.lighter);
   p.rect(0, 2, W, 3, C.light);
@@ -179,9 +183,13 @@ export function portal(wTiles: number): Art {
     const x0 = k * bay + pilar;
     const w = Math.min(bay - pilar, W - x0);
     const cx = x0 + w / 2;
-    arcoVano(p, cx, H, w + 4, H - imposta + w / 2 + 3, C.lighter);
+    arcoVano(p, cx, H, w + 10, H - imposta + w / 2 + 6, C.shade);
+    arcoVano(p, cx, H, w + 8, H - imposta + w / 2 + 5, C.base);
+    arcoVano(p, cx, H, w + 6, H - imposta + w / 2 + 4, C.lighter);
     arcoVano(p, cx, H, w + 2, H - imposta + w / 2 + 1, C.shade);
     vaciarArco(p, cx, H, w, H - imposta + w / 2);
+    // La clave del arco.
+    p.rect(Math.round(cx) - 2, imposta - w / 2 - 6, 4, 5, C.light);
   }
   for (let k = 0; k * bay < W; k++) {
     const x = k * bay;
@@ -487,131 +495,228 @@ export function portonLado(hTiles: number): Art {
  */
 export function kiosko(): Art {
   const W = 112;
-  const H = 176;
+  const H = 216;
   const p = painter(W, H);
-  const cx = W / 2;
-  const tapa = 96;
-  const tapaH = 64;
-  const frente = tapa + tapaH;
+  const cx = 56;
+  /** Centro de la huella de la base en el canvas (en el mapa, el centro de su octágono). */
+  const GY = 170;
+  /** Alto de la base de cantera y de las columnas. */
+  const PH = 26;
+  const CH = 64;
+  const A = 41; // apotema de la base (2.55 tiles)
+  const G = CANTERA_GRIS;
 
-  // Tapa de la plataforma: losas de cantera, más oscura bajo la cúpula.
-  octagono(p, 12, tapa, 88, tapaH, 14, C.light);
-  for (let y = tapa; y < frente; y++) {
-    for (let x = 12; x < 100; x++) {
-      if ((x - 12) % 11 === 10 || (y - tapa) % 8 === 7) p.px(x, y, C.joint);
+  // Contorno inferior del octágono de la base, por columna de pixeles.
+  const abajo = (x: number) => Math.min(A, A * 2 - 24 - Math.abs(x));
+  const arriba = (x: number) => -abajo(x);
+
+  // ── La base: tapa y cara del frente con sus tableros rehundidos.
+  const tapaY = GY - PH;
+  for (let x = -A; x <= A; x++) {
+    for (let y = arriba(x); y <= abajo(x); y++) {
+      const junta = (x + A) % 12 === 0 || (y + A) % 10 === 0;
+      p.px(cx + x, tapaY + y, junta ? G.joint : G.light);
     }
   }
-  mascaraOctagono(p, 12, tapa, 88, 14);
-  for (let y = tapa; y < tapa + 40; y++) {
-    const a = (0.42 - (y - tapa) * 0.009).toFixed(3);
-    p.rect(12, y, 88, 1, `rgb(43 18 56 / ${a})`);
+  for (let x = -A; x <= A; x++) {
+    const y0 = tapaY + abajo(x);
+    // Faceta del frente iluminada; las de los lados, una con luz y otra en sombra.
+    const faceta = Math.abs(x) <= 17 ? G.base : x < 0 ? G.lighter : G.shade;
+    p.rect(cx + x, y0, 1, PH, faceta);
+    p.px(cx + x, y0, G.lighter); // cornisa
+    p.px(cx + x, y0 + 1, G.deep);
+    p.px(cx + x, y0 + PH - 1, G.deep);
   }
-  mascaraOctagono(p, 12, tapa, 88, 14);
-  // Barandal y columnas del fondo (en la orilla de atrás de la tapa).
-  p.rect(26, tapa + 4, 60, 1, LAMINA.shade);
-  for (let x = 28; x < 84; x += 4) p.rect(x, tapa + 5, 1, 6, LAMINA.deep);
-  for (const x of [30, 55, 80]) columna(p, x, tapa - 34, 40, true);
+  // Tableros: uno por faceta (el del frente, partido por la puertita).
+  const tablero = (x0: number, x1: number, y0: (x: number) => number) => {
+    for (let x = x0; x <= x1; x++) {
+      const yy = y0(x);
+      p.rect(cx + x, yy + 5, 1, PH - 10, x === x0 ? G.deep : x === x1 ? G.lighter : G.shade);
+      p.px(cx + x, yy + 5, G.deep);
+      p.px(cx + x, yy + PH - 6, G.lighter);
+    }
+  };
+  const bordeFrente = (x: number) => tapaY + abajo(x);
+  tablero(-37, -21, bordeFrente);
+  tablero(21, 37, bordeFrente);
+  tablero(-14, -8, bordeFrente);
+  tablero(8, 14, bordeFrente);
+  // La puertita de lámina negra (la bodega) al centro del frente.
+  const puertaY = tapaY + A + 5;
+  p.rect(cx - 5, puertaY, 10, PH - 5, HERRERIA.base);
+  p.rect(cx - 5, puertaY, 10, 1, HERRERIA.light);
+  p.rect(cx - 6, puertaY - 1, 12, 1, G.lighter);
+  p.px(cx + 3, puertaY + 10, '#c9a45a');
 
-  // Cara del frente de la plataforma y la escalinata.
-  p.rect(14, frente, 84, 12, C.shade);
-  p.rect(14, frente, 84, 1, C.lighter);
-  for (let x = 14; x < 98; x += 11) p.rect(x, frente + 1, 1, 11, C.joint);
-  p.rect(14, frente, 8, 12, hundido(C.shade, 0.12));
-  p.rect(90, frente, 8, 12, hundido(C.shade, 0.22));
-  p.rect(14, frente + 12, 84, 2, C.deep);
-  for (let i = 0; i < 3; i++) {
-    const sx = 40 - i * 3;
-    const sw = 32 + i * 6;
-    const sy = frente - 2 + i * 5;
-    p.rect(sx, sy, sw, 5, i === 0 ? C.lighter : C.light);
-    p.rect(sx, sy, sw, 1, C.lighter);
-    p.rect(sx, sy + 4, sw, 1, C.shade);
+  // ── Barandal de hierro negro y columnas torsas, primero las de atrás.
+  const vertices: [number, number][] = [
+    [-16, -38],
+    [16, -38],
+    [38, -16],
+    [38, 16],
+    [16, 38],
+    [-16, 38],
+    [-38, 16],
+    [-38, -16],
+  ];
+  const barandal = (x0: number, y0: number, x1: number, y1: number, color: string) => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let i = 0; i <= n; i++) {
+      const x = Math.round(x0 + ((x1 - x0) * i) / n);
+      const y = Math.round(y0 + ((y1 - y0) * i) / n);
+      p.px(cx + x, tapaY + y - 9, color);
+      if (i % 3 === 0) p.rect(cx + x, tapaY + y - 8, 1, 8, color);
+    }
+  };
+  const columnaTorsa = (x: number, y: number, frente: boolean) => {
+    const base = tapaY + y;
+    const c = frente ? HERRERIA.base : HERRERIA.shade;
+    p.rect(cx + x - 1, base - CH, 3, CH, c);
+    for (let yy = base - CH + 2; yy < base; yy += 4) {
+      p.px(cx + x - 1 + (Math.floor(yy / 4) % 2) * 2, yy, frente ? HERRERIA.light : HERRERIA.base);
+    }
+    p.rect(cx + x - 2, base - 3, 5, 3, c);
+    p.rect(cx + x - 2, base - CH, 5, 2, c);
+  };
+  const atras = vertices.filter(([, y]) => y < 0);
+  for (let i = 0; i < vertices.length; i++) {
+    const [x0, y0] = vertices[i] as [number, number];
+    const [x1, y1] = vertices[(i + 1) % vertices.length] as [number, number];
+    if (y0 < 0 || y1 < 0) barandal(x0, y0, x1, y1, HERRERIA.shade);
   }
+  for (const [x, y] of atras) columnaTorsa(x, y, false);
+  for (let i = 0; i < vertices.length; i++) {
+    const [x0, y0] = vertices[i] as [number, number];
+    const [x1, y1] = vertices[(i + 1) % vertices.length] as [number, number];
+    if (y0 >= 0 && y1 >= 0) barandal(x0, y0, x1, y1, HERRERIA.base);
+  }
+  for (const [x, y] of vertices.filter(([, vy]) => vy >= 0)) columnaTorsa(x, y, true);
 
-  // Barandal del frente (abierto en la escalinata): hierro claro.
-  for (const [x0, x1] of [
-    [16, 40],
-    [72, 96],
-  ] as const) {
-    p.rect(x0, frente - 12, x1 - x0, 1, LAMINA.light);
-    for (let x = x0; x < x1; x += 3) p.rect(x, frente - 11, 1, 10, LAMINA.base);
-    p.rect(x0, frente - 2, x1 - x0, 1, LAMINA.deep);
+  // ── El techo: octágono de lámina gris que sube a la punta.
+  const E = 50; // apotema del alero
+  const eaveY = tapaY - CH;
+  const apex = { x: cx, y: eaveY - 30 };
+  const alero: [number, number][] = [
+    [-21, -E],
+    [21, -E],
+    [E, -21],
+    [E, 21],
+    [21, E],
+    [-21, E],
+    [-E, 21],
+    [-E, -21],
+  ].map(([x, y]) => [cx + (x as number), eaveY + (y as number)]);
+  // Las ocho faldas, de atrás para adelante; la luz viene de arriba a la izquierda.
+  const faldas = alero.map((a, i) => {
+    const b = alero[(i + 1) % alero.length] as [number, number];
+    const mx = (a[0] + b[0]) / 2 - cx;
+    const my = (a[1] + b[1]) / 2 - eaveY;
+    return { a, b, orden: my, luz: (-mx - my) / (E * 1.4) };
+  });
+  faldas.sort((f, g) => f.orden - g.orden);
+  for (const f of faldas) {
+    const color =
+      f.luz > 0.35
+        ? LAMINA.light
+        : f.luz < -0.35
+          ? LAMINA.deep
+          : f.luz < 0
+            ? LAMINA.shade
+            : LAMINA.base;
+    triangulo(p, f.a, f.b, [apex.x, apex.y], color);
   }
-  // Columnas del frente.
-  for (const x of [15, 38, 72, 95]) columna(p, x, tapa - 38, frente - tapa + 38, false);
-
-  // Lambrequín: la cenefa de lámina calada bajo la cúpula.
-  const alero = tapa - 34;
-  p.rect(4, alero - 6, W - 8, 6, LAMINA.light);
-  p.rect(4, alero - 6, W - 8, 1, '#ffffff');
-  for (let x = 4; x < W - 4; x++) {
-    const k = x % 6;
-    const d = Math.round(2.5 * Math.sin((Math.PI * (k + 0.5)) / 6));
-    if (d > 0) p.rect(x, alero, 1, d, LAMINA.base);
-    p.px(x, alero + Math.max(0, d), LAMINA.deep);
-  }
-  // La cúpula de lámina con sus costillas.
-  const domoBase = alero - 6;
-  const domoH = 30;
-  for (let y = 0; y < domoH; y++) {
-    const t = (domoH - y) / domoH;
-    const half = Math.round(52 * Math.sqrt(Math.max(0, 1 - t * t)));
-    for (let x = -half; x < half; x++) {
-      const u = (x + half) / Math.max(1, half * 2);
-      let c = u < 0.3 ? LAMINA.light : u > 0.72 ? LAMINA.shade : LAMINA.base;
-      const costilla =
-        Math.floor(u * 10) !== Math.floor(((x - 1 + half) / Math.max(1, half * 2)) * 10);
-      if (costilla) c = u < 0.5 ? '#ffffff' : LAMINA.deep;
-      if (x === -half || x === half - 1) c = LAMINA.deep;
-      p.px(cx + x, domoBase - domoH + y, c);
+  // Limas (las aristas) y costuras de la lámina.
+  for (const v of alero) linea(p, v[0], v[1], apex.x, apex.y, LAMINA.deep);
+  for (const f of faldas) {
+    if (f.orden < 0) continue;
+    for (const t of [0.33, 0.66]) {
+      const x = f.a[0] + (f.b[0] - f.a[0]) * t;
+      const y = f.a[1] + (f.b[1] - f.a[1]) * t;
+      linea(p, Math.round(x), Math.round(y), apex.x, apex.y, f.luz > 0 ? '#ffffff' : LAMINA.shade);
     }
   }
-  // Linternilla, su cupulín y la punta.
-  const lt = domoBase - domoH - 12;
-  p.rect(cx - 7, lt, 14, 12, LAMINA.light);
-  p.rect(cx + 3, lt, 4, 12, LAMINA.shade);
-  for (const dx of [-4, 1]) p.rect(cx + dx, lt + 3, 2, 6, VIDRIO.dark);
-  p.ellipse(cx, lt - 1, 8, 4, LAMINA.base);
-  p.ellipse(cx - 2, lt - 2, 4, 2, LAMINA.light);
-  p.rect(cx, lt - 12, 1, 8, HERRERIA.base);
-  p.ellipse(cx, lt - 5, 2, 2, '#c9a45a');
-  // Pie de la plataforma en la orilla de abajo de la huella (5 tiles).
-  return { canvas: p.canvas, ox: -8, oy: 5 * TILE - (frente + 14) };
+  // Bajo el alero del frente: el plafón de madera color miel y el friso calado.
+  for (let x = -E; x <= E; x++) {
+    const y = eaveY + Math.min(E, E * 2 - 29 - Math.abs(x));
+    p.px(cx + x, y + 1, MIEL.base);
+    p.px(cx + x, y + 2, MIEL.shade);
+    const k = (x + E) % 6;
+    p.px(cx + x, y + 3, HERRERIA.base);
+    if (k === 0 || k === 3) p.px(cx + x, y + 4, HERRERIA.base);
+    if (k === 0) p.px(cx + x, y + 5, HERRERIA.base);
+  }
+  // La crestería: florones de hierro sobre toda la orilla del alero.
+  for (let i = 0; i < alero.length; i++) {
+    const a = alero[i] as [number, number];
+    const b = alero[(i + 1) % alero.length] as [number, number];
+    const n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+    for (let t = 0; t <= n; t++) {
+      const x = Math.round(a[0] + ((b[0] - a[0]) * t) / n);
+      const y = Math.round(a[1] + ((b[1] - a[1]) * t) / n);
+      p.px(x, y, HERRERIA.base);
+      if (t % 4 === 0) {
+        p.px(x, y - 1, HERRERIA.base);
+        p.px(x, y - 2, HERRERIA.light);
+      }
+    }
+  }
+  // El cupulín: campana de lámina plateada con costillas, y su cruz de hierro.
+  const cb = apex.y + 2;
+  for (let y = 0; y < 18; y++) {
+    const t = y / 18;
+    const half = Math.round(8 * Math.sin(Math.PI * (0.18 + t * 0.62)) * (0.55 + t * 0.45));
+    for (let x = -half; x <= half; x++) {
+      let c = x < -half / 3 ? LAMINA.light : x > half / 2 ? LAMINA.shade : LAMINA.base;
+      if (x % 3 === 0) c = x < 0 ? '#ffffff' : LAMINA.deep;
+      p.px(cx + x, cb - 18 + y, c);
+    }
+  }
+  p.rect(cx - 9, cb, 19, 2, LAMINA.deep);
+  p.rect(cx, cb - 25, 1, 8, HERRERIA.base);
+  p.rect(cx - 2, cb - 23, 5, 1, HERRERIA.base);
+  return { canvas: p.canvas, ox: -8, oy: -125 };
 }
 
-function columna(p: Painter, x: number, top: number, h: number, fondo: boolean): void {
-  const c = fondo ? HERRERIA.shade : HERRERIA.base;
-  p.rect(x, top, 3, h, c);
-  if (!fondo) {
-    p.rect(x, top, 1, h, HERRERIA.light);
-    p.rect(x - 1, top + h - 3, 5, 3, C.base);
-    p.rect(x - 1, top, 5, 2, HERRERIA.light);
-    // Ménsula calada bajo el alero.
-    p.px(x - 2, top + 3, c);
-    p.px(x + 4, top + 3, c);
+function linea(p: Painter, x0: number, y0: number, x1: number, y1: number, color: string): void {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) {
+    p.px(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n), color);
   }
 }
 
-function octagono(p: Painter, x: number, y: number, w: number, h: number, cut: number, c: string) {
-  for (let yy = 0; yy < h; yy++) {
-    const inset = yy < cut ? cut - yy : 0;
-    p.rect(x + inset, y + yy, w - inset * 2, 1, c);
-  }
-}
-
-function mascaraOctagono(p: Painter, x: number, y: number, w: number, cut: number): void {
-  for (let yy = 0; yy < cut; yy++) {
-    const inset = cut - yy;
-    p.ctx.clearRect(x, y + yy, inset, 1);
-    p.ctx.clearRect(x + w - inset, y + yy, inset, 1);
+/** Triángulo relleno (pixeles cuyo centro cae dentro). */
+function triangulo(
+  p: Painter,
+  a: readonly [number, number],
+  b: readonly [number, number],
+  c: readonly [number, number],
+  color: string,
+): void {
+  const x0 = Math.floor(Math.min(a[0], b[0], c[0]));
+  const x1 = Math.ceil(Math.max(a[0], b[0], c[0]));
+  const y0 = Math.floor(Math.min(a[1], b[1], c[1]));
+  const y1 = Math.ceil(Math.max(a[1], b[1], c[1]));
+  const lado = (p0: readonly number[], p1: readonly number[], x: number, y: number) =>
+    ((p1[0] as number) - (p0[0] as number)) * (y - (p0[1] as number)) -
+    ((p1[1] as number) - (p0[1] as number)) * (x - (p0[0] as number));
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const d1 = lado(a, b, x, y);
+      const d2 = lado(b, c, x, y);
+      const d3 = lado(c, a, x, y);
+      const neg = d1 < 0 || d2 < 0 || d3 < 0;
+      const pos = d1 > 0 || d2 > 0 || d3 > 0;
+      if (!(neg && pos)) p.px(x, y, color);
+    }
   }
 }
 
 // ─── Fuentes ──────────────────────────────────────────────────────────────
 
 /**
- * Fuente de taza: la pileta redonda de cantera con su agua, el pedestal y la
- * taza al centro con su chorrito. `r` en tiles.
+ * Fuente de taza de la Plaza de Armas: pileta redonda de cantera gris con su
+ * agua, el pedestal abalaustrado y la copa ancha al centro con su borbotón.
+ * `r` en tiles.
  */
 export function fuenteDeTaza(r: number): Art {
   const d = Math.round(r * 2 * TILE);
@@ -622,10 +727,14 @@ export function fuenteDeTaza(r: number): Art {
   const cx = W / 2;
   const cy = H - d / 2 - 1;
   const R = d / 2;
-  // Pileta: el borde de cantera (con su cara al frente) y el agua dentro.
-  p.ellipse(cx, cy + 3, R, R - 1, C.shade);
-  p.ellipse(cx, cy, R, R - 1, C.light);
-  p.ellipse(cx, cy, R - 3, R - 4, C.base);
+  // Pileta: el borde de cantera gris, de tres molduras redondeadas apiladas
+  // (se ven en su cara al frente), y el agua dentro.
+  p.ellipse(cx, cy + 4, R, R - 1, G.deep);
+  p.ellipse(cx, cy + 3, R, R - 1, G.shade);
+  p.ellipse(cx, cy + 2, R, R - 1, G.base);
+  p.ellipse(cx, cy + 1, R, R - 1, G.shade);
+  p.ellipse(cx, cy, R, R - 1, G.lighter);
+  p.ellipse(cx, cy, R - 3, R - 4, G.base);
   p.ellipse(cx, cy + 1, R - 4, R - 5, AGUA.shade);
   p.ellipse(cx, cy + 1, R - 5, R - 6, AGUA.base);
   for (let i = 0; i < 6; i++) {
@@ -641,16 +750,18 @@ export function fuenteDeTaza(r: number): Art {
   p.ellipse(cx, cy + 1, Math.max(2, R / 3) - 1, Math.max(1, R / 4) - 1, AGUA.base);
   // Pedestal y taza.
   const tazaY = cy - Math.round(alto * 0.72);
-  p.rect(cx - 3, tazaY, 6, cy - tazaY, C.base);
-  p.rect(cx - 3, tazaY, 2, cy - tazaY, C.lighter);
-  p.rect(cx + 2, tazaY, 1, cy - tazaY, C.shade);
+  p.rect(cx - 4, cy - 4, 8, 4, G.shade);
+  p.rect(cx - 3, tazaY, 6, cy - tazaY, G.base);
+  p.rect(cx - 3, tazaY, 2, cy - tazaY, G.lighter);
+  p.rect(cx + 2, tazaY, 1, cy - tazaY, G.deep);
+  for (const y of [tazaY + 6, cy - 7]) p.rect(cx - 4, y, 8, 2, G.light);
   const tr = Math.max(6, Math.round(R * 0.55));
-  p.ellipse(cx, tazaY + 2, tr, 3, C.shade);
-  p.ellipse(cx, tazaY, tr, 3, C.light);
+  p.ellipse(cx, tazaY + 2, tr, 3, G.shade);
+  p.ellipse(cx, tazaY, tr, 3, G.lighter);
   p.ellipse(cx, tazaY, tr - 2, 2, AGUA.base);
   // Remate y chorrito.
-  p.rect(cx - 1, tazaY - 8, 3, 8, C.base);
-  p.px(cx - 1, tazaY - 8, C.lighter);
+  p.rect(cx - 1, tazaY - 8, 3, 8, G.base);
+  p.px(cx - 1, tazaY - 8, G.lighter);
   p.rect(cx, tazaY - 12, 1, 4, AGUA.foam);
   p.px(cx - 1, tazaY - 11, AGUA.light);
   p.px(cx + 1, tazaY - 10, AGUA.light);
@@ -659,48 +770,6 @@ export function fuenteDeTaza(r: number): Art {
     for (let y = tazaY + 2; y < cy - 1; y += 2) p.px(cx + dx, y, AGUA.light);
   }
   return { canvas: p.canvas, ox: -1, oy: -alto };
-}
-
-/**
- * Las piletas cuadradas de la Melchor Ocampo, bajitas, de piedra gris
- * oscura. La del sur sostiene la estatua de Melchor Ocampo en su pedestal.
- */
-export function pileta(conEstatua: boolean): Art {
-  const W = 3 * TILE;
-  const extra = conEstatua ? 58 : 18;
-  const H = 3 * TILE + extra;
-  const p = painter(W, H);
-  const top = extra;
-  const GRIS = { base: '#6b666e', light: '#8a858d', shade: '#4b474f', deep: '#35323a' };
-  // Borde de piedra y su cara al frente.
-  p.rect(0, top + 2, W, 3 * TILE - 2, GRIS.shade);
-  p.rect(0, top, W, 3 * TILE - 6, GRIS.light);
-  p.rect(0, top + 3 * TILE - 6, W, 6, GRIS.base);
-  p.rect(0, H - 1, W, 1, GRIS.deep);
-  // Agua.
-  p.rect(4, top + 4, W - 8, 3 * TILE - 14, AGUA.shade);
-  p.rect(5, top + 5, W - 10, 3 * TILE - 16, AGUA.base);
-  for (let i = 0; i < 8; i++) {
-    p.px(8 + ((i * 11) % (W - 16)), top + 9 + ((i * 7) % (3 * TILE - 22)), AGUA.light);
-  }
-  const cx = W / 2;
-  if (conEstatua) {
-    // Pedestal de piedra oscura con su placa, y Ocampo de bronce, de levita.
-    const pie = top + 30;
-    p.rect(cx - 7, pie - 26, 14, 26, GRIS.base);
-    p.rect(cx - 7, pie - 26, 2, 26, GRIS.light);
-    p.rect(cx + 5, pie - 26, 2, 26, GRIS.deep);
-    p.rect(cx - 9, pie - 28, 18, 3, GRIS.light);
-    p.rect(cx - 4, pie - 18, 8, 6, BRONCE.light);
-    p.rect(cx - 3, pie - 17, 6, 1, BRONCE.shade);
-    p.rect(cx - 3, pie - 15, 6, 1, BRONCE.shade);
-    estatuaDeBronce(p, cx, pie - 28, 26);
-  } else {
-    // Chorro al centro.
-    p.rect(cx - 1, top + 12, 2, 10, AGUA.foam);
-    p.ellipse(cx, top + 22, 5, 2, AGUA.light);
-  }
-  return { canvas: p.canvas, ox: 0, oy: -extra };
 }
 
 /** Una figura de bronce de pie: cabeza, levita, pantalón y la mano al pecho. */
@@ -864,44 +933,57 @@ function cubo(): Art {
 // ─── Árboles ──────────────────────────────────────────────────────────────
 
 /**
- * Laurel de la India recortado en caja redondeada, como los de la Plaza de
- * Armas y el andador Juárez, con el pie del tronco encalado.
+ * Laurel de la India (ficus) podado en bloque, como las hileras de la Plaza
+ * de Armas y el andador Juárez: tapa plana y lisa, lima donde le da el sol,
+ * caras que bajan a plomo y el tronco encalado hasta la mitad.
  */
 export function laurel(seedId: string): Art {
-  const W = 44;
-  const H = 74;
+  const W = 46;
+  const H = 76;
   const p = painter(W, H);
   const seed = semilla(seedId);
-  // Tronco con su cal.
-  p.rect(20, 42, 5, 30, CORTEZA.base);
-  p.rect(20, 42, 1, 30, CORTEZA.light);
-  p.rect(24, 42, 1, 30, CORTEZA.shade);
-  p.rect(19, 60, 7, 12, CAL_TRONCO.base);
-  p.rect(24, 60, 2, 12, CAL_TRONCO.shade);
-  p.rect(18, 71, 9, 2, CORTEZA.shade);
-  // Copa recortada: caja de esquinas redondas, tupida.
+  const cx = 23;
+  // Tronco (a veces doble) con su cal.
+  p.rect(cx - 3, 40, 6, 34, CORTEZA.base);
+  p.rect(cx - 3, 40, 1, 34, CORTEZA.light);
+  p.rect(cx + 2, 40, 1, 34, CORTEZA.shade);
+  p.rect(cx - 4, 56, 8, 17, CAL_TRONCO.base);
+  p.rect(cx + 2, 56, 2, 17, CAL_TRONCO.shade);
+  p.rect(cx - 5, 72, 10, 2, CORTEZA.shade);
+  // Copa: la tapa (una elipse aplanada) y las caras hacia abajo.
   const x0 = 2;
-  const y0 = 4;
-  const cw = 40;
-  const ch = 40;
-  const radio = 9;
-  for (let y = 0; y < ch; y++) {
+  const cw = 42;
+  const tapaAlto = 16;
+  const caraAlto = 22;
+  const top = 4;
+  for (let y = 0; y < tapaAlto + caraAlto; y++) {
     for (let x = 0; x < cw; x++) {
-      const dx = Math.max(0, Math.max(radio - x, x - (cw - 1 - radio)));
-      const dy = Math.max(0, Math.max(radio - y, y - (ch - 1 - radio)));
-      if (dx * dx + dy * dy > radio * radio) continue;
-      const orilla = dx * dx + dy * dy > (radio - 1.5) ** 2;
-      if (orilla && hash(x, y, seed) < 0.3) continue;
+      const u = (x - cw / 2 + 0.5) / (cw / 2);
+      // Esquinas redondeadas de la tapa y de la base del bloque.
+      const tapaY = (tapaAlto / 2) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
+      const baseY =
+        tapaAlto + caraAlto - 1 - (caraAlto / 5) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
+      if (y < tapaY || y > baseY) continue;
       const hoja = hash(Math.floor((x + (y % 2)) / 2), Math.floor(y / 2), seed + 1);
-      const luz = (1 - x / cw) * 0.55 + (1 - y / ch) * 0.8;
-      let c = luz > 0.95 ? LAUREL.light : luz < 0.45 ? LAUREL.shade : LAUREL.base;
-      if (hoja > 0.88) c = luz > 0.7 ? LAUREL.lighter : LAUREL.light;
-      else if (hoja < 0.12) c = LAUREL.deep;
-      if (y > ch - 5) c = hoja < 0.5 ? LAUREL.deep : LAUREL.shade;
-      p.px(x0 + x, y0 + y, c);
+      const borde = y - tapaY < 1.2 || baseY - y < 1.2 || Math.abs(u) > 0.96;
+      if (borde && hash(x, y, seed) < 0.35) continue;
+      let c: string;
+      if (y < tapaAlto) {
+        // Tapa plana: lima al sol, un poco más oscura hacia atrás a la derecha.
+        c = u < 0.25 ? LAUREL.lighter : LAUREL.light;
+        if (hoja < 0.14) c = LAUREL.base;
+        else if (hoja > 0.93) c = '#a9d85e';
+      } else {
+        // Caras: del medio a la sombra, con hojas sueltas.
+        const t = (y - tapaAlto) / caraAlto;
+        c = u > 0.45 ? LAUREL.shade : t > 0.7 ? LAUREL.shade : LAUREL.base;
+        if (hoja > 0.88) c = LAUREL.light;
+        else if (hoja < 0.12 || t > 0.9) c = LAUREL.deep;
+      }
+      p.px(x0 + x, top + y, c);
     }
   }
-  return { canvas: p.canvas, ox: -14, oy: -58 };
+  return { canvas: p.canvas, ox: -15, oy: -60 };
 }
 
 const COPA_FRESNO: [number, number, number][] = [
@@ -1015,98 +1097,4 @@ function linterna(p: Painter, x: number, y: number): void {
   p.rect(x + 4, y + 2, 1, 6, HERRERIA.base);
   p.rect(x, y + 8, 5, 1, HERRERIA.base);
   p.px(x + 2, y + 9, HERRERIA.base);
-}
-
-// ─── Puestos de dulces ────────────────────────────────────────────────────
-
-const GIROS: Record<string, { lona: LonaId; rotulo: string; precio: string }> = {
-  dulces: { lona: 'rosa', rotulo: 'DULCES', precio: '$20' },
-  ates: { lona: 'naranja', rotulo: 'ATES', precio: '$35' },
-};
-
-const ATE = ['#b8323a', '#d9582a', '#e8a13a', '#7a2a5a', '#c9463c'] as const;
-const DULCE = ['#ff4f9a', '#ffd23f', '#35c77a', '#f7f0e0', '#ff7a2a'] as const;
-
-/**
- * Puesto de la vendimia de la Melchor Ocampo: lona de color, cenefa
- * rotulada, mesa con hule y la mercancía: ates en barras y dulces en frascos.
- */
-export function puesto(variant: string | undefined, seedId: string): Art {
-  const giro = GIROS[variant ?? ''] ??
-    GIROS.dulces ?? { lona: 'rosa', rotulo: 'DULCES', precio: '$20' };
-  const lona = LONAS[giro.lona];
-  const W = 72;
-  const H = 72;
-  const p = painter(W, H);
-  const seed = semilla(seedId);
-  // Postes traseros.
-  p.rect(7, 18, 2, 30, '#7c7482');
-  p.rect(63, 18, 2, 30, '#7c7482');
-  // Repisa trasera con frascos de dulces.
-  p.rect(8, 30, 56, 2, WOOD.base);
-  for (let i = 0; i < 8; i++) {
-    const x = 10 + i * 7;
-    const c = pick(DULCE, seed, i, 3);
-    p.rect(x, 22, 5, 8, '#dfe8ee');
-    p.rect(x + 1, 24, 3, 5, c);
-    p.rect(x, 21, 5, 1, WOOD.shadow);
-  }
-  p.rect(6, 20, 60, 26, `${lona.hondo}33`);
-  // Mesa con hule.
-  p.rect(8, 44, 56, 8, CAL.base);
-  for (let y = 44; y < 52; y += 2) {
-    for (let x = 8 + ((y / 2) % 2) * 2; x < 64; x += 4) {
-      p.rect(x, y, 2, 2, mix(lona.luz, '#ffffff', 0.35));
-    }
-  }
-  p.rect(8, 44, 56, 1, '#ffffff');
-  // La mercancía: ates en barras o dulces en montoncitos.
-  for (let i = 0; i < 6; i++) {
-    const x = 11 + i * 9;
-    if (giro.rotulo === 'ATES') {
-      for (let l = 0; l < 3; l++) {
-        const c = pick(ATE, seed + l, i, 4);
-        p.rect(x, 43 - l * 3, 7, 3, c);
-        p.rect(x, 43 - l * 3, 7, 1, hundido(c, -0.2));
-      }
-    } else {
-      for (let l = 0; l < 4; l++) p.px(x + l * 2, 42 - (l % 2), pick(DULCE, seed, i + l, 5));
-      p.rect(x, 43, 7, 1, pick(DULCE, seed, i, 6));
-    }
-  }
-  // Faldón y patas.
-  p.rect(8, 52, 56, 11, mix(lona.luz, '#ffffff', 0.55));
-  for (let x = 12; x < 64; x += 6) p.rect(x, 52, 1, 11, mix(lona.luz, '#ffffff', 0.2));
-  p.rect(11, 63, 2, 6, WOOD.shadow);
-  p.rect(59, 63, 2, 6, WOOD.shadow);
-  // Precio en cartulina.
-  const board = pick(FOSFO, seed, 1, 8);
-  const bw = signWidth(giro.precio) + 6;
-  const bx = 36 - Math.floor(bw / 2);
-  p.rect(bx, 54, bw, 9, board);
-  sign(p, giro.precio, bx + 3, 56, PLUMON);
-  // Postes del frente.
-  for (const x of [4, 66]) {
-    p.rect(x, 16, 2, 54, '#b8b1bd');
-    p.rect(x, 16, 1, 54, '#dcd6df');
-  }
-  // La lona con su cenefa rotulada y flecos.
-  for (let y = 3; y < 18; y++) {
-    const inset = Math.round(7 * (1 - (y - 3) / 15));
-    for (let x = inset; x < W - inset; x++) {
-      const fold = (x + y * 2) % 13;
-      let c = fold < 2 ? lona.luz : fold > 10 ? lona.hondo : lona.base;
-      if (y === 3 || x === inset || x === W - inset - 1) c = lona.hondo;
-      p.px(x, y, c);
-    }
-  }
-  p.rect(0, 18, W, 6, lona.base);
-  p.rect(0, 18, W, 1, lona.luz);
-  sign(p, giro.rotulo, Math.round((W - signWidth(giro.rotulo)) / 2), 19, CAL.base);
-  for (let x = 0; x < W; x += 6) {
-    p.rect(x, 24, 5, 1, lona.hondo);
-    p.rect(x + 1, 25, 3, 1, lona.hondo);
-    p.px(x + 2, 26, lona.hondo);
-  }
-  return { canvas: p.canvas, ox: -4, oy: -40 };
 }

@@ -15,6 +15,8 @@ import {
   BANQUETA,
   CANTERA,
   EMPEDRADO,
+  ENLOSADO,
+  EXPLANADA,
   HIERRO,
   hundido,
   JACARANDA,
@@ -57,7 +59,7 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
     for (let gx = 0; gx < w; gx++) {
       const tx = Math.floor(gx / TILE);
       const ty = Math.floor(gy / TILE);
-      const material = matAt(gx, gy) ?? 'adoquin';
+      const material = matAt(gx, gy) ?? 'enlosado';
       const ctx: Px = {
         gx,
         gy,
@@ -71,7 +73,7 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
       };
       let color = PAINTERS[material](ctx);
       // Pétalos de jacaranda caídos cerca de cada árbol (en piso, no en seto).
-      if (material === 'adoquin' || material === 'pasto' || material === 'losa') {
+      if (material === 'enlosado' || material === 'explanada' || material === 'losa') {
         color = petal(gx, gy, petals) ?? color;
       }
       put(image.data, (gy * w + gx) * 4, color);
@@ -92,7 +94,8 @@ const MATERIALS: readonly Material[] = [
   'fachada',
   'azotea',
   'banqueta',
-  'adoquin',
+  'enlosado',
+  'explanada',
   'losa',
   'empedrado',
   'portal',
@@ -117,7 +120,7 @@ function materialBuffer(map: MapDef, w: number, h: number): Uint8Array {
   const mat = new Uint8Array(w * h);
   for (let ty = 0; ty < map.height; ty++) {
     for (let tx = 0; tx < map.width; tx++) {
-      const kind = map.ground[ty * map.width + tx] ?? 'adoquin';
+      const kind = map.ground[ty * map.width + tx] ?? 'enlosado';
       const index = INDEX.get(kind) ?? 0;
       for (let ly = 0; ly < TILE; ly++) {
         mat.fill(index, (ty * TILE + ly) * w + tx * TILE, (ty * TILE + ly) * w + tx * TILE + TILE);
@@ -161,7 +164,8 @@ type Px = {
 };
 
 const PAINTERS: Record<Material, (px: Px) => string> = {
-  adoquin: cantera,
+  enlosado: enlosado,
+  explanada: explanada,
   losa: losa,
   jardin: jardin,
   ladrillo: ladrillo,
@@ -180,20 +184,50 @@ const PAINTERS: Record<Material, (px: Px) => string> = {
     ty < backRows ? repello(gx, gy) : muro(lx, ly, tx, ty, kindAt),
 };
 
-/** Losas de cantera de 8×8 con junta; cada losa con su tono y su desgaste. */
-function cantera({ gx, gy }: Px): string {
-  const sx = Math.floor(gx / 8);
-  const sy = Math.floor(gy / 8);
-  if (gx % 8 === 7 || gy % 8 === 7) return CANTERA.joint;
-  const slab = hash(sx, sy, 11);
-  const tint = slab < 0.55 ? CANTERA.base : slab < 0.82 ? CANTERA.light : CANTERA.shade;
-  // Grieta diagonal en una de cada ~25 losas.
-  if (slab > 0.96 && (gx % 8) - (gy % 8) === 1) return CANTERA.joint;
+/**
+ * Los andadores de la Plaza de Armas: losas rectangulares gris rosado en
+ * hiladas corridas (a soga), de 1 × ½ tile, con la junta fina y el desgaste
+ * de mucha gente.
+ */
+function enlosado({ gx, gy }: Px): string {
+  const row = Math.floor(gy / 8);
+  const shift = (row % 2) * 8;
+  const col = Math.floor((gx + shift) / 16);
+  const lx = (gx + shift) % 16;
+  const ly = gy % 8;
+  if (ly === 7 || lx === 15) return ENLOSADO.joint;
+  const slab = hash(col, row, 13);
+  let tint = slab < 0.55 ? ENLOSADO.base : slab < 0.84 ? ENLOSADO.light : ENLOSADO.shade;
+  if (hash(Math.floor(gx / 6), Math.floor(gy / 5), 14) > 0.94) tint = ENLOSADO.shade;
+  if (ly === 0 && lx < 14 && slab < 0.84) return ENLOSADO.lighter;
   const speck = hash(gx, gy, 12);
-  if (speck < 0.035) return CANTERA.shade;
-  if (speck > 0.975) return CANTERA.lighter;
-  // Canto de luz arriba a la izquierda: se lee como losa, no como ruido.
-  if (gy % 8 === 0 && gx % 8 < 6 && slab < 0.82) return CANTERA.lighter;
+  if (speck < 0.03) return ENLOSADO.shade;
+  if (speck > 0.985) return ENLOSADO.lighter;
+  return tint;
+}
+
+/**
+ * La explanada de la Melchor Ocampo: losas grises de un tile y, cada seis
+ * tiles, una banda de piedra oscura; juntas forman la retícula de cuadros
+ * grandes que se ve desde las torres.
+ */
+function explanada({ gx, gy }: Px): string {
+  const bx = (gx + 16) % 96;
+  const by = (gy + 16) % 96;
+  if (bx < 4 || by < 4) {
+    const edge = bx === 0 || by === 0;
+    return edge ? EXPLANADA.band : hash(gx, gy, 16) < 0.2 ? EXPLANADA.bandLight : EXPLANADA.band;
+  }
+  const lx = gx % 16;
+  const ly = gy % 16;
+  if (lx === 15 || ly === 15) return EXPLANADA.joint;
+  const slab = hash(Math.floor(gx / 16), Math.floor(gy / 16), 15);
+  let tint = slab < 0.5 ? EXPLANADA.base : slab < 0.82 ? EXPLANADA.light : EXPLANADA.shade;
+  if (hash(Math.floor(gx / 7), Math.floor(gy / 6), 17) > 0.95) tint = EXPLANADA.shade;
+  if (ly === 0 && lx < 14) return EXPLANADA.lighter;
+  const speck = hash(gx, gy, 18);
+  if (speck < 0.03) return EXPLANADA.shade;
+  if (speck > 0.985) return EXPLANADA.lighter;
   return tint;
 }
 
@@ -394,7 +428,13 @@ function calle({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
     if (!isCalle(0, -1) && ly === 0) return ASFALTO.shade;
     const top = !isCalle(0, -1);
     const bottom = !isCalle(0, 1);
-    // Franja de tres tiles: la raya doble va en el de en medio.
+    // Franja de tres tiles: la raya doble va en el de en medio, con sus boyas
+    // amarillas en relieve cada tanto (luz arriba, sombra abajo).
+    if (!top && !bottom && ly >= 6 && ly <= 10 && gx % 40 >= 18 && gx % 40 <= 20) {
+      if (ly === 6) return '#fff0a6';
+      if (ly === 10) return '#9a7b1e';
+      return gx % 40 === 20 ? '#c9a22c' : ASFALTO.line;
+    }
     if (!top && !bottom && (ly === 7 || ly === 9)) return ASFALTO.line;
     if (top && isCalle(0, 1) && !isCalle(0, 2) && ly === 15 && gx % 24 < 12) {
       return ASFALTO.line;

@@ -14,9 +14,11 @@
    del centro (2026): la Catedral de 55 × 78 m con su atrio enrejado, la Plaza de Armas con el
    kiosko al centro, ocho andadores en estrella, cuatro fuentes sobre las diagonales y los
    jardines cercados; la franja de la Plaza Juárez con su andador; la Plaza Melchor Ocampo con
-   sus dos fuentes (una con la estatua) y el Árbol de los Liberales; Allende al sur con los
-   portales y Madero al norte. Las distancias se comprimen (≈ 2.5–3.5 m por tile según la zona);
-   los objetos quedan a escala de persona.
+   la estatua en su pileta oscura; Allende al sur con los portales y Madero al norte. Las
+   distancias se comprimen (≈ 2.5–3.5 m por tile según la zona); los objetos quedan a escala de
+   persona. Lo que no se ve en un plano (materiales, colores, mobiliario, lo que ya no existe)
+   sale de una investigación con fotos de Wikimedia Commons, las fichas del IMPLAN y la prensa
+   local; ver «Fidelidad» abajo.
 2. **La vista mira al sur desde Madero** (el mapa real girado 180°): la fachada principal de la
    Catedral, que da al norte, queda de frente a la cámara, y como en la calle, de frente a ella la
    Plaza de Armas queda a la derecha y la Melchor Ocampo a la izquierda. Lo que da la cara a la
@@ -39,8 +41,8 @@
    movimiento te deja de pie en la salida (servidor y cliente hacen lo mismo, sin corrección).
    `PlayerView` y `PlayerStateView` llevan `seat`; errores nuevos `SEAT_NOT_FOUND`, `SEAT_TAKEN`
    y `SEAT_NOT_REACHABLE`. Las sillas del Café también son asientos (Café v3).
-6. **Placas que se leen.** `signs` (placa de la UNESCO, las estatuas, el Árbol de los Liberales,
-   la puerta de la Catedral) las muestra el cliente sin pasar por la sala: leer no cambia nada
+6. **Placas que se leen.** `signs` (placa de la UNESCO, las estatuas, la losa del Árbol de los
+   Liberales, el kiosko, la puerta de la Catedral) las muestra el cliente sin pasar por la sala: leer no cambia nada
    del mundo. El botón contextual elige lo más cercano entre puerta, asiento libre y placa.
 7. **Encuadres de cámara.** `cameraZones` sube la cámara frente a lo alto (el atrio de la
    Catedral) para que se vean las torres, sin sacar a quien juega de la pantalla. Solo cambia lo
@@ -49,6 +51,31 @@
    interior será otro mapa con su portal, como el Café.
 9. **El Café queda bajo los portales de Allende**, frente a la Plaza de Armas, donde de verdad
    están los cafés con mesas bajo los arcos. El Café no cambia por dentro.
+
+## Fidelidad (lo que cambió al contrastar con la investigación)
+
+- **Pisos:** los andadores de la Plaza de Armas son losas gris rosado en hilada corrida
+  (`enlosado`); el atrio, losas de cantera clara (`losa`); la Melchor Ocampo, una explanada de
+  losas grises con una retícula de bandas oscuras (`explanada`).
+- **Melchor Ocampo:** la estatua de bronce (1888) va de pie sobre un dado de piedra oscura, en
+  una pileta baja donde la gente se sienta. La fuente norte se quitó en 2008: en su lugar hay
+  chorros que salen del piso (`chorros`, se cruzan a pie). Bancas-cubo y macetones junto a la
+  reja del atrio, jardineras con bugambilias y naranjos hacia Morelos, postes de dos faroles de
+  campana, el asta bandera, jacarandas hacia Madero, un globero y un carrito de churros (los
+  dulces típicos se venden en el Mercado de Dulces, no aquí).
+- **El Árbol de los Liberales ya no existe** (se perdió antes de 2015 y su reemplazo cayó en
+  2022): queda una losa a ras de piso con la frase de Ocampo, que se pisa y se lee.
+- **Plaza de Armas:** kiosko octagonal de hierro fundido (1887) sobre su base de cantera gris
+  con tableros y una puertita, en una jardinera redonda cercada con un andadorcito hasta la
+  puerta; fuentes de taza de cantera gris; pares de pilastras-farol en la boca de cada diagonal
+  y una fila por la orilla del andador; los laureles de la India podados en bloque, verde lima,
+  con el tronco encalado. En el andador Juárez, la fuente de columna junto a Madero.
+- **Portal Allende:** aplanado crema con arcos, pilares y marcos de cantera rosa y balcones de
+  herrería negra. **Madero:** doble raya amarilla con boyas y cebras con las franjas a lo largo
+  del tráfico.
+- **Placas:** los textos siguen a las fuentes (torres de 62 m, 66 con las cruces; más de
+  doscientos edificios históricos según la UNESCO). Lo que no se pudo confirmar (de qué lado
+  sube la escalera del kiosko) no se dibuja.
 
 ## Alternativas descartadas
 

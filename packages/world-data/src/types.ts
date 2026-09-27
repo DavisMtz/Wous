@@ -13,8 +13,12 @@ export type GroundKind =
   | 'fachada'
   | 'azotea'
   | 'banqueta'
-  | 'adoquin'
+  /** Losas gris rosado en hilada corrida: los andadores de la Plaza de Armas. */
+  | 'enlosado'
+  /** Losas de cantera clara: el atrio de la Catedral. */
   | 'losa'
+  /** Losas grises con bandas oscuras en retícula: la explanada de la Melchor Ocampo. */
+  | 'explanada'
   | 'empedrado'
   | 'portal'
   | 'ladrillo'
@@ -49,6 +53,12 @@ export type ObjectKind =
   | 'farol'
   | 'placa'
   | 'jardinera'
+  /** Pilastra de cantera con su farol de brazo (las entradas de la Plaza de Armas). */
+  | 'pilastra'
+  /** Asta bandera. */
+  | 'asta'
+  /** Chorros que salen del piso (las fuentes danzantes): se pasa por encima. */
+  | 'chorros'
   | 'papel-picado'
   | 'mesa'
   | 'barra'
@@ -63,6 +73,7 @@ export const NON_SOLID: ReadonlySet<ObjectKind> = new Set([
   'tapete',
   'focos',
   'comercios',
+  'chorros',
 ]);
 
 /** Un rectángulo de tiles: esquina superior izquierda, ancho y alto (acepta fracciones). */
@@ -143,7 +154,7 @@ export type Sign = {
 export type ShapeKind =
   | 'pasto'
   | 'jardin'
-  | 'adoquin'
+  | 'enlosado'
   | 'losa'
   | 'ladrillo'
   | 'empedrado'
