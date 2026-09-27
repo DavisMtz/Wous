@@ -809,6 +809,64 @@
   border-top: 2px dashed var(--cartulina-borde);
 }
 
+/* Personas que bloqueaste (casa): retrato chico, nombre y la cartulina para quitar. */
+.bloqueados__nota {
+  margin-top: var(--s-2);
+  font-size: 0.95rem;
+  color: var(--plumon-suave);
+  text-wrap: pretty;
+}
+
+.bloqueados__lista {
+  display: grid;
+  gap: 0;
+  margin: var(--s-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bloqueados__persona {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 10px 0;
+}
+
+.bloqueados__persona + .bloqueados__persona {
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.bloqueados__retrato {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.bloqueados__quien {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.bloqueados__nombre {
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.bloqueados__fecha {
+  font-size: 0.85rem;
+  color: var(--plumon-suave);
+}
+
+.cartulina.bloqueados__quitar {
+  min-height: 44px;
+  padding: 6px 14px;
+  font-size: 1rem;
+}
+
 /* ─── Formulario ─── */
 
 .formulario {

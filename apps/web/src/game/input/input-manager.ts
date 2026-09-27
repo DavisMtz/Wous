@@ -73,7 +73,8 @@ export class InputManager {
 
   /**
    * Lee todas las fuentes. Gana la primera con movimiento, en el orden del
-   * método activo primero; interactuar cuenta si cualquiera lo pidió.
+   * método activo primero; interactuar cuenta si cualquiera lo pidió, y el
+   * gesto es el primero que alguna pidió.
    */
   poll(): Omit<GameInput, 'seq'> {
     this.settle();
@@ -82,12 +83,14 @@ export class InputManager {
     );
     let move = { x: 0, y: 0 };
     let interact = false;
+    let emote: string | undefined;
     for (const source of ordered) {
       const raw = source.read();
       interact ||= raw.interact;
+      emote ??= raw.emote;
       if (move.x === 0 && move.y === 0) move = normalizeInput(raw.x, raw.y);
     }
-    return { moveX: move.x, moveY: move.y, interact };
+    return { moveX: move.x, moveY: move.y, interact, ...(emote ? { emote } : {}) };
   }
 
   release(): void {

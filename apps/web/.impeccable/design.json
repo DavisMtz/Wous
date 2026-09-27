@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-26T16:18:51.800Z",
+  "generatedAt": "2026-09-27T03:18:33.854Z",
   "title": "Design System: Wous",
   "extensions": {
     "colorMeta": {
@@ -605,6 +605,16 @@
         "name": "sombra-rotulista",
         "value": "1px 1px 0 … 7px 7px 0 var(--lona-hondo), 0 18px 26px rgb(43 18 56 / 0.32)",
         "purpose": "Solo el rótulo (text-shadow). La firma usa tres capas."
+      },
+      {
+        "name": "globo",
+        "value": "canvas: shadowColor rgb(43 18 56 / 0.5), blur 7px, offsetY 3px; canto 1px rgb(43 18 56 / 0.18)",
+        "purpose": "El globo de diálogo, pintado en el canvas."
+      },
+      {
+        "name": "tira",
+        "value": "0 1px 0 rgb(23 16 27 / 0.14), 0 6px 12px -7px rgb(43 18 56 / 0.6)",
+        "purpose": "Las tiras del chat cerrado y la nota de la sala."
       }
     ],
     "motion": [
@@ -672,6 +682,41 @@
         "name": "movimiento-reducido",
         "value": "prefers-reduced-motion: reduce → 0.01ms",
         "purpose": "Todo aparece en su estado final; la calle queda parada."
+      },
+      {
+        "name": "globo",
+        "value": "4.5s + 45ms por letra (tope 10s) · entra 150ms · se apaga en los últimos 380ms",
+        "purpose": "El globo de diálogo sobre la cabeza; se apila por antigüedad."
+      },
+      {
+        "name": "tira-del-chat",
+        "value": "pegar 260ms ease-salida · despegar 1.2s ease-in a los 11s",
+        "purpose": "Cada línea reciente de la tira cerrada se pega y se despega sola."
+      },
+      {
+        "name": "gesto",
+        "value": "1.8s · se apaga en 320ms · saludo 2 cuadros cada 170ms · risa tiembla cada 90ms",
+        "purpose": "El gesto sobre la cabeza."
+      },
+      {
+        "name": "brinco-del-gesto",
+        "value": "1 brinco de 3 px de arte en 230ms · risa: 2 de 2 px en 170ms",
+        "purpose": "Quien hace un gesto brinca."
+      },
+      {
+        "name": "ficha-pegar",
+        "value": "260ms ease-salida, desde −12px y −3°",
+        "purpose": "La ficha de una persona baja y se pega."
+      },
+      {
+        "name": "abanico-gestos",
+        "value": "200ms ease-salida, desde 14px a la derecha",
+        "purpose": "El abanico de gestos en teléfono."
+      },
+      {
+        "name": "gente-colgar",
+        "value": "220ms ease-salida, desde −8px",
+        "purpose": "La lista de «Gente aquí» se cuelga del letrero."
       }
     ],
     "breakpoints": [
@@ -777,6 +822,30 @@
       "description": "Nota escrita sobre la hoja: error en rojo (role=alert) o éxito en verde (role=status), con ícono de trazo de plumón.",
       "html": "<div class=\"ds-aviso ds-aviso--error\" role=\"alert\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.1 3.5 21 19.6H3.1Z\"/><path d=\"M12 9.6v4.3\"/><path d=\"M12 16.9v.2\"/></svg><div>Demasiados intentos. Espera 60 segundos y vuelve a intentarlo.</div></div><div class=\"ds-aviso ds-aviso--ok\" role=\"status\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4.4 12.8 4.9 4.6L19.8 6.3\"/></svg><div>Listo. Te llegará un enlace nuevo en unos minutos.</div></div>",
       "css": ".ds-aviso { display: flex; gap: 10px; align-items: flex-start; max-width: 420px; margin-bottom: 12px; padding: 12px 14px; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); font-weight: 650; line-height: 1.4; border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; } .ds-aviso svg { flex: none; margin-top: 1px; } .ds-aviso--error { color: #8c0a10; background: color-mix(in oklab, var(--rojo-plumon, #c8141c) 8%, white); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon, #c8141c) 55%, white); } .ds-aviso--ok { color: #0a5328; background: color-mix(in oklab, var(--fosfo-verde, #5dff86) 24%, white); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--lona-verde, #0f8a4a) 50%, white); }"
+    },
+    {
+      "name": "Globo de diálogo",
+      "kind": "custom",
+      "refersTo": "globo",
+      "description": "Recado de cartulina sobre la etiqueta de quien habla: Bricolage 600 a 13.5px, esquinas 5/8/6/9, sombra ciruela, pico hacia la etiqueta y masking en la esquina. En el juego se pinta en canvas; esto es su traducción a CSS.",
+      "html": "<div class=\"ds-globo-escena\"><p class=\"ds-globo\">¿Alguien va al café? Dicen que hay pan de muerto</p><span class=\"ds-globo-etiqueta\">Beto Plática</span></div>",
+      "css": ".ds-globo-escena { display: grid; justify-items: center; gap: 8px; padding: 16px; background: #9c8f95; } .ds-globo { position: relative; max-width: 196px; margin: 0; padding: 7px 10px; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); font-weight: 600; font-size: 13.5px; line-height: 17px; color: var(--plumon, #17101b); background: var(--cartulina, #fffbf1); border-radius: 5px 8px 6px 9px; box-shadow: 0 0 0 1px rgb(43 18 56 / 0.18), 0 3px 7px rgb(43 18 56 / 0.5); } .ds-globo::before { content: \"\"; position: absolute; top: -4px; left: 6px; width: 20px; height: 8px; rotate: -7deg; background: rgb(233 219 177 / 0.9); clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%); } .ds-globo::after { content: \"\"; position: absolute; top: 100%; left: 46%; border: 6px solid transparent; border-top: 7px solid var(--cartulina, #fffbf1); border-bottom: 0; } .ds-globo-etiqueta { padding: 1px 6px; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); font-weight: 600; font-size: 13px; color: var(--plumon, #17101b); background: var(--cartulina, #fffbf1); }"
+    },
+    {
+      "name": "Botón del HUD",
+      "kind": "button",
+      "refersTo": "boton-hud",
+      "description": "«Hablar» y «Gestos» en táctil: cartulina de trazo chico con plumón a 1.06rem; abierto pasa a marcatextos con la equis de cerrar. Se hunde 3px.",
+      "html": "<div class=\"ds-hud\"><button type=\"button\" class=\"ds-boton-hud\" aria-expanded=\"false\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.2 5.3h15.6l-.2 10.1h-8.2l-4.3 3.6.3-3.6H4.4Z\"/></svg>Hablar</button><button type=\"button\" class=\"ds-boton-hud\" aria-expanded=\"true\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6.1 6.2 17.9 17.9M17.8 6 6.2 18.1\"/></svg>Gestos</button></div>",
+      "css": ".ds-hud { display: flex; gap: 12px; flex-wrap: wrap; } .ds-boton-hud { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 16px 8px 13px; border: 0; border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; background: var(--cartulina, #fffbf1); color: var(--plumon, #17101b); font-family: var(--font-plumon, \"Permanent Marker\", \"Segoe Print\", cursive); font-size: 1.06rem; box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55); cursor: pointer; transition: transform 110ms var(--ease-presion, cubic-bezier(0.3, 0, 0.1, 1)), box-shadow 110ms var(--ease-presion, cubic-bezier(0.3, 0, 0.1, 1)); } .ds-boton-hud[aria-expanded=\"true\"] { background: var(--fosfo-amarillo, #efff3a); } .ds-boton-hud:active { transform: translateY(3px); box-shadow: 0 0 0 rgb(23 16 27 / 0.2), 0 2px 4px -2px rgb(43 18 56 / 0.5); } .ds-boton-hud:focus-visible { outline: 3px solid var(--plumon, #17101b); outline-offset: 3px; }"
+    },
+    {
+      "name": "Motivos del reporte",
+      "kind": "chip",
+      "refersTo": "motivo",
+      "description": "Seis cartulinas chicas blancas en dos columnas; la elegida en marcatextos con canto de plumón.",
+      "html": "<fieldset class=\"ds-motivos\"><legend class=\"ds-motivos__pregunta\">¿Qué pasó?</legend><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\" checked>Me está molestando</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Spam o mensajes repetidos</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Contenido sexual</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Otra cosa</label></fieldset>",
+      "css": ".ds-motivos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 380px; margin: 0; padding: 0; border: 0; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); color: var(--plumon, #17101b); } .ds-motivos__pregunta { margin: 0 0 10px; font-family: var(--font-cartel, \"Big Shoulders Display Variable\", \"Arial Narrow\", sans-serif); font-weight: 850; font-size: 1.3rem; line-height: 1.05; text-transform: uppercase; } .ds-motivo { position: relative; display: flex; align-items: center; min-height: 46px; padding: 8px 11px; border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; background: #ffffff; box-shadow: inset 0 0 0 2px var(--cartulina-borde, #e9dfc8); font-size: 0.9rem; font-weight: 650; line-height: 1.2; cursor: pointer; transition: background-color 140ms ease, box-shadow 140ms ease; } .ds-motivo input { position: absolute; opacity: 0; pointer-events: none; } .ds-motivo:hover { background: color-mix(in oklab, var(--fosfo-amarillo, #efff3a) 35%, white); } .ds-motivo:has(input:checked) { background: var(--fosfo-amarillo, #efff3a); box-shadow: inset 0 0 0 2px var(--plumon, #17101b), 0 4px 8px -5px rgb(43 18 56 / 0.5); } .ds-motivo:has(input:focus-visible) { outline: 3px solid var(--plumon, #17101b); outline-offset: 2px; }"
     }
   ],
   "narrative": {
@@ -850,6 +919,11 @@
         "name": "La Regla de Ningún Rectángulo de Pantalla",
         "body": "Ninguna superficie visible lleva un radio uniforme en sus cuatro esquinas. Las únicas excepciones son los círculos de color y las zonas de foco e interacción, que no se ven como superficie.",
         "section": "shapes"
+      },
+      {
+        "name": "La Regla del Gesto Propio",
+        "body": "Un gesto es pixel art del mundo y se ve de quien lo hace: lleva su piel, su playera o su cara. Nunca es un emoji, un ícono de sistema ni una imagen genérica.",
+        "section": "components"
       }
     ],
     "dos": [
@@ -863,7 +937,11 @@
       "**Do** hacer que el cable del foco baje desde la orilla de la lona y termine en el socket.",
       "**Do** dejar el estado final en el CSS y animar solo con `entrance()` o tras `canAnimate()`, con red de seguridad y limpiando las propiedades en línea al terminar.",
       "**Do** confirmar lo hecho con una cartulina verde fosforescente pegada con masking y rotulada con plumón.",
-      "**Do** poner el Turnstile en `interaction-only` y usar el chevrón propio en todo `<details>`."
+      "**Do** poner el Turnstile en `interaction-only` y usar el chevrón propio en todo `<details>`.",
+      "**Do** pintar lo que escribe la gente siempre como texto ya saneado (un nodo de React o el canvas del globo), nunca como HTML.",
+      "**Do** pintar globos y etiquetas del mundo en pixeles de pantalla, escalados 1/zoom y en Bricolage, y apilarlos para que ninguno tape a otro ni a una etiqueta.",
+      "**Do** dibujar los gestos en pixel art por código, con la piel, la playera o la cara de quien los hace.",
+      "**Do** hacer que los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») no se queden el foco con el ratón (`onMouseDown` con `preventDefault`), para que Enter siga abriendo el chat. Con teclado se llega igual con Tab."
     ],
     "donts": [
       "**Don't** hacer la portada de juego pixel de siempre: cielo morado degradado, tipografía pixel, brillo neón y un gran botón JUGAR.",
@@ -876,7 +954,8 @@
       "**Don't** usar tarjetas de pantalla (rectángulo blanco de radio uniforme con sombra gris) como contenedores.",
       "**Don't** extender la sombra dura del rótulo a cajas, botones o títulos de hoja: es la sombra del rotulista y vive solo en el rótulo.",
       "**Don't** usar las mayúsculas espaciadas (label caps) como antetítulo encima de un título.",
-      "**Don't** hacer que algo dependa del hover: en teléfono no existe."
+      "**Don't** hacer que algo dependa del hover: en teléfono no existe.",
+      "**Don't** usar la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco), ni emojis como gestos o como íconos."
     ]
   }
 }

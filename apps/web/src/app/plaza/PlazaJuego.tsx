@@ -1,9 +1,11 @@
 import '../../ui/styles/plaza.css';
-import type { ServerMessage } from '@wous/contracts';
+import '../../ui/styles/charla.css';
+import type { Emote, ReportReason, ServerMessage } from '@wous/contracts';
 import { getMap, type MapDef, PLAZA } from '@wous/world-data';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { HudStore } from '../../game/hud-store.ts';
 import { type Controls, createControls, TOUCH_CONTROL_ATTR } from '../../game/input/controls.ts';
+import { ChatLog } from '../../game/network/chat-log.ts';
 import { RoomState } from '../../game/network/room-state.ts';
 import {
   checkSessionOverHttp,
@@ -17,8 +19,12 @@ import { Icono } from '../../ui/components/Icono.tsx';
 import type { LonaColor } from '../../ui/components/Puesto.tsx';
 import { Estrella } from '../../ui/components/Tianguis.tsx';
 import { prefersReducedMotion } from '../../ui/motion.ts';
+import { Charla, type LineaDeChat } from './Charla.tsx';
 import { CortinaDeSala } from './CortinaDeSala.tsx';
+import { FichaDePersona } from './FichaDePersona.tsx';
 import { FinDeConexion } from './FinDeConexion.tsx';
+import { GenteAqui } from './GenteAqui.tsx';
+import { Gestos } from './Gestos.tsx';
 import { GiraTuTelefono } from './GiraTuTelefono.tsx';
 import { Joystick } from './Joystick.tsx';
 import { Pistas } from './Pistas.tsx';
@@ -35,6 +41,10 @@ declare global {
       sala(): string;
       /** Tu ID de personaje según la sala (null sin red o antes del snapshot). */
       yo(): string | null;
+      /** Quién tiene un globo o un gesto encima ahora. */
+      colgado(): { id: string; globo: boolean; gesto: string | null }[];
+      /** Presentes que bloqueaste. */
+      bloqueados(): string[];
     };
   }
 }
@@ -72,6 +82,9 @@ const ESTADO_CONEXION: Partial<Record<string, string>> = {
 /** La lona de cada sala: la cortina que baja al cruzar es del color de a dónde vas. */
 const LONA_DE_SALA: Record<string, LonaColor> = { plaza: 'naranja', cafe: 'rosa' };
 
+/** Pedidos de la ficha: sus errores los contesta la ficha, no el chat. */
+const PEDIDOS_SOCIALES = new Set(['BLOCK_PLAYER', 'UNBLOCK_PLAYER', 'REPORT_PLAYER']);
+
 /**
  * La sala del snapshot, si este cliente la conoce en esa versión. Si no, el
  * servidor va adelante (despliegue nuevo) y hay que recargar.
@@ -89,6 +102,9 @@ function salaConocida(room: { mapId: string; mapVersion: number }): MapDef | nul
  * Con red, la sala la dice el servidor: el juego no arranca hasta el primer
  * snapshot (puedes volver directo al Café) y cambia de sala cuando llega el
  * de otra. Entre una y otra baja la cortina de lona.
+ *
+ * Encima del mundo, la plática (Fase 7): el chat de papel, los gestos y la
+ * ficha de cada persona para reportarla o bloquearla.
  */
 export function PlazaJuego({
   look,
@@ -112,7 +128,9 @@ export function PlazaJuego({
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
   const connectionRef = useRef<WorldConnection | null>(null);
+  const chatLogRef = useRef<ChatLog | null>(null);
   const [controls, setControls] = useState<Controls | null>(null);
+  const [charlaAbierta, setCharlaAbierta] = useState(false);
   const hud = useMemo(
     () =>
       new HudStore({
@@ -127,6 +145,16 @@ export function PlazaJuego({
         fin: null,
         gente: 1,
         transicion: null,
+        chat: [],
+        salaChat: null,
+        yo: null,
+        presentes: [],
+        bloqueados: [],
+        ocultos: [],
+        ficha: null,
+        avisoChat: null,
+        silencioHasta: null,
+        social: null,
       }),
     [conectar, mapa],
   );
@@ -145,6 +173,33 @@ export function PlazaJuego({
     const unsubscribe = nextControls.manager.subscribe((metodo) => hud.set({ metodo }));
 
     const room = new RoomState();
+    const chatLog = new ChatLog();
+    chatLogRef.current = chatLog;
+    let respuestas = 0;
+    let avisos = 0;
+    let salaActual: string | null = null;
+    /** A quién bloqueaste en esta visita: su chat se oculta aunque ya no esté en la sala. */
+    const ocultos = new Set<string>();
+    const ocultar = (id: string, si: boolean) => {
+      if (si === ocultos.has(id)) return;
+      if (si) ocultos.add(id);
+      else ocultos.delete(id);
+      hud.set({ ocultos: [...ocultos] });
+    };
+
+    // Quién está y a quién bloqueaste: lo que el HUD enseña en la lista y la ficha.
+    const alCambiarLaSala = () => {
+      hud.set({
+        presentes: [...room.remotes.values()].map((r) => ({
+          id: r.id,
+          nombre: r.displayName,
+          apariencia: r.appearance,
+        })),
+        bloqueados: [...room.blocked],
+      });
+    };
+    const soltarSala = room.subscribe(alCambiarLaSala);
+
     let connection: WorldConnection | null = null;
     const onMessage = (message: ServerMessage) => {
       if (message.type === 'ROOM_SNAPSHOT' && !salaConocida(message.payload.room)) {
@@ -154,13 +209,63 @@ export function PlazaJuego({
         return;
       }
       room.apply(message, performance.now());
-      // Volviste a la misma sala (el cruce no aplicó): la escena no se reinicia y la cortina sube aquí.
-      if (message.type === 'ROOM_SNAPSHOT' && message.payload.room.mapId === hud.get().mapa) {
-        hud.set({ transicion: null });
+      if (chatLog.apply(message)) {
+        hud.set({ chat: chatLog.entries, salaChat: chatLog.currentRoom });
       }
-      if (message.type === 'ROOM_TRANSFER') {
-        const { name, mapId } = message.payload.to;
-        hud.set({ transicion: { destino: name, mapa: mapId } });
+      switch (message.type) {
+        case 'ROOM_SNAPSHOT': {
+          const { room: ref, selfId } = message.payload;
+          const sala = `${ref.mapId}:${ref.instance}`;
+          // En otra sala, la ficha de alguien de la anterior ya no aplica.
+          if (salaActual !== null && salaActual !== sala) hud.set({ ficha: null });
+          salaActual = sala;
+          for (const id of message.payload.blocked ?? []) ocultar(id, true);
+          hud.set({ yo: selfId });
+          // Volviste a la misma sala (el cruce no aplicó): la escena no se reinicia y la cortina sube aquí.
+          if (ref.mapId === hud.get().mapa) hud.set({ transicion: null });
+          return;
+        }
+        case 'ROOM_TRANSFER': {
+          const { name, mapId } = message.payload.to;
+          hud.set({ transicion: { destino: name, mapa: mapId } });
+          return;
+        }
+        case 'PLAYER_BLOCKED': {
+          respuestas += 1;
+          const { characterId, blocked } = message.payload;
+          ocultar(characterId, blocked);
+          hud.set({
+            social: { n: respuestas, tipo: 'bloqueo', id: characterId, bloqueado: blocked },
+          });
+          return;
+        }
+        case 'REPORT_ACCEPTED': {
+          respuestas += 1;
+          hud.set({ social: { n: respuestas, tipo: 'reporte', id: message.payload.characterId } });
+          return;
+        }
+        case 'ERROR': {
+          const { code, about, retryAfterMs } = message.payload;
+          if (about === 'CHAT_SEND') {
+            avisos += 1;
+            const espera =
+              code === 'RATE_LIMITED' && retryAfterMs
+                ? ` (${Math.max(1, Math.ceil(retryAfterMs / 1000))} s)`
+                : '';
+            hud.set({
+              avisoChat: { n: avisos, texto: `${message.payload.message}${espera}` },
+              ...(code === 'CHAT_MUTED' && retryAfterMs
+                ? { silencioHasta: Date.now() + retryAfterMs }
+                : {}),
+            });
+          } else if (about && PEDIDOS_SOCIALES.has(about)) {
+            respuestas += 1;
+            hud.set({ social: { n: respuestas, tipo: 'error', texto: message.payload.message } });
+          }
+          return;
+        }
+        default:
+          return;
       }
     };
     connection = conectar
@@ -214,6 +319,7 @@ export function PlazaJuego({
                 room,
                 send: (input) => net.send(input),
                 enterPortal: (portalId) => net.enterPortal(portalId),
+                emote: (emote) => net.emote(emote),
               },
             }
           : {}),
@@ -228,6 +334,8 @@ export function PlazaJuego({
           conexion: () => hud.get().conexion,
           sala: () => hud.get().mapa,
           yo: () => room.selfId,
+          colgado: () => handle.hanging(),
+          bloqueados: () => [...room.blocked],
         };
       }
     });
@@ -235,11 +343,13 @@ export function PlazaJuego({
     return () => {
       cancelled = true;
       dejarDeEsperar();
+      soltarSala();
       unsubscribe();
       window.removeEventListener('online', retry);
       document.removeEventListener('visibilitychange', retry);
       connection?.stop();
       connectionRef.current = null;
+      chatLogRef.current = null;
       game?.destroy();
       gameRef.current = null;
       nextControls.dispose();
@@ -268,6 +378,79 @@ export function PlazaJuego({
     return () => window.clearTimeout(timer);
   }, [state.aviso]);
 
+  // ─── Plática ────────────────────────────────────────────────────────────
+
+  const decir = useCallback(
+    (texto: string): boolean => {
+      const net = connectionRef.current;
+      if (net) return net.chat(texto);
+      // Banco sin red: lo dicho cuelga sobre ti y va al registro.
+      const log = chatLogRef.current;
+      if (!log) return false;
+      log.local({
+        id: `msg_local_${Date.now()}`,
+        from: 'yo',
+        name: nombre ?? 'Tú',
+        text: texto,
+        at: Date.now(),
+      });
+      hud.set({ chat: log.entries, salaChat: log.currentRoom });
+      gameRef.current?.sayLocal(texto);
+      return true;
+    },
+    [hud, nombre],
+  );
+
+  const gesto = useCallback(
+    (emote: Emote) => {
+      if (!controls) return;
+      // Entra al juego como entrada normalizada, por la misma fuente que se usó.
+      if (hud.get().metodo === 'TOUCH') controls.touch.pressEmote(emote);
+      else controls.keyboard.pressEmote(emote);
+    },
+    [controls, hud],
+  );
+
+  const abrirFicha = useCallback(
+    (id: string, nombreDe: string, mensaje: { id: string; texto: string } | null) => {
+      hud.set({ ficha: { id, nombre: nombreDe, mensaje } });
+    },
+    [hud],
+  );
+  const cerrarFicha = useCallback(() => hud.set({ ficha: null }), [hud]);
+
+  const reportar = useCallback(
+    (motivo: ReportReason, nota: string, messageId: string | null): boolean => {
+      const net = connectionRef.current;
+      const ficha = hud.get().ficha;
+      if (!net || !ficha) return false;
+      const limpia = nota.trim();
+      return net.report({
+        characterId: ficha.id,
+        reason: motivo,
+        ...(messageId ? { messageId } : {}),
+        ...(limpia ? { note: limpia } : {}),
+      });
+    },
+    [hud],
+  );
+
+  const bloquear = useCallback(
+    (bloqueo: boolean): boolean => {
+      const net = connectionRef.current;
+      const ficha = hud.get().ficha;
+      if (!net || !ficha) return false;
+      return net.block(ficha.id, bloqueo);
+    },
+    [hud],
+  );
+
+  const alNombre = useCallback(
+    (linea: LineaDeChat) =>
+      abrirFicha(linea.line.from, linea.line.name, { id: linea.line.id, texto: linea.line.text }),
+    [abrirFicha],
+  );
+
   const metodo = state.metodo;
   const [verbo = '', ...resto] = (state.cercano?.label ?? '').split(' ');
   const cubierta = !state.listo || state.transicion !== null;
@@ -285,24 +468,51 @@ export function PlazaJuego({
       : state.gente > 1
         ? `${state.gente} personas aquí`
         : 'Solo tú por ahora';
+  const ficha = state.ficha;
+  const ocultos = state.ocultos;
+  const chatVisible = useMemo(
+    () =>
+      ocultos.length === 0
+        ? state.chat
+        : state.chat.filter((e) => e.kind !== 'line' || !ocultos.includes(e.line.from)),
+    [state.chat, ocultos],
+  );
+  const hayPlatica = chatVisible.some((e) => e.kind === 'line' && e.room === state.salaChat);
+  const presenteDeFicha = ficha ? state.presentes.find((p) => p.id === ficha.id) : undefined;
 
   return (
     <div className="plaza" data-metodo={metodo}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: tocar a alguien es un atajo; por teclado se llega desde «Gente aquí» y los nombres del chat */}
       <div
         className="plaza__mundo"
         ref={hostRef}
         role="application"
         aria-roledescription="juego"
-        aria-label={`${state.sala || 'Wous'}. Camina con W A S D o las flechas; E para interactuar.`}
+        aria-label={`${state.sala || 'Wous'}. Camina con W A S D o las flechas; E para interactuar; Enter para hablar; 1 a 4 para los gestos.`}
+        onPointerMove={(e) => {
+          // Con ratón, la mano dice que a esa persona se le puede hacer clic.
+          if (e.pointerType !== 'mouse') return;
+          const id = gameRef.current?.personAt(e.clientX, e.clientY) ?? null;
+          e.currentTarget.style.cursor = id ? 'pointer' : '';
+        }}
+        onClick={(e) => {
+          const id = gameRef.current?.personAt(e.clientX, e.clientY) ?? null;
+          const presente = id ? hud.get().presentes.find((p) => p.id === id) : undefined;
+          if (presente) abrirFicha(presente.id, presente.nombre, null);
+          else if (hud.get().ficha) cerrarFicha();
+        }}
       />
 
       <header className="hud hud--arriba">
         <div className="letrero">
           <span className="letrero__masking" aria-hidden="true" />
           <h1 className="letrero__sala">{state.sala}</h1>
-          <p className="letrero__nota" aria-live="polite">
-            {nota}
-          </p>
+          <GenteAqui
+            nota={nota}
+            presentes={state.presentes}
+            bloqueados={state.bloqueados}
+            onElegir={(p) => abrirFicha(p.id, p.nombre, null)}
+          />
         </div>
         <button type="button" className="hud__salir" onClick={onSalir}>
           <Icono name="salir" size={20} />
@@ -335,7 +545,7 @@ export function PlazaJuego({
       {metodo === 'TOUCH' && controls ? (
         <div className="hud hud--tactil">
           <Joystick touch={controls.touch} />
-          {!state.camino ? <p className="hud__guia">Arrastra para caminar</p> : null}
+          {!state.camino && !hayPlatica ? <p className="hud__guia">Arrastra para caminar</p> : null}
           <div className="hud__contexto" {...{ [TOUCH_CONTROL_ATTR]: '' }}>
             {state.cercano ? (
               <Estrella
@@ -348,6 +558,34 @@ export function PlazaJuego({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      <Charla
+        entradas={chatVisible}
+        sala={state.salaChat}
+        metodo={metodo}
+        abierta={charlaAbierta}
+        onAbrir={() => setCharlaAbierta(true)}
+        onCerrar={() => setCharlaAbierta(false)}
+        onDecir={decir}
+        onNombre={alNombre}
+        aviso={state.avisoChat}
+        silencioHasta={state.silencioHasta}
+      />
+
+      <Gestos look={look} metodo={metodo} onGesto={gesto} />
+
+      {ficha ? (
+        <FichaDePersona
+          key={ficha.id + (ficha.mensaje?.id ?? '')}
+          ficha={ficha}
+          apariencia={presenteDeFicha?.apariencia ?? null}
+          bloqueada={state.bloqueados.includes(ficha.id)}
+          respuesta={state.social}
+          onReportar={reportar}
+          onBloquear={bloquear}
+          onCerrar={cerrarFicha}
+        />
       ) : null}
 
       <CortinaDeSala

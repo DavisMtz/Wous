@@ -15,6 +15,8 @@ declare global {
       conexion(): string;
       sala(): string;
       yo(): string | null;
+      colgado(): { id: string; globo: boolean; gesto: string | null }[];
+      bloqueados(): string[];
     };
   }
 }

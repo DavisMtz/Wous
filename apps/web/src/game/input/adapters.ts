@@ -1,8 +1,12 @@
+import type { Emote } from '@wous/contracts';
 import type { InputMethod } from '@wous/game-core';
 import { connectedGamepads } from './device-profile.ts';
 
-/** Lo que aporta una fuente de entrada en un instante. */
-export type RawInput = { x: number; y: number; interact: boolean };
+/**
+ * Lo que aporta una fuente de entrada en un instante. `interact` y `emote`
+ * son de flanco: una pulsación, una vez.
+ */
+export type RawInput = { x: number; y: number; interact: boolean; emote?: Emote };
 
 export interface InputSource {
   readonly method: InputMethod;
@@ -19,15 +23,28 @@ const DOWN = new Set(['KeyS', 'ArrowDown']);
 const LEFT = new Set(['KeyA', 'ArrowLeft']);
 const RIGHT = new Set(['KeyD', 'ArrowRight']);
 const INTERACT = new Set(['KeyE', 'Space']);
+/** Gestos (§19): 1 saluda, 2 ríe, 3 corazón, 4 pulgar. También en el teclado numérico. */
+export const EMOTE_KEYS: Readonly<Record<string, Emote>> = {
+  Digit1: 'wave',
+  Digit2: 'laugh',
+  Digit3: 'heart',
+  Digit4: 'thumbs_up',
+  Numpad1: 'wave',
+  Numpad2: 'laugh',
+  Numpad3: 'heart',
+  Numpad4: 'thumbs_up',
+};
 
 /**
- * Teclado (§11): WASD o flechas para moverse, E o espacio para interactuar.
+ * Teclado (§11): WASD o flechas para moverse, E o espacio para interactuar
+ * y 1–4 para los gestos.
  * Usa `code` (posición física): funciona igual en teclado español o inglés.
  */
 export class KeyboardAdapter implements InputSource {
   readonly method = 'KEYBOARD_MOUSE' as const;
   private readonly held = new Set<string>();
   private interactQueued = false;
+  private emoteQueued: Emote | null = null;
 
   constructor(private readonly onActivity: Activity = () => {}) {}
 
@@ -36,31 +53,42 @@ export class KeyboardAdapter implements InputSource {
     if (fromEditable) return false;
     const isMove = UP.has(code) || DOWN.has(code) || LEFT.has(code) || RIGHT.has(code);
     const isInteract = INTERACT.has(code);
-    if (!isMove && !isInteract) return false;
+    const emote = EMOTE_KEYS[code];
+    if (!isMove && !isInteract && !emote) return false;
     if (pressed) {
       this.onActivity(this.method);
       if (isMove) this.held.add(code);
       if (isInteract) this.interactQueued = true;
+      if (emote) this.emoteQueued = emote;
     } else {
       this.held.delete(code);
     }
     return true;
   }
 
+  /** Un gesto pedido con el ratón (su calcomanía): entra igual que su tecla. */
+  pressEmote(emote: Emote): void {
+    this.emoteQueued = emote;
+  }
+
   read(): RawInput {
     const has = (set: Set<string>) => [...set].some((code) => this.held.has(code));
     const interact = this.interactQueued;
+    const emote = this.emoteQueued;
     this.interactQueued = false;
+    this.emoteQueued = null;
     return {
       x: (has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0),
       y: (has(DOWN) ? 1 : 0) - (has(UP) ? 1 : 0),
       interact,
+      ...(emote ? { emote } : {}),
     };
   }
 
   release(): void {
     this.held.clear();
     this.interactQueued = false;
+    this.emoteQueued = null;
   }
 
   /** Conecta el adaptador a la ventana; devuelve la función para soltarlo. */
@@ -74,8 +102,8 @@ export class KeyboardAdapter implements InputSource {
     const scrolls = (code: string) => code.startsWith('Arrow') || code === 'Space';
     const down = (e: KeyboardEvent) => {
       const owned = editable(e.target) || (INTERACT.has(e.code) && control(e.target));
-      // Mantener E o Espacio no repite la interacción; solo se evita el scroll.
-      if (e.repeat && INTERACT.has(e.code)) {
+      // Mantener E, Espacio o un gesto no los repite; solo se evita el scroll.
+      if (e.repeat && (INTERACT.has(e.code) || EMOTE_KEYS[e.code])) {
         if (!owned) e.preventDefault();
         return;
       }
@@ -104,6 +132,7 @@ export class TouchAdapter implements InputSource {
   readonly method = 'TOUCH' as const;
   private vector = { x: 0, y: 0 };
   private interactQueued = false;
+  private emoteQueued: Emote | null = null;
 
   constructor(private readonly onActivity: Activity = () => {}) {}
 
@@ -117,15 +146,24 @@ export class TouchAdapter implements InputSource {
     this.onActivity(this.method);
   }
 
+  /** Una calcomanía de gesto tocada (§19). */
+  pressEmote(emote: Emote): void {
+    this.emoteQueued = emote;
+    this.onActivity(this.method);
+  }
+
   read(): RawInput {
     const interact = this.interactQueued;
+    const emote = this.emoteQueued;
     this.interactQueued = false;
-    return { ...this.vector, interact };
+    this.emoteQueued = null;
+    return { ...this.vector, interact, ...(emote ? { emote } : {}) };
   }
 
   release(): void {
     this.vector = { x: 0, y: 0 };
     this.interactQueued = false;
+    this.emoteQueued = null;
   }
 }
 

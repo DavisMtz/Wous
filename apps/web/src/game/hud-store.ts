@@ -1,4 +1,6 @@
+import type { AppearanceInput } from '@wous/contracts';
 import type { InputMethod } from '@wous/game-core';
+import type { ChatEntry } from './network/chat-log.ts';
 import type { ConnectionStatus, EndReason } from './network/world-connection.ts';
 
 /**
@@ -10,6 +12,18 @@ export type Cercano = { id: string; label: string } | null;
 
 /** Cruzaste una puerta y se está abriendo la otra sala (la cortina baja mientras). */
 export type Transicion = { destino: string; mapa: string } | null;
+
+/** Alguien en la sala (para la lista «Gente aquí» y la ficha). */
+export type Presente = { id: string; nombre: string; apariencia: AppearanceInput };
+
+/** La ficha abierta de alguien y, si se abrió desde un mensaje, cuál. */
+export type Ficha = { id: string; nombre: string; mensaje: { id: string; texto: string } | null };
+
+/** Lo último que contestó la sala a un bloqueo o un reporte. `n` cambia en cada respuesta. */
+export type RespuestaSocial =
+  | { n: number; tipo: 'bloqueo'; id: string; bloqueado: boolean }
+  | { n: number; tipo: 'reporte'; id: string }
+  | { n: number; tipo: 'error'; texto: string };
 
 export type HudState = {
   sala: string;
@@ -32,6 +46,23 @@ export type HudState = {
   gente: number;
   /** Cambio de sala en curso. */
   transicion: Transicion;
+  /** Registro del chat (arreglo nuevo en cada cambio) y la sala actual del registro. */
+  chat: readonly ChatEntry[];
+  salaChat: string | null;
+  /** Tu ID de personaje según la sala. */
+  yo: string | null;
+  /** Quiénes más están en la sala. */
+  presentes: readonly Presente[];
+  /** Presentes que bloqueaste. */
+  bloqueados: readonly string[];
+  /** Todas las personas que bloqueaste en esta visita (aunque ya se hayan ido): su chat no se ve. */
+  ocultos: readonly string[];
+  ficha: Ficha | null;
+  /** Lo que la sala contestó a tu último mensaje (flood, vacío, silencio). */
+  avisoChat: { n: number; texto: string } | null;
+  /** Silencio de moderación vigente hasta (hora local, epoch ms). */
+  silencioHasta: number | null;
+  social: RespuestaSocial | null;
 };
 
 type Listener = () => void;

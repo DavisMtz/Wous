@@ -187,6 +187,31 @@ components:
     textColor: "#0a5328"
     rounded: "{rounded.trazo-chico}"
     padding: "12px 14px"
+  boton-hud:
+    backgroundColor: "{colors.cartulina}"
+    textColor: "{colors.plumon}"
+    rounded: "{rounded.trazo-chico}"
+    padding: "8px 16px 8px 13px"
+    height: "46px"
+  boton-hud-abierto:
+    backgroundColor: "{colors.fosfo-amarillo}"
+  gesto:
+    backgroundColor: "{colors.cartulina}"
+    rounded: "{rounded.trazo-chico}"
+    size: "54px"
+  globo:
+    backgroundColor: "{colors.cartulina}"
+    textColor: "{colors.plumon}"
+    rounded: "5px 8px 6px 9px"
+    padding: "7px 10px"
+  motivo:
+    backgroundColor: "{colors.blanco}"
+    textColor: "{colors.plumon}"
+    rounded: "{rounded.trazo-chico}"
+    padding: "8px 11px"
+    height: "46px"
+  motivo-elegido:
+    backgroundColor: "{colors.fosfo-amarillo}"
 ---
 
 # Design System: Wous
@@ -225,22 +250,22 @@ Las lonas. Cada una trae tres tonos: la base (la tela), la **honda** (el pliegue
 
 ### Secondary
 Las cartulinas fosforescentes, rotuladas siempre con plumón.
-- **Marcatextos** (`fosfo-amarillo`): lo que puedes hacer o lo que ya elegiste. Botón de acción principal, selección de texto, chip presionado, pestaña activa, etiqueta de cartón del maniquí, halo de la opción elegida y raya central de la calle. Con plumón encima da 16.90:1.
+- **Marcatextos** (`fosfo-amarillo`): lo que puedes hacer o lo que ya elegiste. Botón de acción principal, selección de texto, chip presionado, pestaña activa, etiqueta de cartón del maniquí, halo de la opción elegida y raya central de la calle. En la Plaza, además, tu nombre (tu etiqueta y tu renglón del chat), «Decir», el motivo de reporte elegido y el botón del HUD abierto. Con plumón encima da 16.90:1.
 - **Naranja de estrella** (`fosfo-naranja`): la estrella de precio «¡Pásale!» y la calcomanía «Pronto» de las piezas bloqueadas. Con plumón encima da 7.15:1.
-- **Verde de hecho** (`fosfo-verde`): lo que quedó hecho. Cartulina de confirmación («¡Enviado!», «¡Confirmado!», «¡Listo!»), el letrero «¡Pruébatelo!» del perchero y, rebajado, el fondo del aviso de éxito.
+- **Verde de hecho** (`fosfo-verde`): lo que quedó hecho. Cartulina de confirmación («¡Enviado!», «¡Confirmado!», «¡Listo!», «¡Hecho!»), el letrero «¡Pruébatelo!» del perchero y, rebajado, el fondo del aviso de éxito.
 
 ### Tertiary
-- **Rojo plumón** (`rojo-plumon`): errores (borde del campo, mensaje, marco de la casilla) y también la palomita de la casilla, trazada en rojo como la de un maestro. Sobre papel da 5.26:1.
+- **Rojo plumón** (`rojo-plumon`): errores (borde del campo, mensaje, marco de la casilla) y también la palomita de la casilla, trazada en rojo como la de un maestro. En la Plaza, la nota con que la sala contesta junto al campo del chat y la cuenta de letras al llegar al tope. Sobre papel da 5.26:1.
 
 ### Neutral
 - **Plumón** (`plumon`): la tinta. Texto sobre papel (16.5 a 17.7:1 según la lona), borde de campos, texto de todas las cartulinas.
-- **Plumón suave** (`plumon-suave`): texto secundario, ayudas, entradas de la hoja, leyendas y etiquetas de dato (9.2 a 9.9:1 sobre papel).
+- **Plumón suave** (`plumon-suave`): texto secundario, ayudas, entradas de la hoja, leyendas y etiquetas de dato (9.2 a 9.9:1 sobre papel). También es la tinta de la etiqueta de alguien que bloqueaste.
 - **Ciruela** (`ciruela`): la sombra de todo. Toda sombra usa `rgb(43 18 56 / …)`, el pixel art oscurece hacia este tono y también son ciruela el cable del foco y el hueco de los ojillos.
 - **Cartulina** (`cartulina`): la tinta sobre la lona (`--sobre-lona` en cuatro de las cinco) y la base del papel.
 - **Borde de cartulina** (`cartulina-borde`): las divisiones punteadas dentro de la hoja y el borde de las opciones sin elegir.
 - **Papel** (`papel`): cartulina teñida al 9% por la luz de la lona que tiene encima. Resuelve a `#ffefeb` bajo la rosa, `#eff1f4` bajo la azul, `#f0f6e6` bajo la verde, `#fff9e7` bajo la amarilla y `#fff3e4` bajo la naranja. Es el fondo de la hoja, de los chips y del letrero del pie.
 - **Blanco** (`blanco`): el interior de campos, opciones y el marco de la casilla. Es la hoja blanca pegada sobre el papel teñido, para que lo que escribes se distinga del resto.
-- **Masking** (`masking`): la cinta que pega la estrella y la cartulina de confirmación. Siempre al 86% y con recorte trapezoidal.
+- **Masking** (`masking`): la cinta que pega la estrella, la cartulina de confirmación y, en la Plaza, el letrero de la sala, la hoja del chat, la ficha de una persona y la esquina de cada globo. Siempre al 86% y con recorte trapezoidal (en el globo, pintada en el canvas al 90%). Como superficie, es la etiqueta de alguien que bloqueaste y el papelito de su marca.
 - **Madera** (`madera`, `madera-sombra`): las pinzas del tendedero.
 - **Cuerda** (`cuerda`, `cuerda-sombra`): el tendedero y el hilo de la etiqueta.
 - **Asfalto y banqueta** (`asfalto`, `asfalto-luz`, `banqueta`): la calle del pie, con raya discontinua de marcatextos.
@@ -329,7 +354,7 @@ Las piezas van un poco chuecas: la hoja −0.6°, el letrero del pie −1.2°, l
 
 Siluetas propias: la estrella de 17 picos irregulares (su forma sale de una semilla del texto, así que no cambia entre cargas); los festones de la orilla; la cinta masking con recorte trapezoidal; la casilla, que es un cuadro dibujado a mano y no un cuadrado; las pinzas en SVG; y los puntos de carga, redondos pero desiguales (`50% 40% 55% 45%`).
 
-Íconos: SVG propios sobre una rejilla de 24, con trazo único de 2.4, puntas redondas y coordenadas apenas irregulares. Heredan el color del texto. Hoy son 12: ojo, ojo tachado, regresar, sobre, palomita, alerta, salir, flecha, girar, caminar, dado y gancho.
+Íconos: SVG propios sobre una rejilla de 24, con trazo único de 2.4, puntas redondas y coordenadas apenas irregulares. Heredan el color del texto. Hoy son 19: ojo, ojo tachado, regresar, sobre, palomita, alerta, salir, flecha, girar, caminar, dado, gancho y, desde la plática en la Plaza, globo, globo tachado, bandera, bloquear, carita, cerrar y gente.
 
 **La Regla de Ningún Rectángulo de Pantalla.** Ninguna superficie visible lleva un radio uniforme en sus cuatro esquinas. Las únicas excepciones son los círculos de color y las zonas de foco e interacción, que no se ven como superficie.
 
@@ -403,7 +428,23 @@ El Café es un café de barrio, con la misma luz de día que la Plaza. El piso e
 Al cruzar una puerta baja una lona del color de a dónde vas (naranja para la Plaza, rosa como el toldo del Café). Cubre de arriba abajo en 0.38 s con `power3.in`, dice el destino en letra de rotulista y «Cruzando la puerta…» en plumón, y se enrolla hacia arriba cuando la sala nueva ya pintó. En la primera entrada ya está abajo. Sin movimiento solo aparece y desaparece. Quien perdió la señal se ve desvanecido, con «· sin señal» en su etiqueta.
 
 ### Signature: los nombres en la plaza
-Sobre cada persona flota su nombre en una **etiqueta de papel**: cartulina con texto de plumón en Bricolage 600 a 13 px de pantalla, sin importar el zoom (el texto se escala 1/zoom para que su textura caiga 1:1 en pixeles y se lea nítido sobre el pixel art). **La tuya va en marcatextos**, para encontrarte de un vistazo. El letrero de la sala cuenta a la gente («3 personas aquí», o «Solo tú por ahora»). Si el cable con la sala se corta, aparece bajo el letrero una **cinta de masking** con un punto rojo que late («Se cortó la conexión. Reconectando…»); cuando terminar es la única salida (otra pestaña, sesión vencida, versión nueva), baja la pantalla de lona con una sola acción.
+Sobre cada persona flota su nombre en una **etiqueta de papel**: cartulina con texto de plumón en Bricolage 600 a 13 px de pantalla, sin importar el zoom (el texto se escala 1/zoom para que su textura caiga 1:1 en pixeles y se lea nítido sobre el pixel art). **La tuya va en marcatextos**, para encontrarte de un vistazo. El letrero de la sala cuenta a la gente («3 personas aquí», o «Solo tú por ahora»); con alguien más en la sala, esa nota se abre en la lista de quién está (ver la plática en la Plaza). Si el cable con la sala se corta, aparece bajo el letrero una **cinta de masking** con un punto rojo que late («Se cortó la conexión. Reconectando…»); cuando terminar es la única salida (otra pestaña, sesión vencida, versión nueva), baja la pantalla de lona con una sola acción.
+
+### Signature: la plática en la Plaza
+Lo que dices sale de tu personaje como un recado de cartulina colgado sobre tu cabeza, y tus gestos son del mundo. Todo es el papel del HUD sobre el pixel art, salvo los gestos, que son la única pieza de pixel art de esta capa. Rechazo confirmado: la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco) y los emojis como íconos.
+
+- **Globo de diálogo.** Un recado de cartulina sobre la etiqueta de quien habla, pintado en un canvas a pixeles de PANTALLA y escalado 1/zoom, como las etiquetas: Bricolage 600 a 13.5px en plumón, renglones de 17px, a lo más 196px de texto y cuatro renglones (lo que sobra termina en «…»; el texto completo queda en el registro). Esquinas 5/8/6/9, un canto de 1px en ciruela al 18% (nunca contorno negro), sombra ciruela (`rgb(43 18 56 / 0.5)`, 7px de difuminado, 3px hacia abajo), un pico de 7px apenas chueco hacia la etiqueta y un pedazo de masking en la esquina de arriba. Una persona, un globo: el nuevo quita al anterior. Dura 4.5s más 45ms por letra (tope de 10s), entra con un saltito de 150ms y se apaga en sus últimos 380ms. Los globos se apilan por antigüedad: el más nuevo sube lo necesario para no tapar otro globo ni ninguna etiqueta.
+- **La tira del chat.** Abajo a la izquierda en escritorio, de clamp(280px, 50vw − 240px, 430px), y abajo al centro en teléfono. Cerrada, solo muestra lo reciente, a lo más cuatro líneas (tres en teléfono): cada línea es una tira de cartulina al 95% con trazo chico, sombra corta ciruela y un giro de −0.5° o 0.4°, alternado. Se pega en 260ms y se despega sola a los 11s (sube 6px y se apaga en 1.2s). Abierta, es una hoja de cartulina (`rounded.hoja`, −0.4°, sombra de hoja colgada) pegada con masking, con el registro que se desplaza hasta min(42vh, 330px). Cada renglón lleva el nombre en 800 y el texto en 520. **Tu nombre va en marcatextos**, como tu etiqueta; el de otra persona es un botón subrayado que abre su ficha. Al cambiar de sala, el registro lleva un divisor: el nombre de la sala en letra de cartel entre dos rayas punteadas de borde de cartulina.
+- **La cartulina para escribir.** Siempre a la mano en escritorio: cartulina con `rounded.trazo`, sombra de cartulina pegada y −0.6°. Cerrada, el campo blanco dice «Enter para hablar» con borde punteado de plumón al 40%; abierta, el borde es sólido de plumón y aparece «Decir», una cartulina marcatextos chica en plumón a 1.12rem que se hunde 3px. El foco del campo es un anillo doble (3px de marcatextos y, por fuera, plumón hasta 5px). Cuenta las letras que quedan y la cuenta pasa a rojo plumón en el tope. Lo que contesta la sala (demasiado rápido, repetido, sin voz) es una nota en rojo plumón con su ícono, pegada junto al campo. En teléfono, la cartulina sube arriba mientras el teclado está abierto y la hoja cuelga debajo de ella.
+- **Botones del HUD táctil.** «Hablar» y «Gestos» son cartulinas de trazo chico con plumón a 1.06rem, de 46px de alto y con su ícono de 20px, en la columna derecha bajo «Salir». Abiertos pasan a marcatextos y su ícono se vuelve la equis de cerrar. Se hunden 3px al presionarlos.
+- **Gestos.** Cuatro dibujos en pixel art pintados por código a escala entera, con el contorno del color vecino hundido. La mano que saluda (dos cuadros que se alternan cada 170ms) y el pulgar llevan la piel de quien los hace y el puño de su playera. La carcajada es su propia cara, con su piel y el fleco de su pelo, ojos cerrados y lágrimas, y tiembla cada 90ms. El corazón es rosa fosforescente del pixel art (`#ff4f9a`, no de la paleta de la interfaz), con brillo y sombra. Suben sobre la cabeza, arriba del globo, duran 1.8s y se apagan en los últimos 320ms; quien lo hace brinca una vez (3 pixeles de arte en 230ms), o dos con la risa (2 pixeles, 170ms cada uno). En el HUD de escritorio son calcomanías: cartulinas de 54px con el dibujo, giradas −2° y 1.6° alternadas, con su tecla 1–4 en la esquina como tapa de papel con canto de plumón. En teléfono los abre la cartulina «Gestos» en un abanico hacia la izquierda (200ms, calcomanías de 52px).
+- **La ficha de una persona.** Se abre al tocar a alguien, su nombre en el chat o su renglón en la lista. Es una cartulina de hasta 400px (`rounded.hoja`, −0.6°, sombra de hoja colgada) pegada con masking arriba al centro, que baja 12px desde −3° en 260ms sin tapar el juego. Lleva su retrato de 70px bajo el foco (luz cálida radial sobre masking), su nombre en Bricolage 800 a 1.4rem, lo último que dijo como cita en papel blanco («Dijo: «…»») y dos cartulinas de trazo con ícono: Reportar (bandera) y Bloquear (bloquear) o Desbloquear (globo). Bloquear pide confirmación con una pregunta en letra de cartel. Lo hecho se confirma con la cartulina verde («¡Enviado!», «¡Hecho!»).
+- **La hoja de reporte.** «¿Qué pasó?» en letra de cartel y seis motivos en dos columnas: cartulinas chicas blancas de 46px con canto de borde de cartulina. El elegido pasa a marcatextos con canto de plumón. Debajo va una nota opcional, en campo blanco con borde de plumón.
+- **La marca de bloqueo.** A quien bloqueas lo sigues viendo caminar, sin su voz ni sus gestos. Su etiqueta pasa a masking con tinta de plumón suave y, a su izquierda, lleva un papelito de masking de 22×21px con el globo a trazo de plumón suave y la raya que lo tacha en plumón. Solo lo ve quien bloquea.
+- **Gente aquí.** La nota del letrero («N personas aquí») es un botón subrayado que, abierto, pasa a marcatextos y cuelga una lista de cartulina (sombra de hoja, 0.8°, 220ms) con un renglón de 44px por persona. Es el camino por teclado a la ficha de quien no ha dicho nada.
+- **Personas que bloqueaste.** En la casa, al pie de la hoja: renglones con retrato chico, nombre, fecha y una cartulina de trazo para quitar el bloqueo, separados por raya punteada de borde de cartulina. Sin tarjetas.
+
+**La Regla del Gesto Propio.** Un gesto es pixel art del mundo y se ve de quien lo hace: lleva su piel, su playera o su cara. Nunca es un emoji, un ícono de sistema ni una imagen genérica.
 
 ### Correo transaccional
 El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de la plantilla (verificación en rosa, bienvenida en naranja, recuperación en amarilla, contraseña cambiada en azul, amistades en verde). La orilla se arma con festones de celda y costura punteada, el rótulo mide 58px con sombra de rotulista de dos capas y la hoja es cartulina lisa, sin tinte y con radio uniforme de 6px, porque el correo no mezcla colores ni dibuja radios desiguales. Al pie va una calle (banqueta y asfalto) con la razón del envío. El botón es marcatextos con plumón, pero lleva un borde de plumón de 3px y un radio uniforme de 10px: es una traducción para clientes de correo, no el botón de la web.
@@ -422,6 +463,10 @@ El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de l
 - **Do** dejar el estado final en el CSS y animar solo con `entrance()` o tras `canAnimate()`, con red de seguridad y limpiando las propiedades en línea al terminar.
 - **Do** confirmar lo hecho con una cartulina verde fosforescente pegada con masking y rotulada con plumón.
 - **Do** poner el Turnstile en `interaction-only` y usar el chevrón propio en todo `<details>`.
+- **Do** pintar lo que escribe la gente siempre como texto ya saneado (un nodo de React o el canvas del globo), nunca como HTML.
+- **Do** pintar globos y etiquetas del mundo en pixeles de pantalla, escalados 1/zoom y en Bricolage, y apilarlos para que ninguno tape a otro ni a una etiqueta.
+- **Do** dibujar los gestos en pixel art por código, con la piel, la playera o la cara de quien los hace.
+- **Do** hacer que los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») no se queden el foco con el ratón (`onMouseDown` con `preventDefault`), para que Enter siga abriendo el chat. Con teclado se llega igual con Tab.
 
 ### Don't:
 - **Don't** hacer la portada de juego pixel de siempre: cielo morado degradado, tipografía pixel, brillo neón y un gran botón JUGAR.
@@ -435,3 +480,4 @@ El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de l
 - **Don't** extender la sombra dura del rótulo a cajas, botones o títulos de hoja: es la sombra del rotulista y vive solo en el rótulo.
 - **Don't** usar las mayúsculas espaciadas (label caps) como antetítulo encima de un título.
 - **Don't** hacer que algo dependa del hover: en teléfono no existe.
+- **Don't** usar la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco), ni emojis como gestos o como íconos.

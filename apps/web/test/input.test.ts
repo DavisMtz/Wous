@@ -23,6 +23,32 @@ describe('teclado', () => {
     expect(kb.read().interact).toBe(false);
   });
 
+  it('1–4 son los gestos, de flanco; mantener la tecla no los repite', () => {
+    const kb = new KeyboardAdapter();
+    expect(kb.handleKey('Digit1', true, false)).toBe(true);
+    expect(kb.read()).toEqual({ x: 0, y: 0, interact: false, emote: 'wave' });
+    expect(kb.read().emote).toBeUndefined();
+    kb.handleKey('Numpad4', true, false);
+    const manager = new InputManager('KEYBOARD_MOUSE');
+    manager.setSources([kb]);
+    expect(manager.poll().emote).toBe('thumbs_up');
+    expect(manager.poll().emote).toBeUndefined();
+    // Escribiendo en el chat, un 3 es un 3, no un corazón.
+    expect(kb.handleKey('Digit3', true, true)).toBe(false);
+    expect(kb.read().emote).toBeUndefined();
+  });
+
+  it('las calcomanías entran al juego como la tecla, en ratón o en táctil', () => {
+    const kb = new KeyboardAdapter();
+    const touch = new TouchAdapter();
+    const manager = new InputManager('TOUCH');
+    manager.setSources([kb, touch]);
+    touch.pressEmote('heart');
+    expect(manager.poll().emote).toBe('heart');
+    kb.pressEmote('laugh');
+    expect(manager.poll().emote).toBe('laugh');
+  });
+
   it('escribir en un campo no mueve al personaje', () => {
     const kb = new KeyboardAdapter();
     expect(kb.handleKey('KeyW', true, true)).toBe(false);

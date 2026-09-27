@@ -1,4 +1,5 @@
-import type { WsErrorCode } from '@wous/contracts';
+import { CHAT, EMOTE } from '@wous/config';
+import { type ChatLine, EMOTE_IDS, type Emote, type WsErrorCode } from '@wous/contracts';
 import {
   type CollisionGrid,
   canStandAt,
@@ -31,7 +32,8 @@ import { foco, focoXs, haloDeFoco } from '../world-art/interior.ts';
 import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/objects.ts';
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
-import { addCanvasTexture, Persona } from './persona.ts';
+import { globoMs, paintGlobo } from './globo.ts';
+import { addCanvasTexture, type GloboRect, NAME_FONT, Persona } from './persona.ts';
 
 /** La red de la sala, vista desde la escena: leer el estado y mandar intención. */
 export type SceneNetwork = {
@@ -39,6 +41,8 @@ export type SceneNetwork = {
   send(input: GameInput): boolean;
   /** Pide cruzar un portal (solo su ID). */
   enterPortal(portalId: string): boolean;
+  /** Pide un gesto (solo su ID). */
+  emote(emote: Emote): boolean;
 };
 
 export type WorldSceneOptions = {
@@ -69,6 +73,10 @@ const SNAP_TILES = 3;
 const IGNORE_TILES = 0.02;
 /** Si la sala no contesta al pedir cruzar, se suelta a la persona. */
 const CROSSING_TIMEOUT_MS = 6000;
+/** Margen del cliente sobre el enfriamiento de gestos: el honesto nunca toca el tope. */
+const EMOTE_MARGIN_MS = 150;
+/** Margen para tocar a alguien con el dedo, en pixeles de arte. */
+const TOUCH_PAD = 4;
 
 /** Lo que se le dice a quien la puerta no dejó pasar. */
 const PORTAL_REFUSED: Partial<Record<WsErrorCode, string>> = {
@@ -114,6 +122,9 @@ export class WorldScene extends Phaser.Scene {
   private correction = { x: 0, y: 0 };
   /** Pediste cruzar y la sala aún no contesta: no se camina (§33, TRANSITIONING). */
   private crossing: { portalId: string; since: number } | null = null;
+  /** Tu último gesto: se pinta al instante y el eco del servidor ya no lo repite. */
+  private ownGesture: { emote: Emote; at: number } | null = null;
+  private globoCount = 0;
 
   constructor(options: WorldSceneOptions) {
     super({ key: 'mundo' });
@@ -137,6 +148,7 @@ export class WorldScene extends Phaser.Scene {
     this.history = [];
     this.correction = { x: 0, y: 0 };
     this.crossing = null;
+    this.ownGesture = null;
   }
 
   create(): void {
@@ -181,6 +193,35 @@ export class WorldScene extends Phaser.Scene {
     return [...this.remotes].map(([id, r]) => ({ id, x: r.x, y: r.y }));
   }
 
+  /** Quién tiene algo colgado ahora: globo o gesto (pruebas E2E). */
+  get hanging(): { id: string; globo: boolean; gesto: string | null }[] {
+    const out = [...this.remotes].map(([id, r]) => ({ id, ...r.persona.showing }));
+    const selfId = this.o.net?.room.selfId ?? 'yo';
+    if (this.self) out.push({ id: selfId, ...this.self.showing });
+    return out;
+  }
+
+  /**
+   * A quién tocaste (clic o dedo), en coordenadas del lienzo. Gana quien está
+   * más al frente. Tú no cuentas: tu propia ficha no hace falta.
+   */
+  personAt(canvasX: number, canvasY: number): string | null {
+    if (!this.sys.isActive()) return null;
+    const point = this.cameras.main.getWorldPoint(canvasX, canvasY);
+    let best: { id: string; depth: number } | null = null;
+    for (const [id, entry] of this.remotes) {
+      if (!entry.persona.contains(point.x, point.y, TOUCH_PAD)) continue;
+      const depth = entry.persona.sprite.depth;
+      if (!best || depth > best.depth) best = { id, depth };
+    }
+    return best?.id ?? null;
+  }
+
+  /** Sin servidor (banco de desarrollo): lo que dices cuelga sobre ti. */
+  sayLocal(text: string): void {
+    if (this.self) this.hangGlobo(this.self, text, this.time.now);
+  }
+
   override update(time: number, delta: number): void {
     const net = this.o.net;
     // La sala manda: si el servidor te tiene en otro mapa, se cambia de escena.
@@ -209,7 +250,8 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Primero se manda (con la posición de ANTES de moverse: así la mide el servidor).
-    this.sampler.tick(time, input);
+    this.sampler.tick(time, { moveX: input.moveX, moveY: input.moveY, interact: input.interact });
+    if (polled.emote && !this.crossing) this.playOwnGesture(polled.emote, time);
 
     const intent = { x: input.moveX, y: input.moveY };
     const moving = intent.x !== 0 || intent.y !== 0;
@@ -224,6 +266,10 @@ export class WorldScene extends Phaser.Scene {
     this.self.draw(this.position.x, this.position.y, this.facing, moving, !this.o.quiet);
 
     if (net) this.drawRemotes(net.room, time);
+    if (net) this.hangFromRoom(net.room, time);
+    this.stackGlobos();
+    this.self.tick(time, !this.o.quiet);
+    for (const { persona } of this.remotes.values()) persona.tick(time, !this.o.quiet);
 
     const portal = this.crossing ? null : nearestPortal(this.map, this.position);
     const id = portal?.id ?? null;
@@ -269,7 +315,9 @@ export class WorldScene extends Phaser.Scene {
 
   /** Lo que la sala contestó al pedir cruzar: si no dejó, se suelta y se dice por qué. */
   private watchCrossing(room: RoomState, time: number): void {
-    for (const code of room.takeErrors()) {
+    for (const { code, about } of room.takeErrors()) {
+      // Lo del chat, los gestos o la seguridad social lo dice el HUD, no la puerta.
+      if (about !== undefined && about !== 'ENTER_PORTAL') continue;
       const texto = this.crossing ? PORTAL_REFUSED[code] : undefined;
       if (!texto) continue;
       this.crossing = null;
@@ -280,6 +328,84 @@ export class WorldScene extends Phaser.Scene {
       this.crossing = null;
       this.o.hud.avisar('La puerta no contestó. Intenta otra vez.');
     }
+  }
+
+  // ─── Chat y gestos ──────────────────────────────────────────────────────
+
+  /**
+   * Un gesto tuyo (1–4 o una calcomanía): se pinta YA y se pide a la sala;
+   * el eco que regresa no lo repite. El enfriamiento del cliente es un poco
+   * más largo que el del servidor, así que el honesto nunca toca el tope.
+   */
+  private playOwnGesture(raw: string, time: number): void {
+    const emote = EMOTE_IDS.find((e) => e === raw);
+    if (!emote) return;
+    const last = this.ownGesture?.at ?? Number.NEGATIVE_INFINITY;
+    if (time - last < EMOTE.cooldownMs + EMOTE_MARGIN_MS) return;
+    const net = this.o.net;
+    if (net && !net.emote(emote)) return;
+    this.ownGesture = { emote, at: time };
+    this.self.gesture(emote, time, EMOTE.showMs);
+  }
+
+  /** Lo dicho y los gestos que llegaron de la sala se cuelgan sobre cada quien. */
+  private hangFromRoom(room: RoomState, time: number): void {
+    const selfId = room.selfId;
+    for (const line of room.takeSaid()) {
+      const persona = line.from === selfId ? this.self : this.remotes.get(line.from)?.persona;
+      if (persona) this.hangGlobo(persona, line.text, time, line);
+    }
+    for (const { id, emote } of room.takeGestures()) {
+      if (id === selfId) {
+        // Ya se pintó al pedirlo; solo si no (otra pestaña, reconexión) se pinta ahora.
+        const own = this.ownGesture;
+        if (own && own.emote === emote && time - own.at < EMOTE.showMs) continue;
+        this.self.gesture(emote, time, EMOTE.showMs);
+        continue;
+      }
+      this.remotes.get(id)?.persona.gesture(emote, time, EMOTE.showMs);
+    }
+  }
+
+  /**
+   * Globos que se enciman (dos personas juntas hablando): el más viejo se
+   * queda en su lugar y el nuevo sube hasta quedar libre. Ningún globo tapa
+   * la etiqueta de alguien más: los nombres son obstáculos desde el inicio.
+   * Se decide con dónde quedaron en el cuadro anterior: la gente camina despacio.
+   */
+  private stackGlobos(): void {
+    const personas = [this.self, ...[...this.remotes.values()].map((r) => r.persona)];
+    const globos = personas
+      .map((persona) => ({ persona, rect: persona.globoRect }))
+      .filter((g): g is { persona: Persona; rect: GloboRect } => g.rect !== null)
+      .sort((a, b) => a.rect.born - b.rect.born);
+    if (globos.length === 0) return;
+    const placed: GloboRect[] = personas
+      .map((persona) => persona.tagRect)
+      .filter((r): r is GloboRect => r !== null);
+    for (const { persona, rect } of globos) {
+      let lift = 0;
+      for (let guard = 0; guard < placed.length + 1; guard++) {
+        const hit = placed.find(
+          (q) => rect.x0 < q.x1 && rect.x1 > q.x0 && rect.y0 - lift < q.y1 && rect.y1 - lift > q.y0,
+        );
+        if (!hit) break;
+        lift = rect.y1 - hit.y0 + 1;
+      }
+      persona.setGloboLift(lift);
+      placed.push({ ...rect, y0: rect.y0 - lift, y1: rect.y1 - lift });
+    }
+  }
+
+  private hangGlobo(persona: Persona, text: string, time: number, line?: ChatLine): void {
+    this.globoCount += 1;
+    const key = `globo:${line?.id ?? 'local'}:${this.globoCount}`;
+    persona.say(
+      key,
+      paintGlobo(text, NAME_FONT),
+      time,
+      globoMs(text, CHAT.bubbleMs, CHAT.bubblePerCharMs),
+    );
   }
 
   // ─── Red ────────────────────────────────────────────────────────────────
@@ -350,6 +476,7 @@ export class WorldScene extends Phaser.Scene {
         persona.setZoom(this.cameras.main.zoom);
         this.remotes.set(id, { persona, x: 0, y: 0 });
       }
+      for (const [id, entry] of this.remotes) entry.persona.setBlocked(room.blocked.has(id));
       this.o.hud.set({ gente: room.remotes.size + 1 });
     }
     for (const [id, entry] of this.remotes) {

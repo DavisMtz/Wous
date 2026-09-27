@@ -1,13 +1,15 @@
 import { MOVEMENT, NETWORK } from '@wous/config';
 import type {
   AppearanceInput,
+  ChatLine,
+  Emote,
+  ErrorPayload,
   Facing,
   PlayerStateView,
   PlayerView,
   RoomRef,
   RoomTransferMessage,
   ServerMessage,
-  WsErrorCode,
 } from '@wous/contracts';
 import { type CollisionGrid, stepMovement } from '@wous/game-core';
 
@@ -44,6 +46,12 @@ export type Transfer = RoomTransferMessage['payload']['to'];
 /** Estado propio que manda el servidor: con él se corrige la predicción. */
 export type SelfState = { x: number; y: number; seq: number };
 
+/** Un error de la sala y el pedido que lo causó (`about`), si lo dijo. */
+export type RoomError = Pick<ErrorPayload, 'code' | 'about' | 'retryAfterMs'>;
+
+/** Un gesto que alguien hizo (la escena lo pinta sobre su cabeza). */
+export type Gesture = { id: string; emote: Emote };
+
 type Listener = () => void;
 
 /** Muestras que se guardan por jugador (≈1 s a 15 Hz). */
@@ -66,7 +74,12 @@ export class RoomState {
   /** Estados propios pendientes de que la escena los use para corregir. */
   private readonly selfStates: SelfState[] = [];
   /** Errores de la sala sin atender (la escena reacciona a los del portal). */
-  private readonly errors: WsErrorCode[] = [];
+  private readonly errors: RoomError[] = [];
+  /** Lo dicho y los gestos que la escena aún no pinta. */
+  private readonly said: ChatLine[] = [];
+  private readonly gestures: Gesture[] = [];
+  /** Presentes que bloqueaste (solo lo sabe quien bloquea, ADR-0010). */
+  readonly blocked = new Set<string>();
   /** El portal aceptado, hasta que llega la sala nueva. */
   transfer: Transfer | null = null;
   /** local − servidor, el menor visto (la muestra con menos latencia). */
@@ -97,6 +110,10 @@ export class RoomState {
         this.remotes.clear();
         this.selfStates.length = 0;
         this.errors.length = 0;
+        this.said.length = 0;
+        this.gestures.length = 0;
+        this.blocked.clear();
+        for (const id of message.payload.blocked ?? []) this.blocked.add(id);
         for (const p of players) {
           if (p.id === selfId) this.spawn = p;
           else this.remotes.set(p.id, fromView(p, serverTime));
@@ -113,7 +130,26 @@ export class RoomState {
         return;
       }
       case 'PLAYER_LEFT': {
+        this.blocked.delete(message.payload.id);
         if (this.remotes.delete(message.payload.id)) this.changed();
+        return;
+      }
+      case 'CHAT_MESSAGE': {
+        this.said.push(message.payload.message);
+        if (this.said.length > 32) this.said.shift();
+        return;
+      }
+      case 'EMOTE_PLAYED': {
+        this.gestures.push(message.payload);
+        if (this.gestures.length > 32) this.gestures.shift();
+        return;
+      }
+      case 'PLAYER_BLOCKED': {
+        const { characterId, blocked } = message.payload;
+        if (blocked === this.blocked.has(characterId)) return;
+        if (blocked) this.blocked.add(characterId);
+        else this.blocked.delete(characterId);
+        this.changed();
         return;
       }
       case 'PLAYER_STATE': {
@@ -127,7 +163,12 @@ export class RoomState {
         return;
       }
       case 'ERROR': {
-        this.errors.push(message.payload.code);
+        const { code, about, retryAfterMs } = message.payload;
+        this.errors.push({
+          code,
+          ...(about !== undefined ? { about } : {}),
+          ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+        });
         if (this.errors.length > 8) this.errors.shift();
         return;
       }
@@ -137,8 +178,18 @@ export class RoomState {
   }
 
   /** Errores de la sala llegados desde la última vez (y se vacían). */
-  takeErrors(): WsErrorCode[] {
+  takeErrors(): RoomError[] {
     return this.errors.splice(0, this.errors.length);
+  }
+
+  /** Lo dicho desde la última vez (la escena cuelga los globos). */
+  takeSaid(): ChatLine[] {
+    return this.said.splice(0, this.said.length);
+  }
+
+  /** Gestos desde la última vez. */
+  takeGestures(): Gesture[] {
+    return this.gestures.splice(0, this.gestures.length);
   }
 
   private applyState(state: PlayerStateView): void {

@@ -4,12 +4,13 @@ import { Mostrador } from '../auth/Mostrador.tsx';
 import { lookFromAppearance } from '../game/rendering/appearance.ts';
 import { mensajeDeError } from '../ui/components/Formulario.tsx';
 import { Aviso, Cartulina, Hoja } from '../ui/components/Tianguis.tsx';
+import { Bloqueados } from './Bloqueados.tsx';
 import { ROUTES, useRouter } from './router.tsx';
 import { useSession } from './session.tsx';
 
 /**
- * Con sesión iniciada y personaje armado: el vestíbulo antes de la plaza
- * (Fase 4). Muestra tu personaje, tu cuenta y cómo cerrar sesión.
+ * Con sesión iniciada y personaje armado: el vestíbulo antes de la plaza.
+ * Muestra tu personaje, tu cuenta, a quién bloqueaste y cómo cerrar sesión.
  */
 export function Casa({ session }: { session: SessionResponse }) {
   const { logout } = useSession();
@@ -38,8 +39,8 @@ export function Casa({ session }: { session: SessionResponse }) {
         id="casa-titulo"
       >
         <p className="hoja__entrada">
-          Tu personaje ya está listo. En la plaza ya puedes caminar entre los puestos; muy pronto
-          también vas a ver a los demás y platicar con ellos.
+          Tu personaje ya está listo. En la plaza te encuentras con quien ande por ahí: platica,
+          saluda con un gesto y cruza al Café.
         </p>
         <dl className="hoja__datos">
           <div>
@@ -83,6 +84,7 @@ export function Casa({ session }: { session: SessionResponse }) {
             Cerrar sesión en todos lados
           </Cartulina>
         </div>
+        {session.character ? <Bloqueados /> : null}
       </Hoja>
     </Mostrador>
   );

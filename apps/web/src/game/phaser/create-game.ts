@@ -7,6 +7,12 @@ export type GameHandle = {
   position(): Vec | null;
   /** Dónde se dibuja a los demás (pruebas E2E). */
   remotes(): { id: string; x: number; y: number }[];
+  /** Quién tiene un globo o un gesto encima ahora (pruebas E2E). */
+  hanging(): { id: string; globo: boolean; gesto: string | null }[];
+  /** A quién tocaste en la pantalla (clic o dedo), o null. */
+  personAt(clientX: number, clientY: number): string | null;
+  /** Sin servidor (banco de desarrollo): lo que dices cuelga sobre ti. */
+  sayLocal(text: string): void;
   pause(): void;
   resume(): void;
   destroy(): void;
@@ -36,6 +42,17 @@ export function createGame(parent: HTMLElement, options: WorldSceneOptions): Gam
   return {
     position: () => (scene.sys?.isActive() ? scene.playerPosition : null),
     remotes: () => (scene.sys?.isActive() ? scene.remotePositions : []),
+    hanging: () => (scene.sys?.isActive() ? scene.hanging : []),
+    personAt: (clientX, clientY) => {
+      const rect = game.canvas?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return null;
+      const x = ((clientX - rect.left) * game.scale.width) / rect.width;
+      const y = ((clientY - rect.top) * game.scale.height) / rect.height;
+      return scene.personAt(x, y);
+    },
+    sayLocal: (text) => {
+      if (scene.sys?.isActive()) scene.sayLocal(text);
+    },
     pause: () => game.pause(),
     resume: () => game.resume(),
     destroy: () => game.destroy(true),

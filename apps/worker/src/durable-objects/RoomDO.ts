@@ -628,7 +628,11 @@ export class RoomDO extends DurableObject<Env> {
   private pruneChat(now: number): void {
     const dropped = pruneRecent(this.recent, now);
     if (dropped.length === 0) return;
-    this.ctx.waitUntil(this.ctx.storage.delete(dropped.map((id) => CHAT_PREFIX + id)));
+    this.ctx.waitUntil(
+      this.ctx.storage
+        .delete(dropped.map((id) => CHAT_PREFIX + id))
+        .catch((err: unknown) => this.log.warn('room.chat_store_failed', { error: String(err) })),
+    );
   }
 
   /** Sala vacía: la conversación no se queda guardada para nadie (§30). */
@@ -1062,7 +1066,11 @@ export class RoomDO extends DurableObject<Env> {
     // conversación reciente se borra.
     if (remaining === 0) {
       this.ctx.waitUntil(this.ctx.storage.deleteAlarm());
-      this.ctx.waitUntil(this.forgetChat());
+      this.ctx.waitUntil(
+        this.forgetChat().catch((err: unknown) =>
+          this.log.warn('room.chat_store_failed', { error: String(err) }),
+        ),
+      );
     }
   }
 

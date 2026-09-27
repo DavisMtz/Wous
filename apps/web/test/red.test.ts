@@ -254,7 +254,7 @@ describe('estado de la sala', () => {
       },
       1050,
     );
-    expect(room.takeErrors()).toEqual(['PORTAL_NOT_REACHABLE']);
+    expect(room.takeErrors()).toEqual([{ code: 'PORTAL_NOT_REACHABLE' }]);
     expect(room.takeErrors()).toEqual([]);
     room.apply(
       {

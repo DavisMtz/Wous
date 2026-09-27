@@ -1,0 +1,934 @@
+/*
+ * La plática en la Plaza (Fase 7): chat, gestos y la ficha de cada persona.
+ * Todo es papel del tianguis sobre el mundo en pixel art: cartulina con
+ * esquinas desiguales, masking, plumón para lo corto y la grotesca para leer.
+ * Los gestos son la única pieza de pixel art aquí, pegados como calcomanías.
+ */
+
+/* ─── El chat: tira cerrada, hoja abierta ─── */
+
+.charla {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: clamp(280px, calc(50vw - 240px), 430px);
+  pointer-events: none;
+}
+
+.charla__hoja {
+  position: relative;
+}
+
+.charla__registro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.renglon {
+  max-width: 100%;
+  font-size: 0.97rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.renglon__nombre {
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--plumon);
+  font: inherit;
+  font-weight: 800;
+}
+
+button.renglon__nombre {
+  pointer-events: auto;
+  cursor: pointer;
+  text-decoration: underline 2px color-mix(in oklab, var(--plumon) 22%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+/* Tu nombre, como tu etiqueta en el mundo: en marcatextos. */
+.renglon[data-mio] .renglon__nombre {
+  padding: 0 4px;
+  background: var(--fosfo-amarillo);
+  border-radius: 3px 5px 4px 6px;
+}
+
+.renglon__texto {
+  font-weight: 520;
+}
+
+@media (hover: hover) {
+  button.renglon__nombre:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 70%, transparent);
+    text-decoration-color: var(--plumon);
+  }
+}
+
+/* Cerrada: solo lo reciente, cada línea una tira de papel que se despega sola. */
+.charla:not([data-abierta]) .renglon,
+.charla:not([data-abierta]) .charla__sala,
+.charla:not([data-abierta]) .charla__vacio {
+  display: none;
+}
+
+.charla:not([data-abierta]) .renglon[data-reciente] {
+  display: block;
+  padding: 5px 12px 6px;
+  background: color-mix(in oklab, var(--cartulina) 95%, transparent);
+  border-radius: var(--trazo-chico);
+  box-shadow:
+    0 1px 0 rgb(23 16 27 / 0.14),
+    0 6px 12px -7px rgb(43 18 56 / 0.6);
+  rotate: -0.5deg;
+  animation:
+    renglon-pegar 260ms var(--ease-salida),
+    renglon-despegar 1.2s ease-in var(--queda, 11s) forwards;
+}
+
+.charla:not([data-abierta]) .renglon[data-reciente]:nth-child(even) {
+  rotate: 0.4deg;
+}
+
+@keyframes renglon-pegar {
+  from {
+    translate: 0 8px;
+    opacity: 0;
+  }
+}
+
+@keyframes renglon-despegar {
+  to {
+    translate: 0 -6px;
+    opacity: 0;
+  }
+}
+
+/* Abierta: una hoja colgada con masking, con el registro que se desplaza. */
+.charla[data-abierta] .charla__hoja {
+  padding: 16px 14px 12px;
+  background: var(--cartulina);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  rotate: -0.4deg;
+  pointer-events: auto;
+}
+
+.charla[data-abierta] .charla__hoja::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 26px;
+  width: 58px;
+  height: 17px;
+  rotate: -4deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+.charla[data-abierta] .charla__registro {
+  max-height: min(42vh, 330px);
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--plumon) 35%, transparent) transparent;
+}
+
+.charla[data-abierta] .renglon {
+  padding: 2px 0;
+}
+
+.charla__sala {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  margin: 6px 0 2px;
+  font-family: var(--font-cartel);
+  font-size: 0.95rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--plumon-suave);
+}
+
+.charla__sala::before,
+.charla__sala::after {
+  content: "";
+  flex: 1;
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.charla__vacio {
+  padding: 4px 0;
+  font-size: 0.95rem;
+  color: var(--plumon-suave);
+}
+
+/* La cartulina para escribir: siempre a la mano en escritorio. */
+.charla__redactor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: var(--cartulina);
+  border-radius: var(--trazo);
+  box-shadow: var(--sombra-cartulina);
+  rotate: -0.6deg;
+  pointer-events: auto;
+}
+
+.charla__entrada {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px dashed color-mix(in oklab, var(--plumon) 40%, transparent);
+  border-radius: var(--trazo-chico);
+  background: #fff;
+  color: var(--plumon);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.charla__entrada::placeholder {
+  color: var(--plumon-suave);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.charla[data-abierta] .charla__entrada {
+  border-style: solid;
+  border-color: var(--plumon);
+}
+
+.charla__entrada:focus,
+.charla__entrada:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--fosfo-amarillo),
+    0 0 0 5px var(--plumon);
+}
+
+.charla__entrada:disabled {
+  background: color-mix(in oklab, var(--masking) 40%, white);
+  cursor: not-allowed;
+}
+
+.charla__cuenta {
+  min-width: 2ch;
+  font-size: 0.85rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--plumon-suave);
+  text-align: right;
+}
+
+.charla__cuenta[data-tope] {
+  color: var(--rojo-plumon);
+}
+
+.charla__decir {
+  display: none;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: var(--fosfo-amarillo);
+  color: var(--plumon);
+  font-family: var(--font-plumon);
+  font-size: 1.12rem;
+  box-shadow: var(--sombra-cartulina);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 110ms var(--ease-presion),
+    box-shadow 110ms var(--ease-presion);
+}
+
+.charla[data-abierta] .charla__decir {
+  display: inline-block;
+}
+
+.charla__decir:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+.charla__decir:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .charla__decir:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 86%, white);
+  }
+}
+
+/* Lo que contestó la sala: una nota en rojo plumón junto a donde escribiste. */
+.charla__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 8px 12px;
+  color: var(--tinta-error);
+  background: color-mix(in oklab, var(--rojo-plumon) 8%, white);
+  border-radius: var(--trazo-chico);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon) 55%, white),
+    0 6px 12px -7px rgb(43 18 56 / 0.6);
+  font-size: var(--step--1);
+  font-weight: 650;
+  line-height: 1.35;
+  order: -1;
+  pointer-events: auto;
+}
+
+.charla__aviso svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ─── Botones del HUD táctil (Hablar, Gestos) ─── */
+
+.boton-hud {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 16px 8px 13px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: var(--cartulina);
+  color: var(--plumon);
+  font-family: var(--font-plumon);
+  font-size: 1.06rem;
+  box-shadow: var(--sombra-cartulina);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 110ms var(--ease-presion),
+    box-shadow 110ms var(--ease-presion);
+}
+
+.boton-hud:active {
+  transform: translateY(3px);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+.boton-hud[aria-expanded="true"] {
+  background: var(--fosfo-amarillo);
+}
+
+/* ─── Gestos ─── */
+
+.gestos {
+  position: absolute;
+  right: calc(max(14px, env(safe-area-inset-right)) + 8px);
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 8px);
+  z-index: 5;
+  display: flex;
+  gap: 9px;
+}
+
+.gesto {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: var(--cartulina);
+  box-shadow: var(--sombra-cartulina);
+  rotate: -2deg;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 110ms var(--ease-presion),
+    box-shadow 110ms var(--ease-presion),
+    background-color 160ms ease;
+}
+
+.gesto:nth-child(even) {
+  rotate: 1.6deg;
+}
+
+.gesto:active {
+  transform: translateY(3px);
+  box-shadow: var(--sombra-cartulina-hundida);
+}
+
+@media (hover: hover) {
+  .gesto:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 45%, var(--cartulina));
+  }
+}
+
+.gesto__tecla {
+  position: absolute;
+  right: -6px;
+  bottom: -7px;
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 4px 1px;
+  border: 2px solid var(--plumon);
+  border-bottom-width: 3px;
+  border-radius: 4px 6px 5px 7px;
+  background: #fff;
+  font-family: var(--font-cartel);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calcomania {
+  display: block;
+}
+
+/* En táctil: la cartulina «Gestos» a la derecha y el abanico hacia la izquierda. */
+.gestos--tactil {
+  top: calc(max(14px, env(safe-area-inset-top)) + 122px);
+  /* En teléfono, alineada con «Salir» y «Hablar»: el margen extra es solo del escritorio. */
+  right: max(14px, env(safe-area-inset-right));
+  bottom: auto;
+  flex-direction: row-reverse;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gestos--tactil > * {
+  pointer-events: auto;
+}
+
+.gestos__abanico {
+  display: flex;
+  gap: 7px;
+  animation: abanico-abrir 200ms var(--ease-salida);
+}
+
+.gestos__abanico .gesto {
+  width: 52px;
+  height: 52px;
+}
+
+@keyframes abanico-abrir {
+  from {
+    translate: 14px 0;
+    opacity: 0;
+  }
+}
+
+/* ─── Táctil: tira al centro abajo, cartulina de escribir arriba ─── */
+
+.charla[data-tactil] {
+  left: calc(50% - min(23vw, 190px));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(46vw, 380px);
+}
+
+.charla__hablar {
+  position: fixed;
+  top: calc(max(14px, env(safe-area-inset-top)) + 66px);
+  right: max(14px, env(safe-area-inset-right));
+}
+
+/* Cerrada, la cartulina de escribir existe (el toque la enfoca y abre el teclado) pero no se ve. */
+.charla[data-tactil]:not([data-abierta]) .charla__redactor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.charla[data-tactil][data-abierta] .charla__redactor {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: calc(50% - min(46vw, 280px));
+  z-index: 12;
+  width: min(92vw, 560px);
+}
+
+.charla[data-tactil][data-abierta] .charla__hoja {
+  position: fixed;
+  top: calc(max(10px, env(safe-area-inset-top)) + 70px);
+  left: calc(50% - min(46vw, 280px));
+  z-index: 11;
+  width: min(92vw, 560px);
+}
+
+.charla[data-tactil][data-abierta] .charla__registro {
+  max-height: calc(100dvh - 110px);
+}
+
+.charla[data-tactil][data-abierta] .charla__aviso {
+  position: fixed;
+  top: calc(max(10px, env(safe-area-inset-top)) + 66px);
+  left: calc(50% - min(46vw, 280px));
+  z-index: 13;
+}
+
+/* ─── Gente aquí: la nota del letrero se abre en la lista ─── */
+
+.gente {
+  position: relative;
+}
+
+.gente__boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -4px;
+  padding: 2px 6px 2px 4px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: none;
+  color: var(--plumon-suave);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+  text-decoration: underline 2px color-mix(in oklab, var(--plumon) 22%, transparent);
+  text-underline-offset: 0.22em;
+}
+
+.gente__boton[aria-expanded="true"] {
+  background: var(--fosfo-amarillo);
+  color: var(--plumon);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .gente__boton:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 70%, transparent);
+    color: var(--plumon);
+  }
+}
+
+.gente__lista {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: -10px;
+  z-index: 13;
+  min-width: 230px;
+  max-width: min(78vw, 320px);
+  max-height: min(56vh, 360px);
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--cartulina);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  rotate: 0.8deg;
+  animation: gente-colgar 220ms var(--ease-salida);
+}
+
+.gente__persona {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: none;
+  color: var(--plumon);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gente__persona svg {
+  flex: none;
+  color: var(--plumon-suave);
+}
+
+@media (hover: hover) {
+  .gente__persona:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 45%, var(--cartulina));
+  }
+}
+
+@keyframes gente-colgar {
+  from {
+    translate: 0 -8px;
+    opacity: 0;
+  }
+}
+
+/* ─── La ficha de alguien: cartulina pegada con masking, sin tapar el juego ─── */
+
+.ficha {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 88px);
+  left: calc(50% - min(46vw, 200px));
+  z-index: 14;
+  width: min(92vw, 400px);
+  max-height: calc(100dvh - max(14px, env(safe-area-inset-top)) - 104px);
+  padding: 22px 20px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--plumon);
+  background: var(--cartulina);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  rotate: -0.6deg;
+  animation: ficha-pegar 260ms var(--ease-salida);
+}
+
+.ficha__masking {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 70px;
+  height: 18px;
+  translate: -50% 0;
+  rotate: 3deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+@keyframes ficha-pegar {
+  from {
+    translate: 0 -12px;
+    rotate: -3deg;
+    opacity: 0;
+  }
+}
+
+.ficha__cerrar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: none;
+  color: var(--plumon);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .ficha__cerrar:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 55%, transparent);
+  }
+}
+
+.ficha__quien {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 40px;
+}
+
+/* La persona elegida queda bajo el foco: luz cálida detrás de su retrato. */
+.ficha__retrato {
+  flex: none;
+  display: grid;
+  place-items: end center;
+  width: 70px;
+  height: 70px;
+  border-radius: var(--trazo-chico);
+  background:
+    radial-gradient(circle at 50% 38%, rgb(255 240 178 / 0.78), transparent 68%),
+    color-mix(in oklab, var(--masking) 55%, var(--cartulina));
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--plumon) 12%, transparent);
+  overflow: hidden;
+}
+
+.ficha__nombre-caja {
+  min-width: 0;
+}
+
+.ficha__nombre {
+  font-family: var(--font-ui);
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+/* El foco llega al contenedor de la ficha (lo anuncia el lector de pantalla); de ahí, Tab. */
+.ficha:focus {
+  outline: none;
+}
+
+.ficha__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 2px 8px 3px 6px;
+  background: color-mix(in oklab, var(--masking) 70%, transparent);
+  border-radius: var(--trazo-chico);
+  color: var(--plumon-suave);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.ficha__cita {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: var(--trazo-chico);
+  box-shadow: inset 0 0 0 2px var(--cartulina-borde);
+}
+
+.ficha__cita figcaption {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--plumon-suave);
+}
+
+.ficha__cita blockquote {
+  margin: 2px 0 0;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ficha__acciones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.ficha .cartulina {
+  min-height: 50px;
+  padding: 8px 14px;
+}
+
+.ficha .cartulina--trazo {
+  font-size: 1.08rem;
+}
+
+.ficha .cartulina--fosfo {
+  width: auto;
+  font-size: 1.2rem;
+}
+
+.ficha__pregunta {
+  display: block;
+  margin-top: 16px;
+  padding: 0;
+  font-family: var(--font-cartel);
+  font-size: 1.3rem;
+  font-weight: 850;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.ficha__confirmar p:not(.ficha__pregunta),
+.ficha__hecho p {
+  margin-top: 8px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.ficha__hecho .sello {
+  margin: 14px 0 4px;
+}
+
+.ficha__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ficha__botones > * {
+  flex: 1 1 140px;
+}
+
+.ficha .aviso {
+  margin-top: 14px;
+}
+
+/* Motivos del reporte: cartulinas chicas; la elegida en marcatextos. */
+.ficha__reporte {
+  margin-top: 18px;
+}
+
+.motivos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.motivos legend {
+  margin: 0 0 10px;
+}
+
+.motivo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 8px 11px;
+  border-radius: var(--trazo-chico);
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--cartulina-borde);
+  font-size: var(--step--1);
+  font-weight: 650;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.motivo__radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.motivo:has(.motivo__radio:checked) {
+  background: var(--fosfo-amarillo);
+  box-shadow:
+    inset 0 0 0 2px var(--plumon),
+    0 4px 8px -5px rgb(43 18 56 / 0.5);
+}
+
+.motivo:has(.motivo__radio:focus-visible) {
+  outline: 3px solid var(--plumon);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .motivo:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 35%, white);
+  }
+}
+
+.motivos:disabled .motivo {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ficha__nota-rotulo {
+  display: block;
+  margin-top: 14px;
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.ficha__nota-rotulo span {
+  font-weight: 600;
+  color: var(--plumon-suave);
+}
+
+.ficha__nota {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  margin-top: 6px;
+  padding: 9px 12px;
+  border: 2px solid var(--plumon);
+  border-radius: var(--trazo-chico);
+  background: #fff;
+  color: var(--plumon);
+  font: inherit;
+  font-size: 1rem;
+  resize: none;
+}
+
+.ficha__nota:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--fosfo-amarillo),
+    0 0 0 5px var(--plumon);
+}
+
+.ficha__incluye {
+  margin-top: 8px;
+  font-size: var(--step--1);
+  color: var(--plumon-suave);
+}
+
+/* ─── Sin movimiento: todo aparece ya en su sitio ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .charla:not([data-abierta]) .renglon[data-reciente] {
+    animation: renglon-despegar 1ms linear var(--queda, 11s) forwards;
+  }
+
+  .gestos__abanico,
+  .gente__lista,
+  .ficha {
+    animation: none;
+  }
+}
+
+[data-quieto] .charla:not([data-abierta]) .renglon[data-reciente],
+[data-quieto] .gestos__abanico,
+[data-quieto] .gente__lista,
+[data-quieto] .ficha {
+  animation: none;
+}
+
+/* Teléfono apaisado: todo un poco más compacto para que se vea el mundo. */
+@media (max-height: 480px) {
+  .ficha {
+    top: max(10px, env(safe-area-inset-top));
+    max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 12px);
+    padding: 18px 16px 14px;
+  }
+
+  .ficha__retrato {
+    width: 58px;
+    height: 58px;
+  }
+
+  .charla__hablar {
+    top: calc(max(10px, env(safe-area-inset-top)) + 58px);
+  }
+
+  .gestos--tactil {
+    top: calc(max(10px, env(safe-area-inset-top)) + 112px);
+  }
+
+  .renglon {
+    font-size: var(--step--1);
+  }
+}

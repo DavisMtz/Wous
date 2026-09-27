@@ -15,7 +15,7 @@ cambies la arquitectura en silencio (§38).
 | 4 · Phaser + InputManager | ✅ hecha · la Plaza (`/plaza`), arte por código (ADR-0007) |
 | 5 · Realtime / RoomDO | ✅ hecha · `/ws/world`, RoomDO con Hibernation (ADR-0008) |
 | 6 · Portales, Café y reconexión | ✅ hecha · el Café, `ENTER_PORTAL`, turno de presencia y ventana de gracia (ADR-0009) |
-| 7 · Chat, emotes y seguridad social | ⏳ |
+| 7 · Chat, emotes y seguridad social | ✅ hecha · chat de sala, gestos, bloqueos y reportes por la sala; moderación por script (ADR-0010) |
 | 8 · Amigos + correo social | ⏳ |
 
 No se empieza una fase sin cumplir el Definition of Done de la anterior (§1.15).
@@ -31,6 +31,7 @@ pnpm test             # unidad + integración (el Worker corre dentro de workerd
 pnpm test:e2e         # Playwright con el Chrome instalado
 pnpm build            # web → apps/web/dist, luego dry-run del Worker
 pnpm deploy:staging   # migraciones remotas + deploy de wous-staging
+node scripts/moderacion/moderar.mts <local|staging|production> reportes   # moderación (docs/runbooks/moderacion.md)
 ```
 
 ## Reglas que no se negocian (resumen de §1 y §36)
@@ -68,3 +69,12 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
 - Toda migración nueva cambia el conteo que revisa `test/health.test.ts`.
 - El Worker local (:8787) sirve el último `apps/web/dist` con la CSP real de `_headers`: la cookie de
   `localhost` vale en ambos puertos, así que una cuenta creada por :5173 prueba el build de producción.
+- Chat (Fase 7): el texto se sanea con `sanitizeChat` de contracts y se pinta SIEMPRE como texto (nodo
+  de React o canvas de Phaser); nunca `innerHTML`. La evidencia de un reporte sale de la ventana
+  `chat:*` del storage de la sala, nunca del cliente. Bloquear filtra en el servidor (por
+  destinatario) y en el cliente se esconde lo ya dicho (`ocultos`).
+- Los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») llevan
+  `onMouseDown={(e) => e.preventDefault()}`: con ratón no se quedan el foco, y Enter sigue abriendo
+  el chat en vez de reactivar el botón. Con teclado se llega igual con Tab.
+- La suite E2E completa con 2 workers da falsos rojos por RAM en esta máquina; cada archivo por
+  separado (`--workers=1`) es la prueba que cuenta.

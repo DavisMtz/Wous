@@ -1,5 +1,12 @@
 import { NETWORK } from '@wous/config';
-import { ServerMessage, WS_CLOSE, WS_PING_TEXT, WS_PROTOCOL_VERSION } from '@wous/contracts';
+import {
+  type Emote,
+  type ReportPlayerMessage,
+  ServerMessage,
+  WS_CLOSE,
+  WS_PING_TEXT,
+  WS_PROTOCOL_VERSION,
+} from '@wous/contracts';
 import type { GameInput } from '@wous/game-core';
 
 /**
@@ -131,6 +138,30 @@ export class WorldConnection {
   /** Pide cruzar un portal: solo su ID. La sala decide si alcanzas y a dónde lleva. */
   enterPortal(portalId: string): boolean {
     return this.write({ v: WS_PROTOCOL_VERSION, type: 'ENTER_PORTAL', payload: { portalId } });
+  }
+
+  /** Decir algo en la sala. El servidor sanea y reparte; el eco es la confirmación. */
+  chat(text: string): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'CHAT_SEND', payload: { text } });
+  }
+
+  /** Un gesto del catálogo (§19): solo su ID. */
+  emote(emote: Emote): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'EMOTE_PLAY', payload: { emote } });
+  }
+
+  /** Reportar: a quién, por qué y, si hay, qué mensaje (por ID, nunca el texto). */
+  report(report: ReportPlayerMessage['payload']): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'REPORT_PLAYER', payload: report });
+  }
+
+  /** Bloquear o desbloquear a alguien de la sala (ADR-0010). */
+  block(characterId: string, blocked: boolean): boolean {
+    return this.write({
+      v: WS_PROTOCOL_VERSION,
+      type: blocked ? 'BLOCK_PLAYER' : 'UNBLOCK_PLAYER',
+      payload: { characterId },
+    });
   }
 
   private write(message: unknown): boolean {
