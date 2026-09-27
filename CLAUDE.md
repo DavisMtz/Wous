@@ -17,7 +17,7 @@ cambies la arquitectura en silencio (§38).
 | 6 · Portales, Café y reconexión | ✅ hecha · el Café, `ENTER_PORTAL`, turno de presencia y ventana de gracia (ADR-0009) |
 | 7 · Chat, emotes y seguridad social | ✅ hecha · chat de sala, gestos, bloqueos y reportes por la sala; moderación por script (ADR-0010) |
 | 8 · Amigos + correo social | ✅ hecha · tu banda (`/friends`, la foto de grupo), solicitudes con vueltas y en la sombra, avisos por correo (ADR-0011) |
-| 9 · Alpha cerrada | ⏳ |
+| 9 · Alpha cerrada | ✅ hecha · la caseta (`/caseta`), invitaciones, suspensiones con fin, carga medida y observabilidad (ADR-0012) |
 
 No se empieza una fase sin cumplir el Definition of Done de la anterior (§1.15).
 
@@ -33,6 +33,9 @@ pnpm test:e2e         # Playwright con el Chrome instalado
 pnpm build            # web → apps/web/dist, luego dry-run del Worker
 pnpm deploy:staging   # migraciones remotas + deploy de wous-staging
 node scripts/moderacion/moderar.mts <local|staging|production> reportes   # moderación (docs/runbooks/moderacion.md)
+node scripts/moderacion/moderar.mts <entorno> dar-caseta @usuario --motivo "…" # el ÚNICO camino al rol de la caseta
+node scripts/observabilidad/tablero.mts <staging|production> [--horas 24]     # logs + analíticas (runbooks/observabilidad.md)
+node scripts/carga/carga.mts <local|staging> --bots 25 --segundos 60          # carga (docs/carga/), nunca producción
 ```
 
 ## Reglas que no se negocian (resumen de §1 y §36)
@@ -90,3 +93,19 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   `?caso=vacio|album|cargando|error`, `?abrir=Nombre&paso=bloquear`, `?quieto`.
 - Capturas de revisión de tu banda: `WOUS_CAPTURAS=1 pnpm exec playwright test
   tests/amigos-capturas.spec.ts --project=escritorio`.
+- La caseta (Fase 9, ADR-0012): `/api/v1/admin/*` responde **404** a quien no tiene rol en `staff`
+  (se lee de D1 en cada petición, en `resolveSession`). El rol solo lo da `moderar.mts dar-caseta`;
+  la web nunca. Una sanción escribe en D1 (bitácora con `auditStatementIf`, que va ANTES del cambio
+  en el batch) y luego pide `recheck()` a la sala de la persona (`world/whereabouts.ts`).
+- Registro por invitación: `REGISTRATION_MODE` es `open` en local y `invite` en staging y
+  producción. Las pruebas del Worker lo prueban con `registerWithInvite` (`createApp().fetch` con el
+  env cambiado); el E2E de la caseta finge el modo interceptando `/api/v1/config`.
+- E2E sin el widget de Turnstile: `cuentaPorApi` (cuenta por API), `turnstileDePrueba` (formularios)
+  y `salaDesdeNode` (hablar con la sala desde Node). `darCaseta` corre el script contra la D1 local.
+- `carga_…` es un prefijo reservado: son las cuentas de las pruebas de carga (en la D1 de staging).
+  El arnés necesita el `SESSION_PEPPER` del entorno para acuñar sus sesiones.
+- Desplegar sin `secrets.*.json` (otra máquina o token): `wrangler deploy --env <entorno>` hereda los
+  secretos de `secrets.required`; uno que no esté en esa lista se perdería.
+- API de Workers Observability: sin `parameters.limit` devuelve solo 10 grupos (el script pide 200).
+- En un contenedor sin GPU, `portales.spec.ts` se atora caminando hacia la puerta del Café también
+  en `main`: es el entorno, no una regresión.
