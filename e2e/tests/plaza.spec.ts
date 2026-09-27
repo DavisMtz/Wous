@@ -111,6 +111,97 @@ test('en el teléfono se camina con el joystick y los controles siguen al métod
   await expect(joystick).toBeVisible();
 });
 
+test('un pulgar que no se está quieto en el joystick no corta la conexión (iPad, 27/09/2026)', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'movil', 'táctil: proyecto móvil');
+  test.setTimeout(120_000);
+  // Cuenta los PLAYER_INPUT que salen por el WebSocket, con su hora.
+  await page.addInitScript(() => {
+    const enviar = WebSocket.prototype.send;
+    const envios: number[] = [];
+    (window as unknown as { __envios: number[] }).__envios = envios;
+    WebSocket.prototype.send = function (this: WebSocket, data) {
+      if (typeof data === 'string' && data.includes('"PLAYER_INPUT"'))
+        envios.push(performance.now());
+      return enviar.call(this, data);
+    };
+  });
+  await cuentaPorApi(page, info, 'Pulgar Inquieto');
+  await entrarALaPlaza(page);
+  await page.waitForFunction(() => window.__wousJuego?.conexion() === 'ONLINE', null, {
+    timeout: 30_000,
+  });
+  const joystick = page.locator('.joystick');
+  await expect(joystick).toBeVisible();
+  const caja = await joystick.boundingBox();
+  if (!caja) throw new Error('Sin joystick');
+  const cx = caja.x + caja.width / 2;
+  const cy = caja.y + caja.height / 2;
+
+  // Seis segundos dando vueltas: la dirección cambia en cada cuadro, como un
+  // dedo de verdad (un iPad manda de 60 a 120 movimientos por segundo; desde
+  // Playwright no se llega a ese ritmo, así que se mueve dentro de la página,
+  // dos veces por cuadro, con el mismo puntero que tomó la perilla). Antes, el
+  // cliente mandaba un input por cuadro y la sala, al juntar faltas, cortaba el
+  // cable con «Wous se actualizó».
+  await page.evaluate(() => {
+    document.querySelector('.joystick')?.addEventListener(
+      'pointerdown',
+      (e) => {
+        (window as unknown as { __puntero: number }).__puntero = (e as PointerEvent).pointerId;
+      },
+      { capture: true },
+    );
+  });
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.evaluate(
+    ({ x, y }) =>
+      new Promise<void>((resolve) => {
+        const perilla = document.querySelector('.joystick');
+        const pointerId = (window as unknown as { __puntero?: number }).__puntero ?? 1;
+        const fin = performance.now() + 6000;
+        let i = 0;
+        const paso = () => {
+          for (let k = 0; k < 2; k++) {
+            i += 1;
+            const angulo = i * 0.21;
+            perilla?.dispatchEvent(
+              new PointerEvent('pointermove', {
+                pointerId,
+                bubbles: true,
+                clientX: x + Math.cos(angulo) * 40,
+                clientY: y + Math.sin(angulo) * 40,
+              }),
+            );
+          }
+          if (performance.now() < fin) requestAnimationFrame(paso);
+          else resolve();
+        };
+        requestAnimationFrame(paso);
+      }),
+    { x: cx, y: cy },
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+
+  // Lo más que salió en un segundo cualquiera: muy por debajo de lo que la sala tolera (40).
+  const porSegundo = await page.evaluate(() => {
+    const envios = (window as unknown as { __envios: number[] }).__envios;
+    let max = 0;
+    for (let i = 0, j = 0; i < envios.length; i++) {
+      while ((envios[i] ?? 0) - (envios[j] ?? 0) > 1000) j++;
+      max = Math.max(max, i - j + 1);
+    }
+    return { max, total: envios.length };
+  });
+  expect(porSegundo.total).toBeGreaterThan(60);
+  expect(porSegundo.max).toBeLessThanOrEqual(30);
+  expect(await page.evaluate(() => window.__wousJuego?.conexion())).toBe('ONLINE');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+});
+
 test('junto a la puerta del Café aparece la acción y E cruza (banco, sin servidor)', async ({
   page,
 }, info) => {

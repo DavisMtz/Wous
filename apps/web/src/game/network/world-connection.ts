@@ -29,8 +29,10 @@ export type EndReason =
   | 'CHARACTER_REQUIRED'
   /** Se abrió la plaza en otra pestaña o dispositivo. */
   | 'REPLACED'
-  /** El servidor cambió de versión o cerró por mensajes inválidos. */
-  | 'UPDATE_REQUIRED';
+  /** El servidor cambió de versión: hay que recargar. */
+  | 'UPDATE_REQUIRED'
+  /** La sala cortó por demasiadas faltas (mensajes inválidos o de más). */
+  | 'POLICY';
 
 /** Lo mínimo de un WebSocket que usa la conexión (en pruebas, un doble). */
 export type SocketLike = {
@@ -79,6 +81,8 @@ export class WorldConnection {
   private opened = false;
   private retryTimer: unknown = null;
   private pingTimer: unknown = null;
+  /** El último ERROR de la sala: explica un cierre por política (versión o faltas). */
+  private lastError: string | null = null;
   private readonly timers: NonNullable<WorldConnectionOptions['timers']>;
 
   constructor(private readonly o: WorldConnectionOptions) {
@@ -174,6 +178,7 @@ export class WorldConnection {
   private open(status: 'CONNECTING' | 'TRANSFERRING' | 'RECONNECTING'): void {
     this.setStatus(status);
     this.opened = false;
+    this.lastError = null;
     let socket: SocketLike;
     try {
       socket = (this.o.createSocket ?? ((url) => new WebSocket(url) as unknown as SocketLike))(
@@ -202,7 +207,9 @@ export class WorldConnection {
         return;
       }
       const parsed = ServerMessage.safeParse(raw);
-      if (parsed.success && parsed.data.type !== 'PONG') this.o.onMessage(parsed.data);
+      if (!parsed.success || parsed.data.type === 'PONG') return;
+      if (parsed.data.type === 'ERROR') this.lastError = parsed.data.payload.code;
+      this.o.onMessage(parsed.data);
     };
     socket.onerror = () => {
       // Siempre llega un close después; ahí se decide.
@@ -229,7 +236,8 @@ export class WorldConnection {
       case WS_CLOSE.SESSION_ENDED:
         return this.end('AUTH_REQUIRED');
       case WS_CLOSE.POLICY:
-        return this.end('UPDATE_REQUIRED');
+        // Solo una versión vieja pide recargar; si fueron faltas, se dice eso.
+        return this.end(this.lastError === 'UNSUPPORTED_VERSION' ? 'UPDATE_REQUIRED' : 'POLICY');
       default:
         break;
     }

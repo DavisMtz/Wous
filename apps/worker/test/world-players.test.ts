@@ -2,6 +2,7 @@ import { CHAT, MOVEMENT, NETWORK, SOCIAL } from '@wous/config';
 import { canReachPortal, collisionGrid, PLAZA, portalOf, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
 import {
+  addStrike,
   applyInput,
   chooseSpawn,
   type PlayerAttachment,
@@ -52,6 +53,23 @@ describe('aplicar un input', () => {
     const start = attachment({ mx: 0, my: 0 });
     const diag = applyInput(start, { moveX: 1, moveY: -1, seq: 1 }, 1100, grid);
     expect(Math.hypot(diag.mx, diag.my)).toBeLessThanOrEqual(1.001);
+  });
+});
+
+describe('faltas (§23)', () => {
+  it('cuentan en su ventana y se olvidan pasada', () => {
+    const t = 1_000_000;
+    const att = attachment();
+    for (let i = 0; i < NETWORK.maxStrikes; i++) expect(addStrike(att, t + i)).toBe(false);
+    // Una más dentro de la ventana: se pasó.
+    expect(addStrike(att, t + NETWORK.maxStrikes)).toBe(true);
+
+    // La misma cantidad repartida en ventanas distintas no corre a nadie.
+    const larga = attachment();
+    for (let i = 0; i < NETWORK.maxStrikes * 3; i++) {
+      const cuando = t + Math.floor(i / 10) * NETWORK.strikeWindowMs;
+      expect(addStrike(larga, cuando)).toBe(false);
+    }
   });
 });
 
@@ -111,6 +129,7 @@ describe('attachment', () => {
       mu: t + 86_400_000,
       sw: Array.from({ length: SOCIAL.actionsPerMinute }, (_, i) => t + i),
       strikes: NETWORK.maxStrikes,
+      kw: t,
     });
     expect(new TextEncoder().encode(JSON.stringify(att)).length).toBeLessThan(1400);
   });

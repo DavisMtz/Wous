@@ -34,6 +34,13 @@ const PANTALLAS: Record<EndReason, Pantalla> = {
     accion: 'Recargar',
     hacer: 'recargar',
   },
+  POLICY: {
+    titulo: 'Se cortó la conexión',
+    texto:
+      'La sala recibió demasiados mensajes seguidos desde este dispositivo y cerró el cable. Vuelve a entrar.',
+    accion: 'Volver a entrar',
+    hacer: 'seguir',
+  },
 };
 
 /**

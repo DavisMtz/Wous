@@ -116,6 +116,32 @@ describe('conexión con la sala', () => {
     expect(vencida.statuses.at(-1)).toEqual(['ENDED', 'AUTH_REQUIRED']);
   });
 
+  it('un cierre por política dice por qué: versión vieja recarga, faltas vuelven a entrar', async () => {
+    const error = (code: string) =>
+      JSON.stringify({ v: 1, type: 'ERROR', payload: { code, message: 'x' } });
+
+    const vieja = harness();
+    vieja.conn.start();
+    vieja.sockets[0]?.abrir();
+    vieja.sockets[0]?.onmessage?.({ data: error('UNSUPPORTED_VERSION') });
+    vieja.sockets[0]?.cerrar(WS_CLOSE.POLICY);
+    await flush();
+    expect(vieja.statuses.at(-1)).toEqual(['ENDED', 'UPDATE_REQUIRED']);
+
+    // Faltas (27/09/2026: un joystick en iPad): no es una actualización.
+    const faltas = harness();
+    faltas.conn.start();
+    faltas.sockets[0]?.abrir();
+    faltas.sockets[0]?.onmessage?.({ data: error('RATE_LIMITED') });
+    faltas.sockets[0]?.cerrar(WS_CLOSE.POLICY);
+    await flush();
+    expect(faltas.statuses.at(-1)).toEqual(['ENDED', 'POLICY']);
+    // «Volver a entrar» abre otra vez.
+    faltas.conn.start();
+    expect(faltas.conn.current).toBe('CONNECTING');
+    expect(faltas.sockets).toHaveLength(2);
+  });
+
   it('cruzar un portal: pide solo la puerta y, al cerrar la sala, vuelve a entrar sin espera', async () => {
     const h = harness();
     h.conn.start();

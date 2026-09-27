@@ -112,8 +112,19 @@ export const NETWORK = {
   staleAfterMs: 120_000,
   /** Inputs por segundo tolerados por socket (12 Hz más los cambios de dirección). */
   maxInputsPerSecond: 40,
+  /**
+   * El cliente no manda dos inputs más seguido que esto (salvo soltar,
+   * interactuar o un gesto): un joystick análogo cambia en cada cuadro y, sin
+   * este tope, un iPad a 60–120 Hz rebasaba los 40 por segundo.
+   */
+  inputMinGapMs: 45,
   /** Faltas (mensajes inválidos o de más) antes de cerrar el socket (§23). */
   maxStrikes: 20,
+  /**
+   * Las faltas cuentan dentro de esta ventana y luego se olvidan: una sesión
+   * larga de alguien honesto no junta faltas sueltas hasta que la corren.
+   */
+  strikeWindowMs: 60_000,
   /** Reconexión con espera creciente y azar (§17). */
   reconnect: { baseMs: 600, maxMs: 10_000 },
   /**

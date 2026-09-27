@@ -1,4 +1,4 @@
-import { MOVEMENT } from '@wous/config';
+import { MOVEMENT, NETWORK } from '@wous/config';
 import type {
   AppearanceInput,
   Facing,
@@ -82,7 +82,9 @@ export type PlayerAttachment = {
   /** Ventana de conteo de inputs (inicio) y cuántos van en ella. */
   win: number;
   n: number;
+  /** Faltas de la ventana que empezó en `kw` (ver `addStrike`). */
   strikes: number;
+  kw?: number;
   /** Turno de presencia (ADR-0009). */
   ep: number;
   /** Cruzando un portal: ya no camina ni vuelve a pedir otro. */
@@ -105,6 +107,20 @@ export type PlayerAttachment = {
 
 /** Por qué un socket dejó de representar a alguien en la sala. */
 export type GoneReason = 'left' | 'replaced' | 'stale' | 'portal';
+
+/**
+ * Una falta más (§23). Cuentan dentro de una ventana de `strikeWindowMs`:
+ * pasada la ventana se olvidan, así una sesión larga no junta faltas sueltas
+ * hasta que la corren. Devuelve true si con esta ya se pasó del tope.
+ */
+export function addStrike(att: PlayerAttachment, now: number): boolean {
+  if (att.kw === undefined || now - att.kw >= NETWORK.strikeWindowMs) {
+    att.kw = now;
+    att.strikes = 0;
+  }
+  att.strikes += 1;
+  return att.strikes > NETWORK.maxStrikes;
+}
 
 /** Tres decimales de tile bastan en el cable (≈0.05 px de arte). */
 export function round3(v: number): number {

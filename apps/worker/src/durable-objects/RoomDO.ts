@@ -42,6 +42,7 @@ import {
 } from '../world/chat.ts';
 import { moveCharacter } from '../world/location.ts';
 import {
+  addStrike,
   applyInput,
   chooseSpawn,
   decodeIdentity,
@@ -397,7 +398,14 @@ export class RoomDO extends DurableObject<Env> {
     }
     att.n += 1;
     if (att.n > NETWORK.maxInputsPerSecond) {
-      this.strike(ws, att, 'RATE_LIMITED', 'PLAYER_INPUT');
+      // Los de más en este segundo se ignoran: el servidor manda igual. Solo
+      // el primero cuenta como falta (y avisa una vez); castigar cada uno
+      // corría en segundos a un joystick honesto que cambia en cada cuadro.
+      if (att.n === NETWORK.maxInputsPerSecond + 1) {
+        this.strike(ws, att, 'RATE_LIMITED', 'PLAYER_INPUT');
+      } else {
+        ws.serializeAttachment(att);
+      }
       return;
     }
     // Secuencias viejas o repetidas no cuentan (§14.1).
@@ -957,8 +965,7 @@ export class RoomDO extends DurableObject<Env> {
     message?: string,
     extra: { retryAfterMs?: number } = {},
   ): void {
-    att.strikes += 1;
-    if (att.strikes > NETWORK.maxStrikes) {
+    if (addStrike(att, Date.now())) {
       this.sendError(ws, code, 'Demasiados mensajes inválidos.', { ...(about ? { about } : {}) });
       this.log.warn('room.policy_close', { characterId: att.id, code });
       this.retire(ws, att, 'stale', WS_CLOSE.POLICY);

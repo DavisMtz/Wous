@@ -1,3 +1,4 @@
+import { NETWORK } from '@wous/config';
 import type { GameInput } from '@wous/game-core';
 import { describe, expect, it } from 'vitest';
 import { GamepadAdapter, KeyboardAdapter, TouchAdapter } from '../src/game/input/adapters.ts';
@@ -97,12 +98,12 @@ describe('muestreador de red (12 Hz)', () => {
     return sent;
   };
 
-  it('manda en el acto al empezar, al cambiar de dirección y al soltar', () => {
+  it('manda al empezar, al cambiar de dirección y al soltar', () => {
     const sent = run([
       { t: 0, x: 1, y: 0 },
       { t: 16, x: 1, y: 0 },
-      { t: 32, x: 0, y: 1 },
-      { t: 48, x: 0, y: 0 },
+      { t: 64, x: 0, y: 1 },
+      { t: 80, x: 0, y: 0 },
     ]);
     expect(sent.map((s) => [s.moveX, s.moveY])).toEqual([
       [1, 0],
@@ -110,6 +111,45 @@ describe('muestreador de red (12 Hz)', () => {
       [0, 0],
     ]);
     expect(sent.map((s) => s.seq)).toEqual([1, 2, 3]);
+  });
+
+  it('un cambio muy seguido espera al siguiente cuadro permitido', () => {
+    const sent = run([
+      { t: 0, x: 1, y: 0 },
+      { t: 16, x: 0, y: 1 },
+      { t: 32, x: 0, y: 1 },
+      { t: 48, x: 0, y: 1 },
+    ]);
+    // El cambio de t=16 no sale ahí: sale en t=48, el primer cuadro a 45 ms o más.
+    expect(sent.map((s) => [s.moveX, s.moveY])).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+    expect(sent).toHaveLength(2);
+  });
+
+  it('un joystick que se mueve a 120 Hz no pasa del tope de envíos (iPad, 27/09/2026)', () => {
+    // El pulgar da una vuelta completa en un segundo: cambia en cada cuadro.
+    const frames = Array.from({ length: 120 }, (_, i) => {
+      const angulo = (i / 120) * Math.PI * 2;
+      return { t: i * (1000 / 120), x: Math.cos(angulo) * 0.9, y: Math.sin(angulo) * 0.9 };
+    });
+    const sent = run(frames);
+    expect(sent.length).toBeGreaterThanOrEqual(12);
+    expect(sent.length).toBeLessThanOrEqual(Math.ceil(1000 / NETWORK.inputMinGapMs) + 1);
+    // Muy por debajo de lo que la sala tolera por segundo.
+    expect(sent.length).toBeLessThan(NETWORK.maxInputsPerSecond);
+  });
+
+  it('soltar, interactuar y un gesto salen en el acto aunque se acabe de mandar', () => {
+    const sent: GameInput[] = [];
+    const sampler = new InputSampler((i) => sent.push(i), 12);
+    sampler.tick(0, { moveX: 1, moveY: 0, interact: false });
+    sampler.tick(8, { moveX: 0, moveY: 0, interact: false });
+    sampler.tick(16, { moveX: 0, moveY: 0, interact: true });
+    sampler.tick(24, { moveX: 0, moveY: 0, interact: false, emote: 'wave' });
+    expect(sent.map((s) => s.seq)).toEqual([1, 2, 3, 4]);
+    expect(sent[1]).toMatchObject({ moveX: 0, moveY: 0 });
   });
 
   it('mientras camina, ~12 envíos por segundo aunque haya 60 cuadros', () => {

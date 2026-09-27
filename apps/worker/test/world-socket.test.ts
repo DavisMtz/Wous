@@ -162,6 +162,26 @@ describe('la sala en tiempo real', () => {
     expect((await socket.closed).code).toBe(WS_CLOSE.POLICY);
   });
 
+  it('100 inputs en menos de un segundo no cortan: se ignoran los de más y avisa una vez', async () => {
+    // Un joystick en iPad (27/09/2026) mandaba 60–120 por segundo y la sala lo corría.
+    const { socket } = await joinRoomDirectly('joystick');
+    await socket.next('ROOM_SNAPSHOT');
+    for (let seq = 1; seq <= 100; seq++) {
+      socket.send({ v: 1, type: 'PLAYER_INPUT', seq, payload: { moveX: 0.5, moveY: 0.5 } });
+    }
+    // Sigue viva. El ping no sirve de testigo (lo contesta el runtime sin pasar por la
+    // sala); un chat sí: la sala procesa en orden, así que su eco llega después de todo.
+    socket.send({ v: 1, type: 'CHAT_SEND', payload: { text: 'sigo aquí' } });
+    await socket.next('CHAT_MESSAGE');
+    const avisos = socket.received.filter(
+      (m) => m.type === 'ERROR' && m.payload.about === 'PLAYER_INPUT',
+    );
+    expect(avisos).toHaveLength(1);
+    socket.close();
+    const cierre = await socket.closed;
+    expect(cierre.code).not.toBe(WS_CLOSE.POLICY);
+  });
+
   it('el ping con el texto exacto recibe PONG', async () => {
     const { socket } = await joinRoomDirectly('ping');
     await socket.next('ROOM_SNAPSHOT');
