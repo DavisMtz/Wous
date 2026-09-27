@@ -1,5 +1,5 @@
 import { AUTH, RATE_LIMITS } from '@wous/config';
-import type { RegisterRequest } from '@wous/contracts';
+import { normalizeInvitationCode, type RegisterRequest } from '@wous/contracts';
 import { auditStatement } from '../accounts/audit.ts';
 import {
   isReservedUsername,
@@ -9,6 +9,11 @@ import {
 } from '../accounts/normalize.ts';
 import { checkPassword, PASSWORD_PROBLEM_MESSAGES } from '../accounts/password-policy.ts';
 import { findAccountByEmail, usernameExists } from '../accounts/repo.ts';
+import {
+  consumeInvitation,
+  invitationCodeHash,
+  releaseInvitation,
+} from '../invitations/invitations.ts';
 import { errorFields } from '../lib/log.ts';
 import { dispatchOutbox, prepareOutbox } from '../notifications/outbox.ts';
 import { enforceRateLimit, identityRateKey, ipRateKey } from '../security/rate-limit.ts';
@@ -21,7 +26,7 @@ import type { UseCaseContext } from './use-case.ts';
  * correo, y sin esperar a Brevo: el correo sale por outbox → cola.
  */
 export async function registerAccount(ctx: UseCaseContext, input: RegisterRequest): Promise<void> {
-  const { env, deps, log } = ctx;
+  const { env, deps } = ctx;
 
   // 2–3. Normalización para comparar sin destruir el valor visible.
   const email = input.email.trim();
@@ -55,9 +60,70 @@ export async function registerAccount(ctx: UseCaseContext, input: RegisterReques
   const problem = checkPassword(input.password, { username, email: emailNormalized });
   if (problem) throw AuthErrors.weakPassword(PASSWORD_PROBLEM_MESSAGES[problem]);
 
-  // 8. Unicidad. El nombre de usuario es público: decir que está ocupado no
-  // filtra nada. El correo NO: si existe, se responde igual que si no.
+  // 8. Unicidad del nombre. El nombre de usuario es público: decir que está
+  // ocupado no filtra nada.
   if (await usernameExists(env.DB, usernameNormalized)) throw AuthErrors.usernameTaken();
+
+  // 8b. Alpha cerrada (ADR-0012): se gasta el cupo de la invitación después de
+  // todo lo demás y ANTES de mirar el correo. Un correo ya registrado gasta el
+  // cupo igual: la invitación no sirve para averiguar quién tiene cuenta.
+  const invitationId = await claimInvitation(ctx, input.invitationCode);
+  try {
+    await openAccount(
+      ctx,
+      input,
+      { email, emailNormalized, username, usernameNormalized },
+      invitationId,
+    );
+  } catch (err) {
+    // El alta no se hizo (nombre ganado en una carrera, D1 caída…): se devuelve el cupo.
+    if (invitationId) await releaseInvitation(env.DB, invitationId);
+    throw err;
+  }
+}
+
+/**
+ * Con registro por invitación, gasta un cupo o rechaza con INVITATION_INVALID
+ * (el mismo mensaje si no existe, venció, se agotó o la revocaron). Con
+ * registro abierto no hace nada.
+ */
+async function claimInvitation(
+  ctx: UseCaseContext,
+  rawCode: string | undefined,
+): Promise<string | null> {
+  if (ctx.config.registration !== 'invite') return null;
+  const code = rawCode ? normalizeInvitationCode(rawCode) : null;
+  const id = code
+    ? await consumeInvitation(
+        ctx.env.DB,
+        await invitationCodeHash(ctx.env, code),
+        ctx.deps.clock.now(),
+      )
+    : null;
+  if (!id) {
+    ctx.log.warn('auth.invitation_rejected', { reason: code ? 'not_usable' : 'missing' });
+    throw AuthErrors.invitationInvalid();
+  }
+  return id;
+}
+
+type Identity = {
+  email: string;
+  emailNormalized: string;
+  username: string;
+  usernameNormalized: string;
+};
+
+/** 8c–16: el correo (sin revelar si existe), el hash y el alta atómica. */
+async function openAccount(
+  ctx: UseCaseContext,
+  input: RegisterRequest,
+  { email, emailNormalized, username, usernameNormalized }: Identity,
+  invitationId: string | null,
+): Promise<void> {
+  const { env, deps, log } = ctx;
+
+  // El correo NO es público: si existe, se responde igual que si no.
   if (await findAccountByEmail(env.DB, emailNormalized)) {
     await deps.hasher.burn(input.password);
     log.info('auth.register_existing_email', { to: maskEmail(emailNormalized) });
@@ -83,8 +149,9 @@ export async function registerAccount(ctx: UseCaseContext, input: RegisterReques
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO accounts (id, email, email_normalized, username, username_normalized,
-           password_hash, status, terms_version, terms_accepted_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'PENDING_EMAIL', ?, ?, ?, ?)`,
+           password_hash, status, terms_version, terms_accepted_at, created_at, updated_at,
+           invitation_id)
+         VALUES (?, ?, ?, ?, ?, ?, 'PENDING_EMAIL', ?, ?, ?, ?, ?)`,
       ).bind(
         accountId,
         email,
@@ -96,6 +163,7 @@ export async function registerAccount(ctx: UseCaseContext, input: RegisterReques
         now,
         now,
         now,
+        invitationId,
       ),
       env.DB.prepare(
         'INSERT INTO notification_preferences (account_id, updated_at) VALUES (?, ?)',
@@ -107,6 +175,7 @@ export async function registerAccount(ctx: UseCaseContext, input: RegisterReques
         action: 'ACCOUNT_REGISTERED',
         targetType: 'account',
         targetId: accountId,
+        ...(invitationId ? { metadata: { invitationId } } : {}),
       }),
     ]);
   } catch (err) {
@@ -114,6 +183,7 @@ export async function registerAccount(ctx: UseCaseContext, input: RegisterReques
     // comprobación y el INSERT. El UNIQUE de D1 es la autoridad final.
     const message = errorFields(err).errorMessage ?? '';
     if (/username_normalized/.test(String(message))) throw AuthErrors.usernameTaken();
+    // Otra petición registró el mismo correo: como si ya existiera (el cupo se queda gastado).
     if (/email_normalized/.test(String(message))) return;
     throw err;
   }

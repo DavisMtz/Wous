@@ -65,6 +65,8 @@ export const RATE_LIMITS = {
   friendRequestsPerAccount: { limit: 20, windowMs: HOUR },
   /** Aceptar, rechazar, quitar, bloquear y cambiar avisos, desde la casa o la ficha. */
   socialActionsPerAccount: { limit: 60, windowMs: 10 * MINUTE },
+  /** Lo que cambia algo desde la caseta (sanciones, reportes, invitaciones), por persona. */
+  adminActionsPerAccount: { limit: 120, windowMs: 10 * MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 /** Cola de correo y outbox (§7). */
@@ -194,6 +196,34 @@ export const SOCIAL = {
    * lados saca a la persona en este plazo como máximo.
    */
   recheckMs: 60 * SECOND,
+} as const;
+
+/** La caseta: moderación desde la web (Fase 9, ADR-0012). */
+export const MODERATION = {
+  /** El silencio o la suspensión más largos que se pueden poner (90 días). */
+  maxSanctionHours: 90 * 24,
+  reasonMinChars: 3,
+  reasonMaxChars: 300,
+  /** Reportes que la caseta lista de una vez. */
+  reportListLimit: 100,
+  /** Resultados de una búsqueda de personas. */
+  searchLimit: 20,
+  /** Entradas de auditoría en la ficha de una persona. */
+  auditEntries: 30,
+} as const;
+
+/** Alpha cerrada: invitaciones (Fase 9, ADR-0012). */
+export const INVITATIONS = {
+  /** Caracteres Crockford del código (5 bits cada uno: 50 bits). */
+  codeLength: 10,
+  /** Usos que puede tener una invitación, como máximo. */
+  maxUses: 50,
+  /** Vencimiento más largo que se puede poner, en días. */
+  maxDays: 90,
+  labelMinChars: 2,
+  labelMaxChars: 60,
+  /** Invitaciones que la caseta lista de una vez. */
+  listLimit: 100,
 } as const;
 
 /** Amistades (§20, ADR-0011). */

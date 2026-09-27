@@ -14,10 +14,13 @@ export type AccountRow = {
   terms_accepted_at: number;
   created_at: number;
   updated_at: number;
+  /** Fin de la suspensión (epoch ms); null con SUSPENDED = indefinida (ADR-0012). */
+  suspended_until: number | null;
 };
 
 const COLUMNS = `id, email, email_normalized, username, username_normalized, password_hash, status,
-  email_verified_at, email_deliverability, terms_version, terms_accepted_at, created_at, updated_at`;
+  email_verified_at, email_deliverability, terms_version, terms_accepted_at, created_at, updated_at,
+  suspended_until`;
 
 export function findAccountByEmail(db: D1Database, emailNormalized: string) {
   return db

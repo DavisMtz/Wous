@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { Errors, errorResponse, handleError } from './http/errors.ts';
 import { contextMiddleware } from './http/middleware/context.ts';
 import { apiSecurityHeaders, requireSameOrigin } from './http/middleware/security.ts';
+import { adminRoutes } from './http/routes/admin.ts';
 import { authRoutes } from './http/routes/auth.ts';
 import { characterRoutes } from './http/routes/characters.ts';
 import { configRoutes } from './http/routes/config.ts';
@@ -34,6 +35,7 @@ export function createApp(overrides: Partial<Deps> = {}) {
   app.route(`${API_PREFIX}/users`, userRoutes);
   app.route(`${API_PREFIX}/preferences`, preferenceRoutes);
   app.route(`${API_PREFIX}/webhooks`, webhookRoutes);
+  app.route(`${API_PREFIX}/admin`, adminRoutes);
   app.route(`${API_PREFIX}/dev`, devRoutes);
   app.route('/ws', worldRoutes);
 

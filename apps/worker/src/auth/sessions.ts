@@ -1,5 +1,5 @@
 import { AUTH } from '@wous/config';
-import type { AccountStatus } from '@wous/contracts';
+import type { AccountStatus, StaffRole } from '@wous/contracts';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppHono } from '../http/types.ts';
@@ -21,6 +21,8 @@ export type SessionAccount = {
   username: string;
   status: AccountStatus;
   createdAt: number;
+  /** Rol en la caseta (ADR-0012): sale de `staff` en cada petición, nunca del cliente. */
+  staffRole: StaffRole | null;
 };
 
 export type SessionContext = {
@@ -101,6 +103,7 @@ type SessionRow = {
   username: string;
   status: AccountStatus;
   created_at: number;
+  staff_role: StaffRole | null;
 };
 
 /**
@@ -116,8 +119,10 @@ export async function resolveSession(
   if (!token || !TOKEN_FORMAT.test(token)) return null;
   const row = await env.DB.prepare(
     `SELECT s.id AS session_id, s.last_seen_at, s.expires_at, s.revoked_at,
-            a.id AS account_id, a.email, a.username, a.status, a.created_at
+            a.id AS account_id, a.email, a.username, a.status, a.created_at,
+            st.role AS staff_role
        FROM sessions s JOIN accounts a ON a.id = s.account_id
+       LEFT JOIN staff st ON st.account_id = a.id
       WHERE s.token_hash = ?`,
   )
     .bind(await hashSessionToken(env, token))
@@ -144,8 +149,18 @@ export async function resolveSession(
       username: row.username,
       status: row.status,
       createdAt: row.created_at,
+      staffRole: row.staff_role,
     },
   };
+}
+
+/** El rol de una cuenta en la caseta, o null (para las respuestas de login y verificación). */
+export async function staffRoleOf(db: D1Database, accountId: string): Promise<StaffRole | null> {
+  const row = await db
+    .prepare('SELECT role FROM staff WHERE account_id = ?')
+    .bind(accountId)
+    .first<{ role: StaffRole }>();
+  return row?.role ?? null;
 }
 
 export function readSessionCookie(c: Context<AppHono>): string | undefined {

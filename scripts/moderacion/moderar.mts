@@ -1,7 +1,8 @@
-// Moderación básica de Wous (Fase 7, ADR-0010): revisar reportes y aplicar
-// silencio, suspensión o cierre, siempre con fila en audit_log. Habla con D1
-// por `wrangler d1 execute`, así que moderar exige la sesión de Cloudflare de
-// quien despliega: no hay panel ni endpoint con secreto que atacar.
+// Moderación de Wous por terminal (Fase 7, ADR-0010; Fase 9, ADR-0012):
+// revisar reportes, aplicar silencio, suspensión o cierre y dar o quitar el
+// rol de la caseta, siempre con fila en audit_log. Habla con D1 por
+// `wrangler d1 execute`, así que exige la sesión (o el token) de Cloudflare de
+// quien despliega. El rol de la caseta SOLO se da aquí: la web no puede.
 //
 // Uso (desde la raíz del repo):
 //   node scripts/moderacion/moderar.mts <entorno> <orden> [argumentos] [opciones]
@@ -11,15 +12,19 @@
 //             reporte <rpt_…>
 //             silenciar <persona> <horas> --motivo "…" [--reporte rpt_…]
 //             quitar-silencio <persona> --motivo "…"
-//             suspender <persona> --motivo "…" [--reporte rpt_…]
+//             suspender <persona> [--horas N] --motivo "…" [--reporte rpt_…]
 //             banear <persona> --motivo "…" [--reporte rpt_…]
 //             reactivar <persona> --motivo "…"
 //             descartar <rpt_…> --motivo "…"
+//             caseta
+//             dar-caseta <persona> --motivo "…"
+//             quitar-caseta <persona> --motivo "…"
 //   persona   chr_…, acc_… o @usuario
 //   opciones  --moderador <nombre> (si no, WOUS_MODERADOR o el usuario del sistema)
 //
 // La sala revisa a quien está conectado cada minuto: un silencio o una
-// suspensión alcanzan a la persona en ese plazo, sin reiniciar nada.
+// suspensión puestos aquí alcanzan a la persona en ese plazo (desde la
+// caseta aplican en el acto). Una suspensión con --horas se levanta sola.
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { userInfo } from 'node:os';
@@ -281,21 +286,30 @@ switch (orden) {
     const { cuenta, nombre } = cuentaDe(resto[0]);
     const motivo = motivoObligatorio();
     const estado = orden === 'suspender' ? 'SUSPENDED' : 'BANNED';
+    // Suspender con --horas se levanta solo al vencer (ADR-0012); sin horas, hasta reactivar.
+    const horasTexto = opcionTexto('horas');
+    const horas = orden === 'suspender' && horasTexto !== null ? Number(horasTexto) : null;
+    if (horas !== null && (!Number.isFinite(horas) || horas <= 0 || horas > 24 * 90)) {
+      fallar('Las horas van de más de 0 a 2160 (90 días).');
+    }
+    const hasta = horas !== null ? ahora + Math.round(horas * HORA) : null;
     d1(
-      `UPDATE accounts SET status = '${estado}', updated_at = ${ahora} WHERE id = '${cuenta}'; ` +
+      `UPDATE accounts SET status = '${estado}', suspended_until = ${hasta ?? 'NULL'},
+         updated_at = ${ahora} WHERE id = '${cuenta}'; ` +
         `UPDATE sessions SET revoked_at = ${ahora} WHERE account_id = '${cuenta}' AND revoked_at IS NULL; ` +
         auditoria(
           orden === 'suspender' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_BANNED',
           'account',
           cuenta,
           motivo,
-          {},
+          hasta !== null ? { horas, hasta } : {},
           ahora,
         ) +
         cerrarReporte(orden === 'suspender' ? 'Suspensión' : 'Cuenta cerrada', ahora),
     );
     console.log(
-      `✓ ${nombre}: ${estado}. Sus sesiones se cerraron; si está en una sala, sale en menos de un minuto.`,
+      `✓ ${nombre}: ${estado}${hasta !== null ? ` hasta el ${fecha(hasta)}` : ''}. ` +
+        'Sus sesiones se cerraron; si está en una sala, sale en menos de un minuto.',
     );
     break;
   }
@@ -304,13 +318,52 @@ switch (orden) {
     const { cuenta, nombre } = cuentaDe(resto[0]);
     const motivo = motivoObligatorio();
     d1(
-      `UPDATE accounts SET status = 'ACTIVE', updated_at = ${ahora}
+      `UPDATE accounts SET status = 'ACTIVE', suspended_until = NULL, updated_at = ${ahora}
          WHERE id = '${cuenta}' AND status = 'SUSPENDED'; ` +
         auditoria('ACCOUNT_REINSTATED', 'account', cuenta, motivo, {}, ahora),
     );
     console.log(
       `✓ ${nombre}: si estaba suspendida, vuelve a estar activa (una cerrada no se reabre así).`,
     );
+    break;
+  }
+
+  case 'caseta': {
+    const filas = d1(
+      `SELECT s.role, s.granted_at, a.username, a.status, c.display_name FROM staff s
+         JOIN accounts a ON a.id = s.account_id
+         LEFT JOIN characters c ON c.account_id = a.id ORDER BY s.granted_at`,
+    );
+    if (filas.length === 0) console.log('Nadie atiende la caseta todavía.');
+    for (const f of filas) {
+      console.log(
+        `@${f.username} (${f.display_name ?? 'sin personaje'}, ${f.status}) · ${f.role} desde el ${fecha(f.granted_at)}`,
+      );
+    }
+    break;
+  }
+
+  case 'dar-caseta': {
+    const { cuenta, nombre } = cuentaDe(resto[0]);
+    const motivo = motivoObligatorio();
+    d1(
+      `INSERT INTO staff (account_id, role, granted_at, note)
+         VALUES ('${cuenta}', 'ADMIN', ${ahora}, ${texto(motivo)})
+         ON CONFLICT (account_id) DO NOTHING; ` +
+        auditoria('STAFF_GRANTED', 'account', cuenta, motivo, { rol: 'ADMIN' }, ahora),
+    );
+    console.log(`✓ ${nombre} ya atiende la caseta (/caseta). Aplica en su próxima petición.`);
+    break;
+  }
+
+  case 'quitar-caseta': {
+    const { cuenta, nombre } = cuentaDe(resto[0]);
+    const motivo = motivoObligatorio();
+    d1(
+      `DELETE FROM staff WHERE account_id = '${cuenta}'; ` +
+        auditoria('STAFF_REVOKED', 'account', cuenta, motivo, {}, ahora),
+    );
+    console.log(`✓ ${nombre} ya no atiende la caseta.`);
     break;
   }
 

@@ -42,6 +42,11 @@ export const HttpErrorCode = z.enum([
   'LIMIT_REACHED',
   /** Tienes bloqueada a esa persona: primero desbloquéala. */
   'BLOCKED_BY_YOU',
+  // Alpha cerrada y caseta (ADR-0012)
+  /** La invitación no existe, venció, se agotó o la revocaron (el mismo mensaje para todo). */
+  'INVITATION_INVALID',
+  /** La cuenta no está en un estado que permita eso (p. ej. reactivar una cuenta cerrada). */
+  'INVALID_STATE',
   // Webhooks
   'WEBHOOK_UNAUTHORIZED',
 ]);

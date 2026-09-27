@@ -19,6 +19,8 @@ export const ID_PREFIXES = {
   friendship: 'frn',
   message: 'msg',
   report: 'rpt',
+  /** Invitaciones de la alpha cerrada (ADR-0012). */
+  invitation: 'inv',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -40,3 +42,4 @@ export const FriendshipId = idSchema('friendship');
 export const RequestId = idSchema('request');
 export const MessageId = idSchema('message');
 export const ReportId = idSchema('report');
+export const InvitationId = idSchema('invitation');

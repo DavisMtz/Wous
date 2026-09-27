@@ -850,6 +850,16 @@ export class RoomDO extends DurableObject<Env> {
   }
 
   /**
+   * La caseta cambió la situación de alguien que está aquí (ADR-0012):
+   * silencio, suspensión, cierre o sesiones cerradas. La sala no recibe la
+   * sanción: la vuelve a leer de D1 para todos los presentes, la misma
+   * revisión que corre cada minuto, pero ya.
+   */
+  async recheck(): Promise<void> {
+    await this.review(Date.now());
+  }
+
+  /**
    * Reportar (§18). La evidencia sale de la ventana reciente de ESTA sala:
    * el cliente dice qué mensaje (por ID), nunca qué decía. Un mensaje que no
    * es de la persona reportada es un cliente alterado y cuenta como falta.

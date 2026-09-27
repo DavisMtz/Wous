@@ -14,6 +14,7 @@ export const configRoutes = new Hono<AppHono>().get('/', (c) => {
     environment: config.env,
     turnstileSiteKey: config.turnstileSiteKey,
     termsVersion: AUTH.termsVersion,
+    registration: config.registration,
   };
   c.header('Cache-Control', 'public, max-age=300');
   return ok(c, body);
