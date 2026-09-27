@@ -100,10 +100,10 @@ button.renglon__nombre {
   rotate: 0.4deg;
 }
 
+/* Solo se desliza: nada nace invisible, ni con la pestaña oculta (el navegador frena las animaciones). */
 @keyframes renglon-pegar {
   from {
     translate: 0 8px;
-    opacity: 0;
   }
 }
 

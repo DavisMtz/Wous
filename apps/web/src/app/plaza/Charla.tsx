@@ -67,14 +67,17 @@ export function Charla({
   const ultimoEnviado = useRef('');
   const [texto, setTexto] = useState('');
   const [avisoVisible, setAvisoVisible] = useState<string | null>(null);
-  const [ahora, setAhora] = useState(() => Date.now());
+  // La hora se toma al pintar: si el navegador frenó el reloj (pestaña oculta),
+  // una línea nueva igual calcula bien cuánto le queda. El intervalo solo repinta.
+  const [, setTic] = useState(0);
+  const ahora = Date.now();
 
   // La tira se recalcula cada segundo solo mientras tiene algo que despegar.
   useEffect(() => {
     const vigente = () => entradas.some((e) => Date.now() - e.recibido < TIRA_MS + DESPEGUE_MS);
     if (!vigente()) return;
     const timer = window.setInterval(() => {
-      setAhora(Date.now());
+      setTic((n) => n + 1);
       if (!vigente()) window.clearInterval(timer);
     }, 1000);
     return () => window.clearInterval(timer);
