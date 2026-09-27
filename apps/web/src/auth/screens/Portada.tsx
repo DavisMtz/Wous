@@ -1,6 +1,7 @@
 import { useGSAP } from '@gsap/react';
 import { useRef, useState } from 'react';
-import { ROUTES } from '../../app/router.tsx';
+import { Link, ROUTES } from '../../app/router.tsx';
+import { useSession } from '../../app/session.tsx';
 import { PERSONAS, RACK_OUTFITS } from '../../game/rendering/looks.ts';
 import { Puesto } from '../../ui/components/Puesto.tsx';
 import { EnlaceTrazo, Estrella, Rotulo } from '../../ui/components/Tianguis.tsx';
@@ -18,6 +19,8 @@ function pickPersona() {
 export function Portada() {
   const root = useRef<HTMLDivElement>(null);
   const [persona] = useState(pickPersona);
+  // Alpha cerrada (ADR-0012): se entra con invitación.
+  const conInvitacion = useSession().config?.registration === 'invite';
 
   useGSAP(
     () => {
@@ -85,7 +88,11 @@ export function Portada() {
             Un mundo en pixel art para pasar el rato con tu banda. Tu personaje, tu ropa, tu estilo.
           </p>
           <div className="portada__acciones">
-            <Estrella grande="¡Pásale!" chica="Crea tu cuenta" to={ROUTES.register} />
+            <Estrella
+              grande="¡Pásale!"
+              chica={conInvitacion ? 'Traigo invitación' : 'Crea tu cuenta'}
+              to={ROUTES.register}
+            />
             <EnlaceTrazo to={ROUTES.login}>Ya tengo cuenta</EnlaceTrazo>
           </div>
         </section>
@@ -93,7 +100,13 @@ export function Portada() {
           <Perchero persona={persona} outfits={RACK_OUTFITS} />
         </section>
       </div>
-      <p className="portada__pie">Alpha cerrada · Solo para mayores de 16</p>
+      <p className="portada__pie">
+        {conInvitacion ? 'Alpha cerrada: se entra con invitación' : 'Alpha cerrada'} · Solo para
+        mayores de 16 ·{' '}
+        <Link to={ROUTES.rules} className="enlace portada__reglas">
+          Reglas de convivencia
+        </Link>
+      </p>
     </Puesto>
   );
 }

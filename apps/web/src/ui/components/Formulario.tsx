@@ -207,6 +207,19 @@ export function mensajeDeError(error: unknown): string {
     }
     case 'TURNSTILE_FAILED':
       return 'No pudimos comprobar que eres una persona. Espera a que la verificación termine y vuelve a enviar.';
+    case 'ACCOUNT_SUSPENDED': {
+      // Con fin conocido, el servidor dice cuánto falta (ADR-0012).
+      if (error.retryAfterSeconds === undefined) {
+        return 'Tu cuenta está suspendida. Revisa las reglas de convivencia.';
+      }
+      const hasta = new Intl.DateTimeFormat('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(Date.now() + error.retryAfterSeconds * 1000);
+      return `Tu cuenta está suspendida hasta el ${hasta}.`;
+    }
     case 'INVALID_REQUEST':
       return 'Revisa los campos marcados.';
     default:

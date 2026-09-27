@@ -1,6 +1,7 @@
 import { type PendingVerificationResponse, RegisterRequest } from '@wous/contracts';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, ROUTES, useRouter } from '../../app/router.tsx';
+import { REGLAS } from '../../app/reglas/textos.ts';
+import { dropQueryParam, Link, ROUTES, useRouter } from '../../app/router.tsx';
 import { useSession } from '../../app/session.tsx';
 import { api } from '../../services/api.ts';
 import {
@@ -16,9 +17,12 @@ import { Aviso, Cartulina, Hoja } from '../../ui/components/Tianguis.tsx';
 import { fieldErrors, focusFirstError, Mostrador } from '../Mostrador.tsx';
 
 export function Registro() {
-  const { navigate } = useRouter();
+  const { navigate, location } = useRouter();
   const { config } = useSession();
   const formRef = useRef<HTMLFormElement>(null);
+  // Alpha cerrada (ADR-0012): el enlace de la invitación trae el código.
+  const conInvitacion = config?.registration === 'invite';
+  const [invitacion, setInvitacion] = useState(() => location.search.get('invitacion') ?? '');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +37,9 @@ export function Registro() {
     if (Object.keys(errores).length > 0) focusFirstError(formRef.current);
   }, [errores]);
 
+  // El código ya quedó en el campo: fuera de la barra de direcciones.
+  useEffect(() => dropQueryParam('invitacion'), []);
+
   const enviar = async (event: FormEvent) => {
     event.preventDefault();
     setGeneral(null);
@@ -42,6 +49,7 @@ export function Registro() {
       password,
       turnstileToken: token ?? 'pendiente',
       termsVersion: config?.termsVersion ?? '',
+      ...(conInvitacion ? { invitationCode: invitacion } : {}),
     });
     const locales = parsed.success ? {} : fieldErrors(parsed.error);
     if (!acepta) locales.terminos = 'Marca la casilla para crear tu cuenta.';
@@ -76,9 +84,27 @@ export function Registro() {
     <Mostrador etiqueta={username.trim() ? `@${username.trim()}` : ''}>
       <Hoja titulo="Crea tu cuenta" id="registro-titulo">
         <p className="hoja__entrada">
+          {conInvitacion
+            ? 'Wous está en alpha cerrada: se entra con la invitación que te compartieron. '
+            : ''}
           Tu correo es para entrar y recuperar la cuenta. En la plaza solo se ve tu nombre.
         </p>
         <form ref={formRef} className="formulario" onSubmit={enviar} noValidate>
+          {conInvitacion ? (
+            <Campo
+              etiqueta="Código de invitación"
+              name="invitationCode"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={20}
+              value={invitacion}
+              onChange={(e) => setInvitacion(e.target.value)}
+              error={errores.invitationCode}
+              ayuda="Te lo pasó quien te invitó. Tiene la forma XXXXX-XXXXX."
+              required
+            />
+          ) : null}
           <Campo
             etiqueta="Correo"
             name="email"
@@ -122,18 +148,15 @@ export function Registro() {
               Leer las reglas
             </summary>
             <ul>
-              <li>
-                Trata a todas las personas con respeto: nada de acoso, amenazas ni discriminación.
-              </li>
-              <li>
-                No compartas datos personales tuyos ni de nadie: dirección, teléfono o contraseñas.
-              </li>
-              <li>
-                Nada de contenido sexual, violento o ilegal en tu nombre, tu personaje o el chat.
-              </li>
-              <li>Wous está en alpha: puede fallar y el mundo puede reiniciarse.</li>
-              <li>Las cuentas que rompan estas reglas pueden suspenderse.</li>
+              {REGLAS.map((regla) => (
+                <li key={regla}>{regla}</li>
+              ))}
             </ul>
+            <p className="reglas__mas">
+              <a href={ROUTES.rules} target="_blank" rel="noopener" className="enlace">
+                Qué hace la caseta y qué datos guardamos
+              </a>
+            </p>
           </details>
           <Verificacion accion="register" onToken={setToken} reinicio={reinicio} />
           {general ? <Aviso>{general}</Aviso> : null}
