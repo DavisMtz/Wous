@@ -19,7 +19,7 @@ import {
   WsEnvelopeHeader,
   type WsErrorCode,
 } from '@wous/contracts';
-import type { CollisionGrid, Facing, Vec } from '@wous/game-core';
+import { type CollisionGrid, canStandAt, type Facing, type Vec } from '@wous/game-core';
 import {
   canReachPortal,
   canReachSeat,
@@ -225,6 +225,9 @@ export class RoomDO extends DurableObject<Env> {
       from ??= 'ghost';
       await this.forgetGhost(identity.characterId);
     }
+    // El lugar guardado pudo quedar de otra versión del mapa (un despliegue a
+    // media ventana de gracia): si ya no cabe, entra como recién llegada.
+    if (heredado && !lugarValido(map, grid, heredado)) heredado = null;
 
     const present = this.live();
     if (!heredado && present.length + this.ghosts.size >= identity.hardLimit) {
@@ -1325,6 +1328,20 @@ function attachmentOf(ws: WebSocket): PlayerAttachment | null {
 /** El asiento de alguien, para heredarlo (o nada). */
 function seatPart(att: PlayerAttachment): { st?: string } {
   return att.st !== undefined ? { st: att.st } : {};
+}
+
+/**
+ * ¿Un lugar heredado cabe en ESTE mapa? De pie, donde se puede estar; sentado,
+ * en un asiento que siga existiendo, justo donde está.
+ */
+function lugarValido(map: MapDef, grid: CollisionGrid, lugar: Vec & { st?: string }): boolean {
+  if (lugar.st !== undefined) {
+    const seat = seatOf(map, lugar.st);
+    return (
+      seat !== undefined && Math.abs(seat.x - lugar.x) < 0.01 && Math.abs(seat.y - lugar.y) < 0.01
+    );
+  }
+  return canStandAt(grid, lugar);
 }
 
 /** Tras esperar a D1, ¿el socket sigue representando a alguien? */

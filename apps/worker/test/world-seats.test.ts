@@ -1,6 +1,6 @@
 import { runInDurableObject } from 'cloudflare:test';
 import { SEATS } from '@wous/config';
-import { CAFE, seatOf } from '@wous/world-data';
+import { CAFE, PLAZA, seatOf, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
 import type { RoomDO } from '../src/durable-objects/RoomDO.ts';
 import type { PlayerAttachment } from '../src/world/players.ts';
@@ -130,6 +130,35 @@ describe('asientos (ADR-0013)', () => {
     a.socket.send(sit(silla.id));
     expect((await a.socket.next('ERROR')).payload.code).toBe('SEAT_TAKEN');
     a.socket.close();
+  });
+
+  it('un lugar guardado que ya no cabe en el mapa (de otra versión) entra por el spawn', async () => {
+    const primera = await joinRoomDirectly('guardado-viejo');
+    await primera.socket.next('ROOM_SNAPSHOT');
+    const id = primera.identity.characterId;
+    const cae = async (stub: Stub) =>
+      runInDurableObject(stub, async (room: RoomDO, state) => {
+        const [ws] = state.getWebSockets(id);
+        if (!ws) throw new Error('sin socket');
+        await room.webSocketClose(ws, 1006);
+      });
+
+    // Un lugar que sí cabe se respeta al volver dentro de la ventana de gracia.
+    await llevar(primera.stub, id, 49, 30);
+    await cae(primera.stub);
+    const segunda = await joinRoomDirectly('guardado-viejo', { characterId: id, epoch: 1 });
+    const snap = await segunda.socket.next('ROOM_SNAPSHOT');
+    expect(snap.payload.players.find((p) => p.id === id)).toMatchObject({ x: 49, y: 30 });
+
+    // Como si viniera del mapa anterior: su lugar cae dentro de la Catedral.
+    await llevar(segunda.stub, id, 34, 20);
+    await cae(segunda.stub);
+    const tercera = await joinRoomDirectly('guardado-viejo', { characterId: id, epoch: 2 });
+    const otra = await tercera.socket.next('ROOM_SNAPSHOT');
+    const yo = otra.payload.players.find((p) => p.id === id);
+    const entrada = spawnOf(PLAZA, 'entrada');
+    expect(Math.hypot((yo?.x ?? 0) - entrada.x, (yo?.y ?? 0) - entrada.y)).toBeLessThan(2);
+    tercera.socket.close();
   });
 
   it('un asiento de otra sala no existe aquí, y pedirlo con prisa cuenta como falta', async () => {
