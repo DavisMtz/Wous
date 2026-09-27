@@ -442,3 +442,101 @@
     top: calc(max(10px, env(safe-area-inset-top)) + 60px);
   }
 }
+
+/* ─── Una placa del mundo (ADR-0013): lo que dice, copiado en cartulina ─── */
+
+.placa {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 88px);
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 13;
+  width: min(86vw, 340px);
+  max-height: calc(100dvh - max(14px, env(safe-area-inset-top)) - 180px);
+  padding: 20px 18px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--plumon);
+  background: var(--cartulina);
+  border-radius: 4px 3px 6px 4px;
+  box-shadow: var(--sombra-hoja);
+  rotate: 0.8deg;
+  animation: placa-pegar 240ms var(--ease-salida);
+}
+
+.placa__masking {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 64px;
+  height: 18px;
+  translate: -50% 0;
+  rotate: -2deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(0 8%, 100% 0, 97% 100%, 3% 92%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+@keyframes placa-pegar {
+  from {
+    translate: 0 -10px;
+    rotate: 3deg;
+    opacity: 0;
+  }
+}
+
+.placa__cerrar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--trazo-chico);
+  background: none;
+  color: var(--plumon);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .placa__cerrar:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 55%, transparent);
+  }
+}
+
+.placa__titulo {
+  margin: 0 40px 8px 0;
+  font-family: var(--font-ui);
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.placa__texto {
+  margin: 0 0 8px;
+  font-size: var(--step--1);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.placa__texto:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .placa {
+    animation: none;
+  }
+}
+
+/* Teléfono apaisado: la placa se hace chica y va arriba, sin tapar los controles. */
+@media (max-height: 480px) {
+  .placa {
+    top: calc(max(8px, env(safe-area-inset-top)) + 56px);
+    width: min(56vw, 320px);
+    max-height: calc(100dvh - 150px);
+    padding: 14px 14px 12px;
+  }
+}

@@ -70,6 +70,20 @@ describe('mensajes del mundo', () => {
     expect(ClientMessage.safeParse({ ...ok, payload: { portalId: '' } }).success).toBe(false);
   });
 
+  it('SIT solo lleva el asiento y STAND nada: ni posición ni hacia dónde mirar', async () => {
+    const { ClientMessage } = await import('../src/index.ts');
+    const sit = { v: 1, type: 'SIT', payload: { seatId: 'banca-armas-1-a' } };
+    expect(ClientMessage.safeParse(sit).success).toBe(true);
+    for (const extra of [{ x: 3, y: 4 }, { facing: 'down' }, { exit: { x: 1, y: 1 } }]) {
+      const hack = { ...sit, payload: { ...sit.payload, ...extra } };
+      expect(ClientMessage.safeParse(hack).success).toBe(false);
+    }
+    expect(ClientMessage.safeParse({ ...sit, payload: { seatId: '' } }).success).toBe(false);
+    const stand = { v: 1, type: 'STAND', payload: {} };
+    expect(ClientMessage.safeParse(stand).success).toBe(true);
+    expect(ClientMessage.safeParse({ ...stand, payload: { x: 1 } }).success).toBe(false);
+  });
+
   it('el texto del ping es el que la auto-respuesta espera', async () => {
     const { ClientMessage, WS_PING_TEXT, WS_PONG_TEXT } = await import('../src/index.ts');
     expect(WS_PING_TEXT).toBe('{"v":1,"type":"PING"}');

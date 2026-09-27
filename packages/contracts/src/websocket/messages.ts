@@ -46,6 +46,8 @@ export const Facing = z.enum(['down', 'up', 'left', 'right']);
 export type Facing = z.infer<typeof Facing>;
 
 const Axis = z.number().min(-1).max(1);
+/** ID de un asiento del mapa («banca-armas-3-a»). */
+const SeatId = z.string().min(1).max(40);
 /** Coordenada en tiles, con tres decimales en el cable. */
 const Coord = z.number().min(-1).max(10_000);
 const Seq = z
@@ -83,6 +85,17 @@ export const ChatSendMessage = wsEnvelope(
   z.strictObject({ text: z.string().min(1).max(CHAT.maxRawChars) }),
 );
 export type ChatSendMessage = z.infer<typeof ChatSendMessage>;
+
+/**
+ * Sentarse (ADR-0013). Solo el ID del asiento: la sala decide si lo
+ * alcanzas y si está libre, y dónde quedas. Nunca una posición.
+ */
+export const SitMessage = wsEnvelope('SIT', z.strictObject({ seatId: z.string().min(1).max(40) }));
+export type SitMessage = z.infer<typeof SitMessage>;
+
+/** Levantarse: quedas de pie en la salida del asiento. Caminar también levanta. */
+export const StandMessage = wsEnvelope('STAND', z.strictObject({}));
+export type StandMessage = z.infer<typeof StandMessage>;
 
 /** Hacer un gesto (§19): solo el ID del catálogo. */
 export const EmotePlayMessage = wsEnvelope('EMOTE_PLAY', z.strictObject({ emote: Emote }));
@@ -127,6 +140,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
   ReportPlayerMessage,
   BlockPlayerMessage,
   UnblockPlayerMessage,
+  SitMessage,
+  StandMessage,
   PingMessage,
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
@@ -154,6 +169,8 @@ export const PlayerView = z.object({
   moveY: Axis,
   /** Se le cayó la conexión y la sala le guarda el lugar (ventana de gracia, §17). */
   away: z.boolean().optional(),
+  /** Está sentado en este asiento del mapa (ADR-0013). */
+  seat: SeatId.optional(),
 });
 export type PlayerView = z.infer<typeof PlayerView>;
 
@@ -170,6 +187,8 @@ export const PlayerStateView = z.object({
   t: z.number().int(),
   /** Presente solo si se le cayó la conexión: sigue ahí, quieto, esperando volver. */
   away: z.boolean().optional(),
+  /** Presente solo si está sentado: en qué asiento (ADR-0013). */
+  seat: SeatId.optional(),
 });
 export type PlayerStateView = z.infer<typeof PlayerStateView>;
 

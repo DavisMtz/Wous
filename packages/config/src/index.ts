@@ -145,6 +145,14 @@ export const PORTALS = {
   arrivalTtlMs: 30_000,
 } as const;
 
+/** Asientos: bancas, bordes de fuente y escalones donde se sienta la gente (ADR-0013). */
+export const SEATS = {
+  /** Distancia máxima (tiles) de los pies al asiento o a su salida para poder sentarse. */
+  reach: 1.3,
+  /** Entre dos cambios de sentarse/levantarse, como mínimo (más seguido cuenta como falta). */
+  minIntervalMs: 300,
+} as const;
+
 /** Capacidad por instancia de sala (§13). */
 export const ROOM_CAPACITY = { softLimit: 35, hardLimit: 45 } as const;
 

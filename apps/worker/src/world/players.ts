@@ -15,7 +15,7 @@ import {
   stepMovement,
   type Vec,
 } from '@wous/game-core';
-import type { MapDef, MapId } from '@wous/world-data';
+import type { MapDef, MapId, Seat } from '@wous/world-data';
 
 /**
  * Identidad de quien entra a una sala. La arma el Worker DESPUÉS de validar
@@ -97,6 +97,10 @@ export type PlayerAttachment = {
   ct?: number;
   /** Último gesto (enfriamiento, §19). */
   eg?: number;
+  /** Sentado en este asiento del mapa (ADR-0013). Sentado no se camina. */
+  st?: string;
+  /** Último cambio de sentarse o levantarse (hora del servidor). */
+  sa?: number;
   /** Silencio de moderación vigente hasta (epoch ms). */
   mu?: number;
   /** Acciones sociales (bloquear, reportar): marcas de la última ventana. */
@@ -138,9 +142,27 @@ export function applyInput(
   input: { moveX: number; moveY: number; seq: number },
   now: number,
   grid: CollisionGrid,
+  seat?: Seat,
 ): PlayerAttachment {
-  const next = positionAt(att, now, grid);
   const intent = normalizeInput(input.moveX, input.moveY);
+  if (att.st !== undefined) {
+    // Sentado: quieto, sigue sentado. Caminar levanta: queda de pie en la
+    // salida del asiento con la intención nueva (el cliente predice lo mismo).
+    if (intent.x === 0 && intent.y === 0) return { ...att, seq: input.seq, at: now };
+    const exit = seat?.exit ?? { x: att.x, y: att.y };
+    const { st: _seat, ...standing } = att;
+    return {
+      ...standing,
+      x: round3(exit.x),
+      y: round3(exit.y),
+      f: facingFrom(intent, att.f),
+      mx: round3(intent.x),
+      my: round3(intent.y),
+      seq: input.seq,
+      at: now,
+    };
+  }
+  const next = positionAt(att, now, grid);
   return {
     ...att,
     x: next.x,
@@ -162,6 +184,32 @@ export function applyInput(
 export function positionAt(att: PlayerAttachment, now: number, grid: CollisionGrid): Vec {
   const dt = Math.max(0, Math.min(now - att.at, MOVEMENT.maxStepMs));
   return stepMovement({ x: att.x, y: att.y }, { x: att.mx, y: att.my }, dt, grid);
+}
+
+/** Sentarse (ADR-0013): los pies van al asiento, mirando hacia donde mira el asiento. */
+export function sitDown(att: PlayerAttachment, seat: Seat, now: number): PlayerAttachment {
+  return {
+    ...att,
+    x: round3(seat.x),
+    y: round3(seat.y),
+    f: seat.facing,
+    mx: 0,
+    my: 0,
+    at: now,
+    st: seat.id,
+    sa: now,
+  };
+}
+
+/** Levantarse: de pie en la salida del asiento (si el asiento ya no existe, ahí mismo). */
+export function standUp(
+  att: PlayerAttachment,
+  seat: Seat | undefined,
+  now: number,
+): PlayerAttachment {
+  const { st: _seat, ...standing } = att;
+  const exit = seat?.exit ?? { x: att.x, y: att.y };
+  return { ...standing, x: round3(exit.x), y: round3(exit.y), mx: 0, my: 0, at: now, sa: now };
 }
 
 /**
@@ -196,6 +244,7 @@ export function toPlayerView(att: PlayerAttachment, away = false): PlayerView {
     moveX: att.mx,
     moveY: att.my,
     ...(away ? { away: true } : {}),
+    ...(att.st !== undefined ? { seat: att.st } : {}),
   };
 }
 
@@ -210,6 +259,7 @@ export function toStateView(att: PlayerAttachment, away = false): PlayerStateVie
     seq: att.seq,
     t: att.at,
     ...(away ? { away: true } : {}),
+    ...(att.st !== undefined ? { seat: att.st } : {}),
   };
 }
 

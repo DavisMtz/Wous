@@ -13,6 +13,9 @@ export type Cercano = { id: string; label: string } | null;
 /** Cruzaste una puerta y se está abriendo la otra sala (la cortina baja mientras). */
 export type Transicion = { destino: string; mapa: string } | null;
 
+/** Una placa o letrero abierto (ADR-0013): lo que dice, para leerlo en papel. */
+export type PlacaAbierta = { id: string; titulo: string; texto: readonly string[] };
+
 /** Alguien en la sala (para la lista «Gente aquí» y la ficha). */
 export type Presente = { id: string; nombre: string; apariencia: AppearanceInput };
 
@@ -30,8 +33,10 @@ export type HudState = {
   /** ID del mapa donde estás (la cortina toma de ahí su lona). */
   mapa: string;
   metodo: InputMethod;
-  /** Lo que el botón contextual haría ahora («Entrar al Café»), o nada. */
+  /** Lo que el botón contextual haría ahora («Entrar al Café», «Sentarse»), o nada. */
   cercano: Cercano;
+  /** La placa que estás leyendo, si hay. */
+  placa: PlacaAbierta | null;
   /** Un aviso breve del mundo (se reemplaza por id). */
   aviso: { id: number; texto: string } | null;
   /** Ya caminó al menos una vez: las pistas de arranque se retiran. */

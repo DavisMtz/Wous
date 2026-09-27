@@ -33,8 +33,8 @@ describe('portales (§16)', () => {
     const snapA = await a.next('ROOM_SNAPSHOT');
     expect(snapA.payload.room.mapId).toBe('plaza');
     expect(snapA.payload.players.find((p) => p.id === ana.characterId)).toMatchObject({
-      x: 31,
-      y: 4.6,
+      x: 72.875,
+      y: 5.75,
     });
     const b = (await connect(beto.cookie)).socket;
     if (!b) throw new Error('Beto no entró');
@@ -62,7 +62,7 @@ describe('portales (§16)', () => {
       y: 12.3,
       facing: 'up',
     });
-    expect(cafe.payload.room.mapVersion).toBe(2);
+    expect(cafe.payload.room.mapVersion).toBe(3);
     expect(cafe.payload.players.map((p) => p.id)).not.toContain(beto.characterId);
 
     // Y de regreso: la puerta del Café lleva a la Plaza, frente al Café.
@@ -76,8 +76,8 @@ describe('portales (§16)', () => {
     const plaza = await a3.next('ROOM_SNAPSHOT');
     expect(plaza.payload.room.mapId).toBe('plaza');
     expect(plaza.payload.players.find((p) => p.id === ana.characterId)).toMatchObject({
-      x: 31,
-      y: 4.6,
+      x: 72.875,
+      y: 5.75,
     });
     await b.next('PLAYER_JOINED', (m) => m.payload.player.id === ana.characterId);
     a3.close();

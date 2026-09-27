@@ -1,4 +1,4 @@
-import { CHAT, EMOTE } from '@wous/config';
+import { CHAT, EMOTE, SEATS } from '@wous/config';
 import { type ChatLine, EMOTE_IDS, type Emote, type WsErrorCode } from '@wous/contracts';
 import {
   type CollisionGrid,
@@ -12,19 +12,23 @@ import {
   type Vec,
 } from '@wous/game-core';
 import {
+  type CameraZone,
   collisionGrid,
   getMap,
   type MapDef,
   type MapObject,
-  nearestPortal,
+  type Nearby,
+  nearestInteraction,
   type Portal,
+  type Seat,
+  seatOf,
   spawnOf,
 } from '@wous/world-data';
 import Phaser from 'phaser';
 import type { HudStore } from '../hud-store.ts';
 import type { InputManager } from '../input/input-manager.ts';
 import { InputSampler } from '../network/input-sampler.ts';
-import type { RoomState } from '../network/room-state.ts';
+import type { RoomError, RoomState } from '../network/room-state.ts';
 import { lookFromAppearance } from '../rendering/appearance.ts';
 import type { Look } from '../rendering/pixel-character.ts';
 import { paintGround } from '../world-art/ground.ts';
@@ -33,7 +37,7 @@ import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/ob
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
 import { globoMs, paintGlobo } from './globo.ts';
-import { addCanvasTexture, type GloboRect, NAME_FONT, Persona } from './persona.ts';
+import { addCanvasTexture, type GloboRect, NAME_FONT, Persona, type Postura } from './persona.ts';
 
 /** La red de la sala, vista desde la escena: leer el estado y mandar intención. */
 export type SceneNetwork = {
@@ -43,6 +47,9 @@ export type SceneNetwork = {
   enterPortal(portalId: string): boolean;
   /** Pide un gesto (solo su ID). */
   emote(emote: Emote): boolean;
+  /** Pide sentarse (solo el ID del asiento) y levantarse (ADR-0013). */
+  sit(seatId: string): boolean;
+  stand(): boolean;
 };
 
 export type WorldSceneOptions = {
@@ -58,6 +65,10 @@ export type WorldSceneOptions = {
   net?: SceneNetwork;
   /** Sin movimiento ambiental ni cámara suave (movimiento reducido, capturas). */
   quiet: boolean;
+  /** Solo el banco de desarrollo: dónde aparecer (tiles), para revisar cada rincón. */
+  inicio?: Vec;
+  /** Solo el banco de desarrollo: zoom fijo (1 = el mapa entero en una captura grande). */
+  zoom?: number;
 };
 
 /** Al arrancar o reiniciar la escena: qué sala y en qué punto. */
@@ -86,6 +97,23 @@ const PORTAL_REFUSED: Partial<Record<WsErrorCode, string>> = {
   RATE_LIMITED: 'Con calma: una vez basta.',
 };
 
+/** Lo que se le dice a quien la sala no dejó sentarse (y se vuelve a parar donde estaba). */
+const SEAT_REFUSED: Partial<Record<WsErrorCode, string>> = {
+  SEAT_TAKEN: 'Ya hay alguien sentado ahí.',
+  SEAT_NOT_REACHABLE: 'Acércate más para sentarte.',
+  SEAT_NOT_FOUND: 'Ese asiento ya no está.',
+  INVALID_STATE: 'No se pudo. Intenta otra vez.',
+  RATE_LIMITED: 'Con calma: una vez basta.',
+};
+
+/** Lo que haría el botón contextual: lo de junto (puerta, asiento, placa) o levantarse. */
+type Accion = Nearby | { type: 'stand'; seat: Seat };
+
+/** La cámara sube o baja hacia su encuadre así de rápido (ms de constante). */
+const LOOK_EASE_MS = 420;
+/** Aun encuadrando hacia arriba, quien juega queda al menos así de lejos del borde (tiles). */
+const LOOK_MARGIN_TILES = 2.6;
+
 type Occluder = { image: Phaser.GameObjects.Image; depth: number };
 type Sent = { seq: number; x: number; y: number };
 
@@ -113,7 +141,6 @@ export class WorldScene extends Phaser.Scene {
   private occluders: Occluder[] = [];
   private flags: { image: Phaser.GameObjects.Image; color: number; lean: number }[] = [];
   private camCenter = { x: 0, y: 0 };
-  private cercanoId: string | null = null;
   private walked = 0;
   private readonly sampler: InputSampler;
   /** Dónde estabas al mandar cada input: con eso se mide el error del servidor. */
@@ -125,6 +152,17 @@ export class WorldScene extends Phaser.Scene {
   /** Tu último gesto: se pinta al instante y el eco del servidor ya no lo repite. */
   private ownGesture: { emote: Emote; at: number } | null = null;
   private globoCount = 0;
+  /**
+   * Sentado (ADR-0013): en qué asiento y dónde estabas antes. Se predice al
+   * pedirlo; si la sala dice que no, vuelves a `before`.
+   */
+  private seated: { seat: Seat; before: Vec; confirmed: boolean } | null = null;
+  /** Lo que ofrece el botón contextual ahora (su clave, para no avisar al HUD en cada cuadro). */
+  private accionKey: string | null = null;
+  /** La placa abierta y dónde está (se cierra sola al alejarse). */
+  private placaAbierta: { id: string; x: number; y: number; reach: number } | null = null;
+  /** Cuánto sube la cámara ahora (tiles), camino a su encuadre. */
+  private lookUp = 0;
 
   constructor(options: WorldSceneOptions) {
     super({ key: 'mundo' });
@@ -144,18 +182,22 @@ export class WorldScene extends Phaser.Scene {
     this.remotesVersion = -1;
     this.occluders = [];
     this.flags = [];
-    this.cercanoId = null;
     this.history = [];
     this.correction = { x: 0, y: 0 };
     this.crossing = null;
     this.ownGesture = null;
+    this.seated = null;
+    this.accionKey = null;
+    this.placaAbierta = null;
+    this.lookUp = 0;
   }
 
   create(): void {
     const map = this.map;
     this.grid = collisionGrid(map);
     const spawn = spawnOf(map, this.spawnName);
-    this.position = { x: spawn.x, y: spawn.y };
+    const inicio = !this.o.net && this.map === this.o.map ? this.o.inicio : undefined;
+    this.position = inicio ? { ...inicio } : { x: spawn.x, y: spawn.y };
     this.facing = spawn.facing;
 
     addCanvasTexture(this, `suelo:${map.id}:${map.version}`, () => paintGround(map));
@@ -180,7 +222,14 @@ export class WorldScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.layoutCamera, this);
     });
-    this.o.hud.set({ sala: map.name, mapa: map.id, listo: true, cercano: null, transicion: null });
+    this.o.hud.set({
+      sala: map.name,
+      mapa: map.id,
+      listo: true,
+      cercano: null,
+      transicion: null,
+      placa: null,
+    });
   }
 
   /** Posición actual en tiles (pruebas E2E). */
@@ -235,10 +284,14 @@ export class WorldScene extends Phaser.Scene {
     }
     // Cruzando no se camina: la intención se vuelve «quieto» (y se manda una vez).
     const polled = this.o.input.poll();
-    if (net) this.watchCrossing(net.room, time);
+    if (net) {
+      const errors = net.room.takeErrors();
+      this.watchCrossing(errors, net.room, time);
+      this.watchSeat(errors);
+    }
     const input = this.crossing ? { ...polled, ...IDLE_INPUT } : polled;
 
-    // Al entrar (o reentrar) la sala dice dónde estás: se salta ahí.
+    // Al entrar (o reentrar) la sala dice dónde estás: se salta ahí (sentado, si lo estabas).
     const spawn = net?.room.takeSpawn();
     if (spawn) {
       this.position = { x: spawn.x, y: spawn.y };
@@ -246,24 +299,38 @@ export class WorldScene extends Phaser.Scene {
       this.history = [];
       this.correction = { x: 0, y: 0 };
       this.crossing = null;
+      const asiento = spawn.seat ? seatOf(this.map, spawn.seat) : undefined;
+      this.seated = asiento ? { seat: asiento, before: asiento.exit, confirmed: true } : null;
       this.followCamera(0, true);
     }
+
+    const intent = { x: input.moveX, y: input.moveY };
+    const moving = intent.x !== 0 || intent.y !== 0;
+    // Sentado, caminar levanta: de pie en la salida ANTES de mandar, como hace la sala.
+    if (this.seated && moving) this.standHere();
 
     // Primero se manda (con la posición de ANTES de moverse: así la mide el servidor).
     this.sampler.tick(time, { moveX: input.moveX, moveY: input.moveY, interact: input.interact });
     if (polled.emote && !this.crossing) this.playOwnGesture(polled.emote, time);
 
-    const intent = { x: input.moveX, y: input.moveY };
-    const moving = intent.x !== 0 || intent.y !== 0;
-    const next = stepMovement(this.position, intent, delta, this.grid);
-    this.facing = facingFrom(intent, this.facing);
+    const next = this.seated
+      ? this.position
+      : stepMovement(this.position, intent, delta, this.grid);
+    if (!this.seated) this.facing = facingFrom(intent, this.facing);
     if (this.walked < WALK_HINT_TILES) {
       this.walked += distance(next, this.position);
       if (this.walked >= WALK_HINT_TILES) this.o.hud.set({ camino: true });
     }
     this.position = next;
     if (net) this.reconcile(net.room, delta);
-    this.self.draw(this.position.x, this.position.y, this.facing, moving, !this.o.quiet);
+    this.self.draw(
+      this.position.x,
+      this.position.y,
+      this.facing,
+      moving && !this.seated,
+      !this.o.quiet,
+      this.seated ? { lift: this.seated.seat.lift ?? 0 } : null,
+    );
 
     if (net) this.drawRemotes(net.room, time);
     if (net) this.hangFromRoom(net.room, time);
@@ -271,16 +338,127 @@ export class WorldScene extends Phaser.Scene {
     this.self.tick(time, !this.o.quiet);
     for (const { persona } of this.remotes.values()) persona.tick(time, !this.o.quiet);
 
-    const portal = this.crossing ? null : nearestPortal(this.map, this.position);
-    const id = portal?.id ?? null;
-    if (id !== this.cercanoId) {
-      this.cercanoId = id;
-      this.o.hud.set({ cercano: portal ? { id: portal.id, label: portal.label } : null });
+    const accion = this.crossing ? null : this.accionDisponible();
+    const key = accion ? `${accion.type}:${accionId(accion)}` : null;
+    if (key !== this.accionKey) {
+      this.accionKey = key;
+      this.o.hud.set({
+        cercano: accion ? { id: accionId(accion), label: accionLabel(accion) } : null,
+      });
     }
-    if (polled.interact && portal) this.cross(portal, time);
+    if (polled.interact && accion) this.actuar(accion, time);
+    this.cerrarPlacaLejana();
 
     this.updateOccluders();
     this.followCamera(delta, this.o.quiet);
+  }
+
+  // ─── Lo de junto: puertas, asientos y placas ────────────────────────────
+
+  /** Sentado, lo único es levantarse; de pie, lo más cercano (un asiento, solo si está libre). */
+  private accionDisponible(): Accion | null {
+    if (this.seated) return { type: 'stand', seat: this.seated.seat };
+    const room = this.o.net?.room;
+    return nearestInteraction(
+      this.map,
+      this.position,
+      SEATS.reach,
+      (seat) => !room?.seatTaken(seat.id),
+    );
+  }
+
+  private actuar(accion: Accion, time: number): void {
+    switch (accion.type) {
+      case 'portal':
+        this.cross(accion.portal, time);
+        return;
+      case 'seat':
+        this.sit(accion.seat);
+        return;
+      case 'stand':
+        this.stand();
+        return;
+      case 'sign': {
+        const { sign } = accion;
+        if (this.placaAbierta?.id === sign.id) {
+          this.placaAbierta = null;
+          this.o.hud.set({ placa: null });
+          return;
+        }
+        this.placaAbierta = { id: sign.id, x: sign.x, y: sign.y, reach: sign.reach };
+        this.o.hud.set({ placa: { id: sign.id, titulo: sign.title, texto: [...sign.body] } });
+        return;
+      }
+    }
+  }
+
+  /** La placa se cierra sola si te alejas (un paso de margen). */
+  private cerrarPlacaLejana(): void {
+    const placa = this.placaAbierta;
+    if (!placa) {
+      if (this.o.hud.get().placa) this.o.hud.set({ placa: null });
+      return;
+    }
+    if (!this.o.hud.get().placa) {
+      // La cerró el HUD (botón, Esc).
+      this.placaAbierta = null;
+      return;
+    }
+    if (distance(this.position, placa) > placa.reach + 1) {
+      this.placaAbierta = null;
+      this.o.hud.set({ placa: null });
+    }
+  }
+
+  /**
+   * Sentarse (ADR-0013). Con red se pide y se predice: los pies van al
+   * asiento ya; si la sala dice que no, vuelves a donde estabas. El historial
+   * de inputs se vacía: lo que la sala diga de antes no corrige el asiento.
+   */
+  private sit(seat: Seat): void {
+    const net = this.o.net;
+    if (net && !net.sit(seat.id)) {
+      this.o.hud.avisar('Sin conexión: espera a que vuelva para sentarte.');
+      return;
+    }
+    this.seated = { seat, before: { ...this.position }, confirmed: !net };
+    this.position = { x: seat.x, y: seat.y };
+    this.facing = seat.facing;
+    this.history = [];
+    this.correction = { x: 0, y: 0 };
+  }
+
+  /** «Levantarse» sin caminar: se pide y se queda de pie en la salida. */
+  private stand(): void {
+    if (!this.seated) return;
+    this.o.net?.stand();
+    this.standHere();
+  }
+
+  /** De pie en la salida del asiento (la sala hace lo mismo al levantarte). */
+  private standHere(): void {
+    const seated = this.seated;
+    if (!seated) return;
+    this.position = { ...seated.seat.exit };
+    this.seated = null;
+    this.history = [];
+    this.correction = { x: 0, y: 0 };
+  }
+
+  /** Si la sala no dejó sentarse, se vuelve a donde estabas y se dice por qué. */
+  private watchSeat(errors: RoomError[]): void {
+    for (const { code, about } of errors) {
+      if (about !== 'SIT') continue;
+      const seated = this.seated;
+      if (seated && !seated.confirmed) {
+        this.position = { ...seated.before };
+        this.seated = null;
+        this.history = [];
+        this.correction = { x: 0, y: 0 };
+      }
+      const texto = SEAT_REFUSED[code];
+      if (texto) this.o.hud.avisar(texto);
+    }
   }
 
   // ─── Portales ───────────────────────────────────────────────────────────
@@ -297,7 +475,7 @@ export class WorldScene extends Phaser.Scene {
       if (!next) return;
       // Misma cortina que con servidor: baja, se cambia de sala y sube.
       this.o.hud.set({ transicion: { destino: next.name, mapa: next.id }, cercano: null });
-      this.cercanoId = null;
+      this.accionKey = null;
       this.crossing = { portalId: portal.id, since: time };
       this.time.delayedCall(this.o.quiet ? 0 : 420, () =>
         this.scene.restart({ map: next, spawn: portal.to.spawn } satisfies SceneData),
@@ -309,13 +487,13 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.crossing = { portalId: portal.id, since: time };
-    this.cercanoId = null;
+    this.accionKey = null;
     this.o.hud.set({ cercano: null });
   }
 
   /** Lo que la sala contestó al pedir cruzar: si no dejó, se suelta y se dice por qué. */
-  private watchCrossing(room: RoomState, time: number): void {
-    for (const { code, about } of room.takeErrors()) {
+  private watchCrossing(errors: RoomError[], room: RoomState, time: number): void {
+    for (const { code, about } of errors) {
       // Lo del chat, los gestos o la seguridad social lo dice el HUD, no la puerta.
       if (about !== undefined && about !== 'ENTER_PORTAL') continue;
       const texto = this.crossing ? PORTAL_REFUSED[code] : undefined;
@@ -427,9 +605,14 @@ export class WorldScene extends Phaser.Scene {
    */
   private reconcile(room: RoomState, delta: number): void {
     for (const state of room.takeSelfStates()) {
+      // Sentado, la sala confirma el asiento; no hay posición que corregir.
+      if (state.seat !== undefined) {
+        if (this.seated?.seat.id === state.seat) this.seated.confirmed = true;
+        continue;
+      }
       const sent = this.history.find((h) => h.seq === state.seq);
       this.history = this.history.filter((h) => h.seq > state.seq);
-      if (!sent) continue;
+      if (!sent || this.seated) continue;
       const ex = state.x - sent.x;
       const ey = state.y - sent.y;
       const size = Math.hypot(ex, ey);
@@ -488,7 +671,9 @@ export class WorldScene extends Phaser.Scene {
       if (!at) continue;
       entry.x = at.x;
       entry.y = at.y;
-      entry.persona.draw(at.x, at.y, at.facing, at.moving, !this.o.quiet);
+      const asiento = at.seat ? seatOf(this.map, at.seat) : undefined;
+      const postura: Postura = asiento ? { lift: asiento.lift ?? 0 } : null;
+      entry.persona.draw(at.x, at.y, at.facing, at.moving, !this.o.quiet, postura);
       entry.persona.setAway(at.away);
     }
   }
@@ -612,7 +797,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private layoutCamera(): void {
     const { width, height } = this.scale.gameSize;
-    const zoom = Phaser.Math.Clamp(Math.floor(Math.min(width / 416, height / 224)), 2, 6);
+    const zoom =
+      this.o.zoom ?? Phaser.Math.Clamp(Math.floor(Math.min(width / 416, height / 224)), 2, 6);
     this.cameras.main.setZoom(zoom).setRoundPixels(true);
     this.self.setZoom(zoom);
     for (const { persona } of this.remotes.values()) persona.setZoom(zoom);
@@ -625,8 +811,15 @@ export class WorldScene extends Phaser.Scene {
     const viewH = cam.height / cam.zoom;
     const mapW = this.map.width * TILE;
     const mapH = this.map.height * TILE;
+    // Encuadre (ADR-0013): frente a lo alto, la cámara sube, sin perderte de vista.
+    const zone = zoneAt(this.map.cameraZones, this.position);
+    const room = Math.max(0, viewH / 2 - LOOK_MARGIN_TILES * TILE) / TILE;
+    const target = Math.min(zone?.lookUp ?? 0, room);
+    const ease = snap ? 1 : 1 - Math.exp(-delta / LOOK_EASE_MS);
+    this.lookUp += (target - this.lookUp) * ease;
+    if (Math.abs(target - this.lookUp) < 0.01) this.lookUp = target;
     const px = this.position.x * TILE;
-    const py = this.position.y * TILE - 12;
+    const py = this.position.y * TILE - 12 - this.lookUp * TILE;
     const tx = mapW <= viewW ? mapW / 2 : Phaser.Math.Clamp(px, viewW / 2, mapW - viewW / 2);
     const ty = mapH <= viewH ? mapH / 2 : Phaser.Math.Clamp(py, viewH / 2, mapH - viewH / 2);
     const k = snap ? 1 : 1 - Math.exp(-delta / 110);
@@ -634,4 +827,35 @@ export class WorldScene extends Phaser.Scene {
     this.camCenter.y += (ty - this.camCenter.y) * k;
     cam.centerOn(Math.round(this.camCenter.x), Math.round(this.camCenter.y));
   }
+}
+
+function accionId(accion: Accion): string {
+  switch (accion.type) {
+    case 'portal':
+      return accion.portal.id;
+    case 'seat':
+    case 'stand':
+      return accion.seat.id;
+    case 'sign':
+      return accion.sign.id;
+  }
+}
+
+/** Lo que dice el botón contextual («Entrar al Café», «Sentarse», «Leer la placa»). */
+function accionLabel(accion: Accion): string {
+  switch (accion.type) {
+    case 'portal':
+      return accion.portal.label;
+    case 'seat':
+      return 'Sentarse';
+    case 'stand':
+      return 'Levantarse';
+    case 'sign':
+      return accion.sign.label;
+  }
+}
+
+/** El encuadre donde estás (el primero que te contiene). */
+function zoneAt(zones: readonly CameraZone[], p: Vec): CameraZone | undefined {
+  return zones.find((z) => p.x >= z.x && p.x < z.x + z.w && p.y >= z.y && p.y < z.y + z.h);
 }

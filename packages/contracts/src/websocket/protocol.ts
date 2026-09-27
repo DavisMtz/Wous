@@ -19,6 +19,12 @@ export const WsErrorCode = z.enum([
   'INVALID_MOVEMENT',
   'PORTAL_NOT_FOUND',
   'PORTAL_NOT_REACHABLE',
+  /** Ese asiento no existe en esta sala. */
+  'SEAT_NOT_FOUND',
+  /** Ya hay alguien sentado ahí. */
+  'SEAT_TAKEN',
+  /** El asiento queda lejos de donde estás. */
+  'SEAT_NOT_REACHABLE',
   'CHAT_REJECTED',
   /** Silencio de moderación: no puedes escribir en el chat hasta `retryAfterMs`. */
   'CHAT_MUTED',
