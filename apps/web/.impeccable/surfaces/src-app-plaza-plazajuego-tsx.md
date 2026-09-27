@@ -18,6 +18,11 @@ Decisiones de la persona usuaria (26/09/2026): globos sobre las cabezas + tira p
 izquierda que se desvanece y se despliega al abrir el chat; a quien bloqueas lo sigues viendo
 caminar, sin su voz ni sus gestos, con una marca discreta en su etiqueta.
 
+Fase 8 (27/09/2026): la ficha agrega («Agregar amigo») y acepta («Aceptar solicitud») por HTTP, en
+marcatextos arriba de Reportar/Bloquear, y confirma con la cartulina verde («¡Enviada!», «¡Ya son
+amigos!»); a tus amigos los marca un papelito verde fosforescente con el corazón a plumón junto a su
+nombre (el bloqueo gana: si hay bloqueo, va la marca de bloqueo). Tu banda vive en /friends.
+
 ## Direction contract
 
 THESIS: Lo que dices sale de tu personaje como un recado de cartulina colgado sobre tu cabeza, y

@@ -19,9 +19,10 @@ import { Icono } from '../../ui/components/Icono.tsx';
 import type { LonaColor } from '../../ui/components/Puesto.tsx';
 import { Estrella } from '../../ui/components/Tianguis.tsx';
 import { prefersReducedMotion } from '../../ui/motion.ts';
+import { useAmigos } from '../amigos/useAmigos.ts';
 import { Charla, type LineaDeChat } from './Charla.tsx';
 import { CortinaDeSala } from './CortinaDeSala.tsx';
-import { FichaDePersona } from './FichaDePersona.tsx';
+import { type AmistadEnFicha, FichaDePersona } from './FichaDePersona.tsx';
 import { FinDeConexion } from './FinDeConexion.tsx';
 import { GenteAqui } from './GenteAqui.tsx';
 import { Gestos } from './Gestos.tsx';
@@ -45,6 +46,8 @@ declare global {
       colgado(): { id: string; globo: boolean; gesto: string | null }[];
       /** Presentes que bloqueaste. */
       bloqueados(): string[];
+      /** Tus amigos que la escena marca (por personaje). */
+      amigos(): string[];
     };
   }
 }
@@ -129,6 +132,15 @@ export function PlazaJuego({
   const gameRef = useRef<GameHandle | null>(null);
   const connectionRef = useRef<WorldConnection | null>(null);
   const chatLogRef = useRef<ChatLog | null>(null);
+  const roomRef = useRef<RoomState | null>(null);
+  // Tu banda (ADR-0011): la ficha agrega y acepta, y la escena marca a tus amigos.
+  const amigos = useAmigos({ activo: conectar });
+  const amigosRef = useRef(amigos);
+  amigosRef.current = amigos;
+  const idsDeAmigos = useMemo(
+    () => amigos.listas?.friends.map((f) => f.characterId) ?? [],
+    [amigos.listas],
+  );
   const [controls, setControls] = useState<Controls | null>(null);
   const [charlaAbierta, setCharlaAbierta] = useState(false);
   const hud = useMemo(
@@ -173,6 +185,8 @@ export function PlazaJuego({
     const unsubscribe = nextControls.manager.subscribe((metodo) => hud.set({ metodo }));
 
     const room = new RoomState();
+    roomRef.current = room;
+    room.setFriends(amigosRef.current.listas?.friends.map((f) => f.characterId) ?? []);
     const chatLog = new ChatLog();
     chatLogRef.current = chatLog;
     let respuestas = 0;
@@ -234,6 +248,8 @@ export function PlazaJuego({
           respuestas += 1;
           const { characterId, blocked } = message.payload;
           ocultar(characterId, blocked);
+          // El bloqueo gana: el servidor ya terminó la amistad o la solicitud.
+          if (blocked) amigosRef.current.olvidar(characterId);
           hud.set({
             social: { n: respuestas, tipo: 'bloqueo', id: characterId, bloqueado: blocked },
           });
@@ -336,6 +352,7 @@ export function PlazaJuego({
           yo: () => room.selfId,
           colgado: () => handle.hanging(),
           bloqueados: () => [...room.blocked],
+          amigos: () => [...room.friends],
         };
       }
     });
@@ -350,12 +367,18 @@ export function PlazaJuego({
       connection?.stop();
       connectionRef.current = null;
       chatLogRef.current = null;
+      roomRef.current = null;
       game?.destroy();
       gameRef.current = null;
       nextControls.dispose();
       if (import.meta.env.DEV) delete window.__wousJuego;
     };
   }, [hud, look, nombre, spawn, mapa, conectar]);
+
+  // Cada cambio en tu banda llega a la escena (la marca en la etiqueta).
+  useEffect(() => {
+    roomRef.current?.setFriends(idsDeAmigos);
+  }, [idsDeAmigos]);
 
   // En vertical el juego descansa; al girar, sigue donde estaba.
   useEffect(() => {
@@ -479,6 +502,20 @@ export function PlazaJuego({
   );
   const hayPlatica = chatVisible.some((e) => e.kind === 'line' && e.room === state.salaChat);
   const presenteDeFicha = ficha ? state.presentes.find((p) => p.id === ficha.id) : undefined;
+  const fichaId = ficha?.id ?? null;
+  const amistadDeFicha = useMemo((): AmistadEnFicha | null => {
+    // Sin red (banco) o sin tu lista todavía, la ficha no ofrece amistad.
+    if (!conectar || !fichaId || !amigos.listas) return null;
+    const { relation, entry } = amigos.relacionCon(fichaId);
+    return {
+      relacion: relation,
+      onAgregar: async () => (await amigos.pedir(fichaId)).relation,
+      onAceptar: async () => {
+        if (!entry) throw new Error('Sin solicitud');
+        return (await amigos.aceptar(entry)).relation;
+      },
+    };
+  }, [conectar, fichaId, amigos]);
 
   return (
     <div className="plaza" data-metodo={metodo}>
@@ -582,6 +619,7 @@ export function PlazaJuego({
           apariencia={presenteDeFicha?.apariencia ?? null}
           bloqueada={state.bloqueados.includes(ficha.id)}
           respuesta={state.social}
+          amistad={amistadDeFicha}
           onReportar={reportar}
           onBloquear={bloquear}
           onCerrar={cerrarFicha}

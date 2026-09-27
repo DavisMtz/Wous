@@ -8,6 +8,7 @@ import { VerificarCorreo } from '../auth/screens/VerificarCorreo.tsx';
 import { CortinaDeLona } from '../ui/components/CortinaDeLona.tsx';
 import type { LonaColor } from '../ui/components/Puesto.tsx';
 import { FiltrosDelTianguis, OrillaDeLona, Rotulo } from '../ui/components/Tianguis.tsx';
+import { Amigos } from './amigos/Amigos.tsx';
 import { Casa } from './Casa.tsx';
 import { Creador } from './creador/Creador.tsx';
 import { FronteraDeError } from './FronteraDeError.tsx';
@@ -27,7 +28,12 @@ const LONA_POR_RUTA: Record<string, LonaColor> = {
   [ROUTES.forgotPassword]: 'amarilla',
   [ROUTES.resetPassword]: 'amarilla',
   [ROUTES.plaza]: 'naranja',
+  // La de los correos de amistad: el enlace del correo cae bajo la misma lona.
+  [ROUTES.friends]: 'verde',
 };
+
+/** Rutas que piden sesión y personaje; sin ellos se regresa al inicio. */
+const CON_PERSONAJE = new Set<string>([ROUTES.plaza, ROUTES.friends]);
 
 const SOLO_SIN_SESION = new Set<string>([ROUTES.register, ROUTES.login, ROUTES.forgotPassword]);
 
@@ -52,8 +58,8 @@ function Pantallas() {
   const conPersonaje = state.status === 'authenticated' && state.session.hasCharacter;
   useEffect(() => {
     if (autenticado && SOLO_SIN_SESION.has(path)) navigate(ROUTES.home, { replace: true });
-    // A la plaza solo se entra con sesión y personaje.
-    if (path === ROUTES.plaza && state.status !== 'loading' && !conPersonaje) {
+    // A la plaza y a tu banda solo se entra con sesión y personaje.
+    if (CON_PERSONAJE.has(path) && state.status !== 'loading' && !conPersonaje) {
       navigate(ROUTES.home, { replace: true });
     }
   }, [autenticado, conPersonaje, path, navigate, state.status]);
@@ -95,6 +101,14 @@ function Pantallas() {
                 <Plaza session={state.session} />
               </Suspense>
             </FronteraDeError>
+          ) : (
+            <Cargando />
+          );
+        break;
+      case ROUTES.friends:
+        screen =
+          state.status === 'authenticated' && state.session.hasCharacter ? (
+            <Amigos />
           ) : (
             <Cargando />
           );

@@ -800,7 +800,29 @@
 
 /* La acción de la casa: salir a caminar. Las de la cuenta quedan debajo. */
 .casa__plaza {
-  margin: var(--s-2) 0 var(--s-5);
+  margin: var(--s-2) 0 var(--s-3);
+}
+
+/* Junto a la plaza, el camino a tu banda; lo nuevo va en calcomanía, como «Pronto». */
+.casa__banda {
+  width: 100%;
+  margin-bottom: var(--s-5);
+}
+
+.casa__nuevas {
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  padding: 3px 10px;
+  font-family: var(--font-plumon);
+  /* El paso de plumón de la etiqueta (DESIGN.md), pariente de «Pronto». */
+  font-size: 1.1rem;
+  line-height: 1.2;
+  color: var(--plumon);
+  background: var(--fosfo-naranja);
+  border-radius: 3px 6px 4px 7px;
+  box-shadow: var(--sombra-cartulina);
+  rotate: 6deg;
 }
 
 .hoja__pie {

@@ -26,6 +26,7 @@ colors:
   ciruela: "#2b1238"
   cartulina: "#fffbf1"
   cartulina-borde: "#e9dfc8"
+  papel-foto: "#fffdf8"
   papel: "color-mix(in oklab, var(--lona-luz, #ff72b4) 9%, var(--cartulina))"
   blanco: "#ffffff"
   masking: "#e9dbb1"
@@ -95,6 +96,7 @@ rounded:
   trazo-chico: "5px 8px 6px 9px / 8px 5px 9px 6px"
   hoja: "3px 5px 4px 6px"
   carton: "4px 9px 5px 10px"
+  calcomania: "3px 6px 4px 7px"
   redondo: "50%"
 spacing:
   s-1: "4px"
@@ -212,6 +214,29 @@ components:
     height: "46px"
   motivo-elegido:
     backgroundColor: "{colors.fosfo-amarillo}"
+  marco-foto:
+    backgroundColor: "{colors.papel-foto}"
+    textColor: "{colors.plumon}"
+    rounded: "3px 4px 3px 5px"
+    padding: "16px 16px 22px"
+  recado:
+    backgroundColor: "{colors.blanco}"
+    textColor: "{colors.plumon}"
+    rounded: "{rounded.trazo-chico}"
+    padding: "20px 16px 14px"
+  chip-estado:
+    backgroundColor: "color-mix(in oklab, #e9dbb1 70%, transparent)"
+    textColor: "{colors.plumon-suave}"
+    rounded: "{rounded.trazo-chico}"
+    padding: "2px 8px 3px 6px"
+  chip-estado-amigos:
+    backgroundColor: "color-mix(in oklab, #5dff86 60%, transparent)"
+    textColor: "{colors.plumon}"
+  calcomania-nuevas:
+    backgroundColor: "{colors.fosfo-naranja}"
+    textColor: "{colors.plumon}"
+    rounded: "{rounded.calcomania}"
+    padding: "3px 10px"
 ---
 
 # Design System: Wous
@@ -244,15 +269,15 @@ Cinco lonas saturadas que tiñen la luz, tres cartulinas fosforescentes que grit
 Las lonas. Cada una trae tres tonos: la base (la tela), la **honda** (el pliegue: orilla, sombra del rótulo, barra de desplazamiento, franja al pie de la cortina) y la **luz** (lo que atraviesa la tela: el reflejo de la trama y el tinte del papel). La ruta decide cuál se usa, con `data-lona` en `<html>`.
 - **Lona rosa** (`lona-rosa`, `-hondo`, `-luz`): la de la casa. Portada y registro, y la que toma cualquier ruta sin lona asignada; también es el `theme-color` del navegador y el correo de verificación. Se ajustó a su tono actual para que la tinta cartulina encima dé 4.70:1.
 - **Lona azul** (`lona-azul`, `-hondo`, `-luz`): entrar. En el correo, el aviso de contraseña cambiada. Es la lona con más aguante: cartulina encima da 6.79:1.
-- **Lona verde** (`lona-verde`, `-hondo`, `-luz`): revisar y verificar el correo, y los correos de amistad. Cartulina encima da 4.27:1, así que sobre ella solo va letrero grande.
+- **Lona verde** (`lona-verde`, `-hondo`, `-luz`): revisar y verificar el correo, los correos de amistad y tu banda (`/friends`), que es a donde lleva el enlace de esos correos. Cartulina encima da 4.27:1, así que sobre ella solo va letrero grande.
 - **Lona amarilla** (`lona-amarilla`, `-hondo`, `-luz`): olvidé y restablecer contraseña, y su correo. Es la única cuya tinta encima es plumón (11.44:1), no cartulina.
 - **Lona naranja** (`lona-naranja`, `-hondo`, `-luz`): con sesión iniciada, el probador y la casa; en el correo, la bienvenida. Cartulina encima da 3.23:1: solo letrero grande.
 
 ### Secondary
 Las cartulinas fosforescentes, rotuladas siempre con plumón.
-- **Marcatextos** (`fosfo-amarillo`): lo que puedes hacer o lo que ya elegiste. Botón de acción principal, selección de texto, chip presionado, pestaña activa, etiqueta de cartón del maniquí, halo de la opción elegida y raya central de la calle. En la Plaza, además, tu nombre (tu etiqueta y tu renglón del chat), «Decir», el motivo de reporte elegido y el botón del HUD abierto. Con plumón encima da 16.90:1.
-- **Naranja de estrella** (`fosfo-naranja`): la estrella de precio «¡Pásale!» y la calcomanía «Pronto» de las piezas bloqueadas. Con plumón encima da 7.15:1.
-- **Verde de hecho** (`fosfo-verde`): lo que quedó hecho. Cartulina de confirmación («¡Enviado!», «¡Confirmado!», «¡Listo!», «¡Hecho!»), el letrero «¡Pruébatelo!» del perchero y, rebajado, el fondo del aviso de éxito.
+- **Marcatextos** (`fosfo-amarillo`): lo que puedes hacer o lo que ya elegiste. Botón de acción principal, selección de texto, chip presionado, pestaña activa, etiqueta de cartón del maniquí, halo de la opción elegida y raya central de la calle. En la Plaza, además, tu nombre (tu etiqueta y tu renglón del chat), «Decir», el motivo de reporte elegido, el botón del HUD abierto y, en la ficha de una persona, «Agregar amigo» y «Aceptar solicitud». En tu banda, «Aceptar» de cada recado, el nombre abierto al pie de la foto y el halo de 1 pixel de arte de quien está bajo el foco. Con plumón encima da 16.90:1.
+- **Naranja de estrella** (`fosfo-naranja`): la estrella de precio «¡Pásale!», la calcomanía «Pronto» de las piezas bloqueadas y, en la casa, la calcomanía «1 nueva» / «N nuevas» pegada a «Tu banda» cuando hay solicitudes sin ver. Es lo que se pegó encima para llamar la atención. Con plumón encima da 7.15:1.
+- **Verde de hecho** (`fosfo-verde`): lo que quedó hecho y, desde las amistades, lo que ya es tuyo. Cartulina de confirmación («¡Enviado!», «¡Confirmado!», «¡Listo!», «¡Hecho!», «¡Enviada!», «¡Ya son amigos!»), el letrero «¡Pruébatelo!» del perchero, la marca de amistad en la plaza y, al 60 %, el chip de estado de amistad («Es de tu banda» en la ficha de la plaza, «Desde el …» en la ficha de la foto). Rebajado al 24 %, el fondo del aviso de éxito.
 
 ### Tertiary
 - **Rojo plumón** (`rojo-plumon`): errores (borde del campo, mensaje, marco de la casilla) y también la palomita de la casilla, trazada en rojo como la de un maestro. En la Plaza, la nota con que la sala contesta junto al campo del chat y la cuenta de letras al llegar al tope. Sobre papel da 5.26:1.
@@ -261,14 +286,15 @@ Las cartulinas fosforescentes, rotuladas siempre con plumón.
 - **Plumón** (`plumon`): la tinta. Texto sobre papel (16.5 a 17.7:1 según la lona), borde de campos, texto de todas las cartulinas.
 - **Plumón suave** (`plumon-suave`): texto secundario, ayudas, entradas de la hoja, leyendas y etiquetas de dato (9.2 a 9.9:1 sobre papel). También es la tinta de la etiqueta de alguien que bloqueaste.
 - **Ciruela** (`ciruela`): la sombra de todo. Toda sombra usa `rgb(43 18 56 / …)`, el pixel art oscurece hacia este tono y también son ciruela el cable del foco y el hueco de los ojillos.
-- **Cartulina** (`cartulina`): la tinta sobre la lona (`--sobre-lona` en cuatro de las cinco) y la base del papel.
+- **Cartulina** (`cartulina`): la tinta sobre la lona (`--sobre-lona` en cuatro de las cinco) y la base del papel. También es la ficha de alguien de la foto de grupo.
 - **Borde de cartulina** (`cartulina-borde`): las divisiones punteadas dentro de la hoja y el borde de las opciones sin elegir.
-- **Papel** (`papel`): cartulina teñida al 9% por la luz de la lona que tiene encima. Resuelve a `#ffefeb` bajo la rosa, `#eff1f4` bajo la azul, `#f0f6e6` bajo la verde, `#fff9e7` bajo la amarilla y `#fff3e4` bajo la naranja. Es el fondo de la hoja, de los chips y del letrero del pie.
-- **Blanco** (`blanco`): el interior de campos, opciones y el marco de la casilla. Es la hoja blanca pegada sobre el papel teñido, para que lo que escribes se distinga del resto.
-- **Masking** (`masking`): la cinta que pega la estrella, la cartulina de confirmación y, en la Plaza, el letrero de la sala, la hoja del chat, la ficha de una persona y la esquina de cada globo. Siempre al 86% y con recorte trapezoidal (en el globo, pintada en el canvas al 90%). Como superficie, es la etiqueta de alguien que bloqueaste y el papelito de su marca.
+- **Papel de foto** (`papel-foto`): el papel de la foto de grupo. Es el único papel claro que la lona no tiñe, porque es una impresión y no una hoja bajo la tela; por eso la foto se despega del puesto. El flash que la vuelve a tomar es casi el mismo blanco (`#fffdf2`).
+- **Papel** (`papel`): cartulina teñida al 9% por la luz de la lona que tiene encima. Resuelve a `#ffefeb` bajo la rosa, `#eff1f4` bajo la azul, `#f0f6e6` bajo la verde, `#fff9e7` bajo la amarilla y `#fff3e4` bajo la naranja. Es el fondo de la hoja, de los chips, del letrero del pie y de la hoja chica de avisos por correo en tu banda.
+- **Blanco** (`blanco`): el interior de campos, opciones y el marco de la casilla. Es la hoja blanca pegada sobre el papel teñido, para que lo que escribes se distinga del resto. En tu banda también es el recado de quien te busca y el de «Esperando respuesta».
+- **Masking** (`masking`): la cinta que pega la estrella, la cartulina de confirmación y, en la Plaza, el letrero de la sala, la hoja del chat, la ficha de una persona y la esquina de cada globo. En tu banda, dos esquinas de la foto (tiras de 92×22px giradas −36° y 38°, que se salen 26px del marco), la orilla de cada recado (66×18px, −3°) y la de la ficha de la foto (64×17px, 3°). Siempre al 86% y con recorte trapezoidal (en el globo, pintada en el canvas al 90%). Como superficie, es la etiqueta de alguien que bloqueaste y el papelito de su marca, el chip de estado de la ficha (al 70%) y la tira «Revelando la foto…» (al 92%).
 - **Madera** (`madera`, `madera-sombra`): las pinzas del tendedero.
 - **Cuerda** (`cuerda`, `cuerda-sombra`): el tendedero y el hilo de la etiqueta.
-- **Asfalto y banqueta** (`asfalto`, `asfalto-luz`, `banqueta`): la calle del pie, con raya discontinua de marcatextos.
+- **Asfalto y banqueta** (`asfalto`, `asfalto-luz`, `banqueta`): la calle del pie, con raya discontinua de marcatextos. La banqueta también es el piso de la foto de grupo.
 
 ### Named Rules
 **La Regla de la Lona que Tiñe.** Cada pantalla vive bajo una sola lona, elegida por la ruta. Su luz tiñe el papel (9%) y la trama, y su tono hondo pinta orillas, la sombra del rótulo y la barra de desplazamiento. Dos lonas solo conviven durante el medio segundo en que la cortina se enrolla.
@@ -276,6 +302,8 @@ Las cartulinas fosforescentes, rotuladas siempre con plumón.
 **La Regla del Marcatextos.** El amarillo fosforescente no decora: marca lo que puedes hacer o lo que ya elegiste, y siempre lleva plumón encima. Hay a lo más una cartulina marcatextos por hoja.
 
 **La Regla de que se Lee en Papel.** Sobre la lona solo va letrero: el rótulo, el lema, el texto de entrada en negrita de 1.18rem o más y las cartulinas de trazo. Todo lo que se lee de corrido va en la hoja. La prueba: cartulina sobre verde da 4.27:1 y sobre naranja 3.23:1, así que en esas lonas no cabe texto normal.
+
+**La Regla del Verde de Hecho.** En el papel de la interfaz, el verde fosforescente marca lo que ya pasó o lo que ya es tuyo: una confirmación, una amistad, el aviso de lo que acaba de pasar en el mundo. Nunca es la acción por hacer: esa es marcatextos. (En el pixel art del mundo, el verde también rotula fachadas; ahí no aplica.)
 
 ## Typography
 
@@ -288,13 +316,13 @@ Las cartulinas fosforescentes, rotuladas siempre con plumón.
 ### Hierarchy
 - **Display** (900, clamp(4.4rem → 6rem), 0.8, mayúsculas): solo el rótulo «WOUS» de la portada; baja a 3.7rem en una columna. Lleva el filtro de brocha y la sombra de rotulista (ver Components). La **firma** (900, 2.3rem) es el mismo rótulo, en chico, arriba de las demás pantallas.
 - **Headline** (850, clamp(2.1rem → 3.5rem), 0.92, mayúsculas): el lema de la portada, «Arma tu look. Sal a la plaza.».
-- **Title** (850, clamp(2.05rem → 2.85rem), 1.04, mayúsculas): el título de cada hoja, que es el `h1` de la pantalla.
-- **Subtitle** (800, clamp(1.18rem → 1.4rem), 1, mayúsculas): un subtítulo dentro de la hoja («¿No llegó?»).
-- **Lead** (700, clamp(1.18rem → 1.4rem), 1.4, máximo 30ch): el texto de la portada que va sobre la lona.
+- **Title** (850, clamp(2.05rem → 2.85rem), 1.04, mayúsculas): el título de cada hoja, que es el `h1` de la pantalla. En tu banda, el `h1` es «TU BANDA» al pie de la foto, en este mismo paso con interlineado 1.
+- **Subtitle** (800, clamp(1.18rem → 1.4rem), 1, mayúsculas): un subtítulo dentro de la hoja («¿No llegó?»), y en tu banda «Esperando respuesta» y «Avisos por correo». Entre Title y Subtitle queda el letrero de sección que va directo sobre la lona, «TE BUSCAN» (850, clamp(1.5rem → 2.05rem), 1, en la tinta de la lona).
+- **Lead** (700, clamp(1.18rem → 1.4rem), 1.4, máximo 30ch): el texto de la portada que va sobre la lona. En tu banda, la nota sobre la lona («Nadie por ahora…») usa el mismo tamaño y peso con 1.35 y hasta 36ch.
 - **Body** (400, clamp(1rem → 1.06rem), 1.5): la lectura. La entrada de la hoja se limita a 44ch y va en plumón suave. Los párrafos usan `text-wrap: pretty` y los títulos `balance`.
 - **Label** (750, 0.98rem): etiquetas de campo, chips y pestañas.
-- **Label caps** (800, 0.82rem, 0.06em, mayúsculas): leyendas de grupo de opciones y etiquetas de dato (`dt`). Sirve para nombrar un control o un dato, nunca va encima de un título.
-- **Plumón** (400, 1.32rem, 1.1): el texto de las cartulinas. El botón de trazo baja a 1.16rem, la etiqueta a 1.1rem, la confirmación sube a 1.45rem y la estrella a clamp(1.85rem → 2.45rem).
+- **Label caps** (800, 0.82rem, 0.06em, mayúsculas): leyendas de grupo de opciones y etiquetas de dato (`dt`). Sirve para nombrar un control o un dato, nunca va encima de un título. También nombra cada fila al pie de la foto de grupo («ARRIBA:», «EN MEDIO:», «ABAJO:», o «EN LA FOTO:»), en línea con los nombres.
+- **Plumón** (400, 1.32rem, 1.1): el texto de las cartulinas. El botón de trazo baja a 1.16rem, la etiqueta a 1.1rem, la confirmación sube a 1.45rem y la estrella a clamp(1.85rem → 2.45rem). En recados y fichas, la marcatextos baja a 1.16rem y la de trazo a 1.06–1.08rem; la calcomanía «N nuevas» va a 1.1rem.
 
 ### Named Rules
 **La Regla de las Tres Manos.** El cartel rotula (títulos y letreros, siempre en mayúsculas), el plumón escribe cartulinas (de dos a cinco palabras) y la grotesca se lee. Ninguna mano hace el trabajo de otra.
@@ -311,12 +339,13 @@ Tres rejillas de dos columnas. El mostrador, el probador y la firma usan márgen
 - **Portada**: máximo 1320px, columnas 0.95fr / 1.2fr (pregón | perchero), separación clamp(24px, 4vw, 64px). Por debajo de 860px pasa a una columna y la escena va **primero**, pegada a la orilla, para que el foco cuelgue de la lona. En ese ancho la estrella mide 150px y las dos acciones comparten renglón.
 - **Mostrador** (acceso y casa): máximo 1120px, 0.8fr / 1fr (maniquí | hoja). Por debajo de 820px el maniquí grande desaparece y sube, compacto y sobre su huacal, a la firma.
 - **Probador** (creador de personaje): máximo 1180px, 0.85fr / 1.15fr (espejo | hoja). El espejo es pegajoso a 48px del borde y lleva 96px de aire arriba para el foco. Por debajo de 820px pasa a una columna, con el espejo arriba y sin fijarse.
+- **Tu banda** (`/friends`): máximo 1180px, 1.35fr / 1fr (foto | lado), separación clamp(28px, 4vw, 64px); 48px arriba, clamp(16px, 4vw, 56px) a los lados y 64px abajo. El lado apila a 32px «Te buscan», «Esperando respuesta», la hoja de avisos y «Salir a la plaza». Por debajo de 900px pasa a una columna: la foto a todo lo ancho, su ficha debajo y luego el lado.
 
 **El tendido** (cuerda + hoja) mide como máximo 500px (580px en el probador) y deja 26px arriba para la cuerda. La cuerda se desborda 12% por cada lado, así que se ve atada más allá de la hoja.
 
 **Ritmo:** escala de 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96px. Los campos de un formulario van a 16px entre sí. El pie de la hoja y un segundo formulario se separan con 24px y una línea punteada de 2px.
 
-**Pixel art:** se dibuja en «pixeles de arte» y se escala por un entero. El lienzo interno multiplica además por la densidad de pantalla redondeada, y el render es `pixelated`. Escalas en uso: perchero de 122×88 pixeles de arte, ajustado entre 2 y 6; maniquí de 36×48 a escala 6 (compacto de 20×37 a escala 3); espejo a escala 7 en escritorio y 5 en teléfono; calle de 36 pixeles de alto a escala 3; miniaturas de opciones a escala 3 o 4. El sprite del personaje mide 16×32.
+**Pixel art:** se dibuja en «pixeles de arte» y se escala por un entero. El lienzo interno multiplica además por la densidad de pantalla redondeada, y el render es `pixelated`. Escalas en uso: perchero de 122×88 pixeles de arte, ajustado entre 2 y 6; maniquí de 36×48 a escala 6 (compacto de 20×37 a escala 3); espejo a escala 7 en escritorio y 5 en teléfono; calle de 36 pixeles de alto a escala 3; miniaturas de opciones a escala 3 o 4. El sprite del personaje mide 16×32. La foto de grupo toma el entero más grande que cabe en el marco, entre 2 y 5, y estira su escena a todo lo ancho en pixeles de arte; los retratos (cabeza y hombros) van a escala 3 en recados y fichas (58px) y a escala 2 en «Esperando respuesta» (42px).
 
 **La Regla de la Escala Entera.** Ningún pixel de arte se estira por un factor fraccionario ni se suaviza. Si no cabe, se baja un entero.
 
@@ -325,13 +354,14 @@ Tres rejillas de dos columnas. El mostrador, el probador y la firma usan márgen
 La profundidad es física: materiales colgados o pegados a distintas distancias de la luz. Las sombras son suaves, largas y color ciruela, como bajo una lona. La única sombra dura que proyecta una pieza de la interfaz es la del rótulo, porque es la sombra que pinta un rotulista. El énfasis no se consigue levantando cosas sino con **luz**: el halo del foco pelón, en mezcla `screen`, cae sobre lo elegido.
 
 ### Shadow Vocabulary
-- **Hoja colgada** (`box-shadow: 0 1px 1px rgb(43 18 56 / 0.22), 0 14px 26px -10px rgb(43 18 56 / 0.55)`): la hoja del tendedero y la hoja del correo.
-- **Cartulina pegada** (`box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55)`): botón marcatextos, chip, pestaña activa, confirmación, etiqueta, letrero, calcomanía «Pronto» y el letrero del pie.
+- **Hoja colgada** (`box-shadow: 0 1px 1px rgb(43 18 56 / 0.22), 0 14px 26px -10px rgb(43 18 56 / 0.55)`): la hoja del tendedero y la hoja del correo; en tu banda, la foto, su ficha y la hoja de avisos.
+- **Cartulina pegada** (`box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55)`): botón marcatextos, chip, pestaña activa, confirmación, etiqueta, letrero, calcomanía «Pronto» y el letrero del pie; en tu banda, los recados y la calcomanía «N nuevas».
 - **Cartulina hundida** (`box-shadow: 0 0 0 rgb(23 16 27 / 0.2), 0 2px 4px -2px rgb(43 18 56 / 0.5)`): el estado presionado de las cartulinas y los chips.
 - **Orilla** (`filter: drop-shadow(0 7px 8px rgb(43 18 56 / 0.32))`): la lona sobre el contenido.
 - **Pinzas y cuerda** (`filter: drop-shadow(0 2px 2px rgb(43 18 56 / 0.35))`; la cuerda con `0 2px 1px`).
 - **Estrella** (`filter: drop-shadow(0 2px 1px rgb(23 16 27 / 0.25)) drop-shadow(0 12px 14px rgb(43 18 56 / 0.42))`): al presionarla baja a `0 1px 0` / `0 4px 5px`.
-- **Halo del foco**: gradiente radial cálido (`rgb(255 240 178 / 0.78)` → transparente al 70%), de 124 pixeles de arte de ancho y en mezcla `screen`. Va en CSS y no en el lienzo, para que no se recorte.
+- **Halo del foco**: gradiente radial cálido (`rgb(255 240 178 / 0.78)` → transparente al 70%), de 124 pixeles de arte de ancho y en mezcla `screen`. Va en CSS y no en el lienzo, para que no se recorte. La excepción es la foto de grupo: su marco es la orilla de la imagen, así que ahí la luz se pinta en el lienzo con el mismo tono (ver Luz de la foto).
+- **Luz de la foto** (lienzo): gradiente radial de `rgb(255 240 178 / 0.62)` a transparente, de radio 0.85 veces el alto del sprite y centrado en quien elegiste; sin nadie elegido, `/ 0.34` sobre la banda, con radio del 42% del ancho. Las sombras de la escena son ciruela: una elipse de 6×1.4 pixeles de arte al 30% bajo cada persona y una raya al 35% al pie de cada grada.
 - **Sombra de rotulista**: siete capas de 1px a 7px en el tono hondo de la lona, más `0 18px 26px rgb(43 18 56 / 0.32)`. La firma usa solo tres capas.
 
 ### Named Rules
@@ -339,7 +369,7 @@ La profundidad es física: materiales colgados o pegados a distintas distancias 
 
 **La Regla de Hundirse.** Al presionar, toda cartulina baja de 2 a 4px y su sombra se aplasta, en 110ms con `ease-presion`. Nada crece al presionarlo. El hover solo existe con puntero (`hover: hover`): aclara hacia el blanco o hacia el marcatextos, y no levanta nada.
 
-**La Regla del Foco.** Lo elegido queda bajo la luz y lo demás, a la sombra de la lona. En la opción elegida es una luz cálida radial detrás de la pieza más un halo marcatextos; en el gancho con hover, un brillo cálido. El foco pelón nunca se usa como adorno suelto: siempre hay algo debajo de él.
+**La Regla del Foco.** Lo elegido queda bajo la luz y lo demás, a la sombra de la lona. En la opción elegida es una luz cálida radial detrás de la pieza más un halo marcatextos; en el gancho con hover, un brillo cálido. En la foto de grupo, el foco se corre por la orilla hasta quedar sobre la persona elegida: luz cálida detrás de ella y un halo marcatextos de 1 pixel de arte alrededor de su silueta. El foco pelón nunca se usa como adorno suelto: siempre hay algo debajo de él, y en una foto sin gente no hay foco.
 
 ## Shapes
 
@@ -347,14 +377,15 @@ Todo está trazado a mano. Los radios son desiguales en cada esquina, como un re
 - **Trazo** (`rounded.trazo`): botones de cartulina.
 - **Trazo chico** (`rounded.trazo-chico`): campos, chips, pestañas, opciones y avisos.
 - **Hoja** (`rounded.hoja`): la hoja y el letrero del pie.
-- **Cartón** (`rounded.carton`): la etiqueta del maniquí y la cartulina de confirmación. El letrero del perchero (`4px 8px 5px 9px`) y la calcomanía «Pronto» (`3px 6px 4px 7px`) son sus parientes.
+- **Cartón** (`rounded.carton`): la etiqueta del maniquí y la cartulina de confirmación. El letrero del perchero (`4px 8px 5px 9px`) y la calcomanía (`rounded.calcomania`: «Pronto» y «N nuevas») son sus parientes.
+- **Marco de foto** (`3px 4px 3px 5px`): el más recto de los radios desiguales, como el canto de una impresión.
 - **Redondo** (`rounded.redondo`): solo las muestras de color y los huecos de los ojillos.
 
-Las piezas van un poco chuecas: la hoja −0.6°, el letrero del pie −1.2°, la confirmación −4°, la estrella −7° (se mece hasta −3.5°), el letrero del perchero 7° y la calcomanía 6°. La etiqueta se mece ±3° y cada gancho ±1.8°, con desfase entre uno y otro.
+Las piezas van un poco chuecas: la hoja −0.6°, el letrero del pie −1.2°, la confirmación −4°, la estrella −7° (se mece hasta −3.5°), el letrero del perchero 7° y la calcomanía 6°. En tu banda: la foto −1.4° (−0.8° en una columna), los recados 0.9° y −1.1° alternados, «Esperando respuesta» −0.6°, la hoja de avisos 0.4°, la ficha de la foto 0.6° y la tira «Revelando la foto…» −1.5°. La etiqueta se mece ±3° y cada gancho ±1.8°, con desfase entre uno y otro.
 
 Siluetas propias: la estrella de 17 picos irregulares (su forma sale de una semilla del texto, así que no cambia entre cargas); los festones de la orilla; la cinta masking con recorte trapezoidal; la casilla, que es un cuadro dibujado a mano y no un cuadrado; las pinzas en SVG; y los puntos de carga, redondos pero desiguales (`50% 40% 55% 45%`).
 
-Íconos: SVG propios sobre una rejilla de 24, con trazo único de 2.4, puntas redondas y coordenadas apenas irregulares. Heredan el color del texto. Hoy son 19: ojo, ojo tachado, regresar, sobre, palomita, alerta, salir, flecha, girar, caminar, dado, gancho y, desde la plática en la Plaza, globo, globo tachado, bandera, bloquear, carita, cerrar y gente.
+Íconos: SVG propios sobre una rejilla de 24, con trazo único de 2.4, puntas redondas y coordenadas apenas irregulares. Heredan el color del texto. Hoy son 21: ojo, ojo tachado, regresar, sobre, palomita, alerta, salir, flecha, girar, caminar, dado, gancho; desde la plática en la Plaza, globo, globo tachado, bandera, bloquear, carita, cerrar y gente; y desde las amistades, corazón (el mismo trazo que la marca de amistad en la plaza) y agregar (una persona con un signo de más).
 
 **La Regla de Ningún Rectángulo de Pantalla.** Ninguna superficie visible lleva un radio uniforme en sus cuatro esquinas. Las únicas excepciones son los círculos de color y las zonas de foco e interacción, que no se ven como superficie.
 
@@ -363,7 +394,7 @@ Siluetas propias: la estrella de 17 picos irregulares (su forma sale de una semi
 ### Buttons
 Cartulinas pegadas a la tabla, que se hunden cuando las presionas.
 - **Shape:** trazo a mano (`rounded.trazo`), 54px de alto como mínimo, texto en plumón.
-- **Primary (cartulina marcatextos):** fondo marcatextos con una trama diagonal blanca muy tenue (`-12deg`, cada 9px), tinta plumón, sombra de cartulina pegada y todo el ancho de la hoja. Hay una por hoja.
+- **Primary (cartulina marcatextos):** fondo marcatextos con una trama diagonal blanca muy tenue (`-12deg`, cada 9px), tinta plumón, sombra de cartulina pegada y todo el ancho de la hoja. Hay una por hoja. En piezas chicas (recados, ficha de la foto) baja a 48px, con relleno de 8×12px y ancho propio, junto a su cartulina de trazo.
 - **Hover / Focus:** con puntero, aclara hacia el blanco al 14%. Al presionar se hunde 3px y la sombra se aplasta. Deshabilitada queda al 55%. Cargando, el texto baja al 35% y aparecen tres puntos de plumón que brincan 6px, desfasados 0.12s.
 - **Secondary (cartulina de trazo):** fondo transparente con un contorno de 2.5px del color del texto. Sobre papel es plumón; sobre la lona, la tinta de la lona. Texto a 1.16rem. Con puntero, se rellena al 10% de su color; al presionar baja 2px.
 - **Estrella de precio:** la acción principal de la portada y la única en su tipo. Es una estrella de cartulina naranja fosforescente de 17 picos, de clamp(168px, 17vw, 216px), inclinada −7° y colgada de un trozo de masking desde su punta superior, así que se mece (5.4s) desde ahí. Dentro lleva «¡Pásale!» en plumón grande y «Crea tu cuenta» en mayúsculas espaciadas. Con puntero se endereza a −3° y crece 4%; al presionar baja 4px, se encoge 3% y su sombra se acerca. Su foco es un contorno de plumón discontinuo de 4px, en círculo. La hoja de estilos trae variantes amarilla, verde y rosa, pero hoy no se usan.
@@ -371,6 +402,7 @@ Cartulinas pegadas a la tabla, que se hunden cuando las presionas.
 ### Chips
 - **Style:** papel teñido, plumón, trazo chico, 44px de alto, sombra de cartulina pegada, con ícono de 20px opcional. El de «Otro al azar» escribe en plumón y lleva el dado.
 - **State:** presionado (`aria-pressed`), fondo marcatextos. Al presionar se hunde 2px. Con puntero, papel mezclado al 45% con marcatextos.
+- **Chip de estado:** no se presiona; dice cómo están las cosas. Papelito de masking al 70%, trazo chico, ícono de 16 a 17px y texto en 700 en plumón suave: «Con bloqueo: no se oyen», «Le mandaste solicitud», «Te mandó solicitud». Cuando ya son amigos pasa al verde de hecho al 60% con tinta plumón y el corazón: «Es de tu banda» en la ficha de la plaza, «Desde el 27 de septiembre» en la ficha de la foto.
 
 ### Cards / Containers
 El contenedor es la **hoja colgada**, no una tarjeta.
@@ -391,6 +423,7 @@ El contenedor es la **hoja colgada**, no una tarjeta.
 ### Navigation
 No hay barra de navegación. La firma (el rótulo chico) regresa al inicio, los enlaces van dentro de la hoja y el paso entre pantallas es la cortina de lona.
 - **Enlace:** peso 700, subrayado de 3px en el color de la lona, separado 0.2em. Con puntero se resalta con marcatextos al 70%, como pasado con plumón. Dentro de un aviso, el subrayado toma el color del texto.
+- **«Tu banda» en la casa:** cartulina de trazo con el corazón, a todo el ancho debajo de «Salir a la plaza». Si hay solicitudes sin ver, en su esquina de arriba a la derecha (14px arriba, 10px afuera) se pega la calcomanía naranja «1 nueva» / «N nuevas», en plumón a 1.1rem, girada 6° y con sombra de cartulina pegada; el lector de pantalla oye «solicitud(es) de amistad».
 - **Pestañas del probador:** cartulinas chicas de 44px en una tira que se desplaza de lado sin barra visible. Inactivas llevan contorno punteado de plumón al 35%; la activa es marcatextos con borde sólido de plumón y sombra de cartulina. Se recorren con las flechas del teclado.
 
 ### Opciones del probador
@@ -438,13 +471,33 @@ Lo que dices sale de tu personaje como un recado de cartulina colgado sobre tu c
 - **La cartulina para escribir.** Siempre a la mano en escritorio: cartulina con `rounded.trazo`, sombra de cartulina pegada y −0.6°. Cerrada, el campo blanco dice «Enter para hablar» con borde punteado de plumón al 40%; abierta, el borde es sólido de plumón y aparece «Decir», una cartulina marcatextos chica en plumón a 1.12rem que se hunde 3px. El foco del campo es un anillo doble (3px de marcatextos y, por fuera, plumón hasta 5px). Cuenta las letras que quedan y la cuenta pasa a rojo plumón en el tope. Lo que contesta la sala (demasiado rápido, repetido, sin voz) es una nota en rojo plumón con su ícono, pegada junto al campo. En teléfono, la cartulina sube arriba mientras el teclado está abierto y la hoja cuelga debajo de ella.
 - **Botones del HUD táctil.** «Hablar» y «Gestos» son cartulinas de trazo chico con plumón a 1.06rem, de 46px de alto y con su ícono de 20px, en la columna derecha bajo «Salir». Abiertos pasan a marcatextos y su ícono se vuelve la equis de cerrar. Se hunden 3px al presionarlos.
 - **Gestos.** Cuatro dibujos en pixel art pintados por código a escala entera, con el contorno del color vecino hundido. La mano que saluda (dos cuadros que se alternan cada 170ms) y el pulgar llevan la piel de quien los hace y el puño de su playera. La carcajada es su propia cara, con su piel y el fleco de su pelo, ojos cerrados y lágrimas, y tiembla cada 90ms. El corazón es rosa fosforescente del pixel art (`#ff4f9a`, no de la paleta de la interfaz), con brillo y sombra. Suben sobre la cabeza, arriba del globo, duran 1.8s y se apagan en los últimos 320ms; quien lo hace brinca una vez (3 pixeles de arte en 230ms), o dos con la risa (2 pixeles, 170ms cada uno). En el HUD de escritorio son calcomanías: cartulinas de 54px con el dibujo, giradas −2° y 1.6° alternadas, con su tecla 1–4 en la esquina como tapa de papel con canto de plumón. En teléfono los abre la cartulina «Gestos» en un abanico hacia la izquierda (200ms, calcomanías de 52px).
-- **La ficha de una persona.** Se abre al tocar a alguien, su nombre en el chat o su renglón en la lista. Es una cartulina de hasta 400px (`rounded.hoja`, −0.6°, sombra de hoja colgada) pegada con masking arriba al centro, que baja 12px desde −3° en 260ms sin tapar el juego. Lleva su retrato de 70px bajo el foco (luz cálida radial sobre masking), su nombre en Bricolage 800 a 1.4rem, lo último que dijo como cita en papel blanco («Dijo: «…»») y dos cartulinas de trazo con ícono: Reportar (bandera) y Bloquear (bloquear) o Desbloquear (globo). Bloquear pide confirmación con una pregunta en letra de cartel. Lo hecho se confirma con la cartulina verde («¡Enviado!», «¡Hecho!»).
+- **La ficha de una persona.** Se abre al tocar a alguien, su nombre en el chat o su renglón en la lista. Es una cartulina de hasta 400px (`rounded.hoja`, −0.6°, sombra de hoja colgada) pegada con masking arriba al centro, que baja 12px desde −3° en 260ms sin tapar el juego. Lleva su retrato de 70px bajo el foco (luz cálida radial sobre masking), su nombre en Bricolage 800 a 1.4rem, lo último que dijo como cita en papel blanco («Dijo: «…»») y dos cartulinas de trazo con ícono: Reportar (bandera) y Bloquear (bloquear) o Desbloquear (globo). Bloquear pide confirmación con una pregunta en letra de cartel. Lo hecho se confirma con la cartulina verde («¡Enviado!», «¡Hecho!»). Con cuenta, arriba de Reportar y Bloquear va la amistad, a todo lo ancho y en marcatextos: «Agregar amigo» (ícono agregar) o «Aceptar solicitud» (corazón). Bajo el nombre, el chip de estado dice «Le mandaste solicitud» o «Te mandó solicitud» en masking, o «Es de tu banda» en verde. Al pedir o aceptar, la cartulina verde dice «¡Enviada!» («Si acepta, aparece en tu banda.») o «¡Ya son amigos!».
 - **La hoja de reporte.** «¿Qué pasó?» en letra de cartel y seis motivos en dos columnas: cartulinas chicas blancas de 46px con canto de borde de cartulina. El elegido pasa a marcatextos con canto de plumón. Debajo va una nota opcional, en campo blanco con borde de plumón.
 - **La marca de bloqueo.** A quien bloqueas lo sigues viendo caminar, sin su voz ni sus gestos. Su etiqueta pasa a masking con tinta de plumón suave y, a su izquierda, lleva un papelito de masking de 22×21px con el globo a trazo de plumón suave y la raya que lo tacha en plumón. Solo lo ve quien bloquea.
+- **La marca de amistad.** Al revés de la de bloqueo: a la izquierda del nombre de alguien de tu banda va un papelito verde de hecho de 22×21px de pantalla (esquinas 5/3/6/4) con el corazón a trazo de plumón (2.6 de grosor, a 16/24 de la rejilla). La etiqueta sigue en cartulina. Solo la ve quien es su amigo, y el bloqueo gana: si hay bloqueo, va la marca de bloqueo.
 - **Gente aquí.** La nota del letrero («N personas aquí») es un botón subrayado que, abierto, pasa a marcatextos y cuelga una lista de cartulina (sombra de hoja, 0.8°, 220ms) con un renglón de 44px por persona. Es el camino por teclado a la ficha de quien no ha dicho nada.
 - **Personas que bloqueaste.** En la casa, al pie de la hoja: renglones con retrato chico, nombre, fecha y una cartulina de trazo para quitar el bloqueo, separados por raya punteada de borde de cartulina. Sin tarjetas.
 
 **La Regla del Gesto Propio.** Un gesto es pixel art del mundo y se ve de quien lo hace: lleva su piel, su playera o su cara. Nunca es un emoji, un ícono de sistema ni una imagen genérica.
+
+### Signature: la foto de grupo (tu banda)
+Tu banda es una foto de grupo, como la de generación: posan juntos en gradas, la foto va pegada a la lona verde con masking y los nombres van escritos al pie. Cada amistad nueva agranda la foto. Rechazo confirmado: la lista de contactos con avatares redondos y botones de «Eliminar».
+
+- **El marco.** Papel de foto con 16px de margen (22px abajo), el radio del marco de foto, sombra de hoja colgada y −1.4° de giro; dos tiras de masking lo pegan por las esquinas de arriba. La imagen lleva un canto interior de 1px de plumón al 20%.
+- **La escena**, pintada por código en pixel art a escala entera: la lona verde de un puesto con sus pliegues cada 12 pixeles de arte, su orilla honda con festones cada 18 y sus ojillos, y un piso de banqueta con juntas. Se estira a todo lo ancho del marco.
+- **Las gradas.** Hasta 4 por fila: una fila de 1 a 4 personas, dos de 5 a 8 y tres de 9 a 12. Lo más nuevo va adelante, en el piso; los demás, atrás, en gradas de huacal que suben 26 pixeles de arte por fila. Van a 30 pixeles de arte entre sí y cada fila se corre un cuarto de paso, a un lado o al otro, para que asomen las cabezas. Todos miran al frente, cada uno con su sombra ciruela.
+- **El foco.** Cuelga de la orilla sobre la banda con una luz tenue. Al elegir a alguien se corre por la orilla hasta quedar sobre su cabeza (cable ciruela desde la orilla, socket y bombilla): su luz cálida cae detrás de esa persona y un halo marcatextos de 1 pixel de arte rodea su silueta. Sin gente no hay foco.
+- **El pie.** «TU BANDA» en letra de cartel, la cuenta («17 amigos», «Todavía nadie en la foto») y los nombres por filas, de izquierda a derecha como en la foto: «Arriba: / En medio: / Abajo:» en label caps, o «En la foto:» con una sola persona. Cada nombre es un botón subrayado de 3px en el color de la lona y es el camino por teclado a la ficha; abierto, pasa a marcatextos con subrayado de plumón. Tocar a alguien en la imagen es el atajo.
+- **El álbum.** Con más de 12, la foto se vuelve álbum de 12 por foto: «Foto 1 de N» entre dos cartulinas de 44px con contorno de 2.5px y la flecha; la del extremo se apaga al 35%.
+- **Vacía y cargando.** Sin nadie, la escena queda sin foco y el pie explica cómo agregar a alguien desde la plaza. Mientras carga, al centro de la imagen va «Revelando la foto…» en una tira de masking al 92%, girada −1.5°, y la cuenta dice «Revisando…».
+- **El flash.** Cuando alguien se une, la foto se vuelve a tomar: un velo de `#fffdf2` que llega a 0.88 al 10% y se apaga en 700ms (`ease-salida`). Al cargar no hay flash, y solo aparece con movimiento: nunca con movimiento reducido ni con `?quieto`.
+- **La ficha de la foto.** Cartulina (`rounded.hoja`, 0.6°, sombra de hoja colgada) pegada con masking debajo de la foto, que baja 10px desde −2° en 260ms. Lleva el retrato de 58px bajo el foco, el nombre en 800 a 1.3rem, el chip verde «Desde el …» con el corazón, la equis de cerrar (44px) y dos cartulinas de trazo: Quitar y Bloquear. Las dos piden confirmación: la pregunta en letra de cartel, qué pasa y que no se le avisa, y la marcatextos para confirmar junto a «Cancelar». Escape la cierra y el foco regresa a quien la abrió.
+- **Los recados.** Del otro lado, «TE BUSCAN» como letrero sobre la lona. Cada solicitud es un recado blanco con trazo chico y sombra de cartulina pegada, pegado con masking y girado 0.9° o −1.1°: retrato, nombre en 800, «Te mandó solicitud hace 2 horas» y, abajo, «Aceptar» en marcatextos con el corazón junto a «Ahora no» a trazo. Sin solicitudes, una nota en negrita sobre la lona.
+- **Esperando respuesta.** Un solo recado con título de cartel y renglones de 60px (retrato de 42px, nombre, «Se la mandaste…») separados por raya punteada de borde de cartulina. «Cancelar» es texto subrayado en plumón suave, con 44px de área.
+- **Avisos por correo.** Una hoja chica de papel teñido (0.4°, sombra de hoja colgada) con dos casillas y la nota de que los correos de seguridad llegan siempre.
+- **Entrada.** La foto se pega en la lona (baja 24px desde −3° en 0.9s, `back.out(1.5)`) y el lado llega detrás (sube 14px, escalonado cada 0.08s).
+
+**La Regla de la Foto que Crece.** Tu banda no se muestra como lista: cada amistad es una persona más en la foto, en su grada y con su nombre al pie.
 
 ### Correo transaccional
 El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de la plantilla (verificación en rosa, bienvenida en naranja, recuperación en amarilla, contraseña cambiada en azul, amistades en verde). La orilla se arma con festones de celda y costura punteada, el rótulo mide 58px con sombra de rotulista de dos capas y la hoja es cartulina lisa, sin tinte y con radio uniforme de 6px, porque el correo no mezcla colores ni dibuja radios desiguales. Al pie va una calle (banqueta y asfalto) con la razón del envío. El botón es marcatextos con plumón, pero lleva un borde de plumón de 3px y un radio uniforme de 10px: es una traducción para clientes de correo, no el botón de la web.
@@ -467,6 +520,8 @@ El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de l
 - **Do** pintar globos y etiquetas del mundo en pixeles de pantalla, escalados 1/zoom y en Bricolage, y apilarlos para que ninguno tape a otro ni a una etiqueta.
 - **Do** dibujar los gestos en pixel art por código, con la piel, la playera o la cara de quien los hace.
 - **Do** hacer que los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») no se queden el foco con el ratón (`onMouseDown` con `preventDefault`), para que Enter siga abriendo el chat. Con teclado se llega igual con Tab.
+- **Do** marcar la amistad con el verde de hecho (el papelito en la plaza, el chip al 60% en las fichas) y dejar que el bloqueo gane sobre ella.
+- **Do** colgar el foco solo sobre alguien: en la foto de grupo se corre hasta quien elegiste y, sin gente, no hay foco.
 
 ### Don't:
 - **Don't** hacer la portada de juego pixel de siempre: cielo morado degradado, tipografía pixel, brillo neón y un gran botón JUGAR.
@@ -481,3 +536,4 @@ El mismo mundo, traducido a tablas y estilos en línea. El fondo es la lona de l
 - **Don't** usar las mayúsculas espaciadas (label caps) como antetítulo encima de un título.
 - **Don't** hacer que algo dependa del hover: en teléfono no existe.
 - **Don't** usar la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco), ni emojis como gestos o como íconos.
+- **Don't** mostrar a tu banda como lista de contactos con avatares redondos y botones de «Eliminar».

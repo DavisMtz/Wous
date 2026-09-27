@@ -80,6 +80,11 @@ export class RoomState {
   private readonly gestures: Gesture[] = [];
   /** Presentes que bloqueaste (solo lo sabe quien bloquea, ADR-0010). */
   readonly blocked = new Set<string>();
+  /**
+   * Tus amigos, por personaje (ADR-0011). No viene de la sala sino de tu
+   * lista: sobrevive a los snapshots y a los cambios de sala.
+   */
+  readonly friends = new Set<string>();
   /** El portal aceptado, hasta que llega la sala nueva. */
   transfer: Transfer | null = null;
   /** local − servidor, el menor visto (la muestra con menos latencia). */
@@ -96,6 +101,15 @@ export class RoomState {
   private changed(): void {
     this.version += 1;
     for (const listener of this.listeners) listener();
+  }
+
+  /** Reemplaza quiénes son tus amigos; la escena les pone su marca en la etiqueta. */
+  setFriends(characterIds: Iterable<string>): void {
+    const next = new Set(characterIds);
+    if (next.size === this.friends.size && [...next].every((id) => this.friends.has(id))) return;
+    this.friends.clear();
+    for (const id of next) this.friends.add(id);
+    this.changed();
   }
 
   /** Aplica un mensaje del servidor. `receivedAt` en el reloj local (performance.now). */

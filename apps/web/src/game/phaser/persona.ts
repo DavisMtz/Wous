@@ -27,6 +27,7 @@ const CARTULINA = '#fffbf1';
 const MASKING = '#e9dbb1';
 const PLUMON = '#17101b';
 const PLUMON_SUAVE = '#4a3a51';
+const FOSFO_VERDE = '#5dff86';
 
 /** El globo se va apagando en su último tramo. */
 const GLOBO_FADE_MS = 380;
@@ -118,6 +119,36 @@ function paintBlockChip(): HTMLCanvasElement {
   return canvas;
 }
 
+/** Corazón a trazo de plumón (el mismo del ícono `corazon`), en la rejilla de 24. */
+export const CORAZON_PATH =
+  'M12 19.7c-4.9-3-8.1-6.1-8.1-9.6 0-2.5 1.9-4.4 4.2-4.4 1.7 0 3.1 1 3.9 2.5.9-1.6 2.3-2.5 4-2.5 2.3 0 4.1 1.9 4.1 4.4 0 3.5-3.2 6.6-8.1 9.6Z';
+
+/**
+ * La marca de amistad (ADR-0011), al revés de la de bloqueo: un papelito
+ * verde de hecho con el corazón a plumón. Solo la ve quien es su amigo.
+ */
+function paintFriendChip(): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 22;
+  canvas.height = 21;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D no disponible');
+  const papel = new Path2D();
+  papel.roundRect(1, 1, 20, 19, [5, 3, 6, 4]);
+  ctx.fillStyle = FOSFO_VERDE;
+  ctx.fill(papel);
+  ctx.save();
+  ctx.translate(3, 2.6);
+  ctx.scale(16 / 24, 16 / 24);
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = PLUMON;
+  ctx.stroke(new Path2D(CORAZON_PATH));
+  ctx.restore();
+  return canvas;
+}
+
 type Globo = { image: Phaser.GameObjects.Image; key: string; born: number; until: number };
 type Gesto = {
   image: Phaser.GameObjects.Image;
@@ -145,6 +176,8 @@ export class Persona {
   private facing: Facing;
   private away = false;
   private blocked = false;
+  private friend = false;
+  /** El papelito junto al nombre: bloqueo o amistad (el bloqueo gana). */
   private chip: Phaser.GameObjects.Image | null = null;
   private globo: Globo | null = null;
   private gesto: Gesto | null = null;
@@ -333,7 +366,7 @@ export class Persona {
     return this.globo ? this.globoNatural : null;
   }
 
-  /** Dónde está la etiqueta del nombre (con su marca de bloqueo), en pixeles del mundo. */
+  /** Dónde está la etiqueta del nombre (con su marca), en pixeles del mundo. */
   get tagRect(): GloboRect | null {
     const tag = this.tag;
     if (!tag) return null;
@@ -391,18 +424,31 @@ export class Persona {
     this.tag.setBackgroundColor(blocked ? MASKING : this.own ? '#efff3a' : CARTULINA);
     this.tag.setColor(blocked ? PLUMON_SUAVE : PLUMON);
     if (blocked) {
-      addCanvasTexture(this.scene, 'marca-bloqueo', paintBlockChip);
-      this.chip = this.scene.add
-        .image(0, 0, 'marca-bloqueo')
-        .setOrigin(1, 1)
-        .setScale(1 / this.zoom)
-        .setDepth(NAME_DEPTH);
       this.dropGlobo();
       this.dropGesto();
-    } else {
-      this.chip?.destroy();
-      this.chip = null;
     }
+    this.refreshChip();
+  }
+
+  /** Es tu amigo (ADR-0011): su etiqueta lleva el papelito verde con el corazón. */
+  setFriend(friend: boolean): void {
+    if (friend === this.friend || !this.tag) return;
+    this.friend = friend;
+    this.refreshChip();
+  }
+
+  private refreshChip(): void {
+    const want = this.blocked ? 'marca-bloqueo' : this.friend ? 'marca-amistad' : null;
+    if ((this.chip?.texture.key ?? null) === want) return;
+    this.chip?.destroy();
+    this.chip = null;
+    if (!want) return;
+    addCanvasTexture(this.scene, want, want === 'marca-bloqueo' ? paintBlockChip : paintFriendChip);
+    this.chip = this.scene.add
+      .image(0, 0, want)
+      .setOrigin(1, 1)
+      .setScale(1 / this.zoom)
+      .setDepth(NAME_DEPTH);
   }
 
   /** ¿Cae este punto del mundo (px) sobre la persona? Con margen para el dedo. */

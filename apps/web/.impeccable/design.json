@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-27T03:18:33.854Z",
+  "generatedAt": "2026-09-27T06:38:41.601Z",
   "title": "Design System: Wous",
   "extensions": {
     "colorMeta": {
@@ -364,6 +364,22 @@
           "#f8eed6"
         ]
       },
+      "papel-foto": {
+        "role": "neutral",
+        "displayName": "Papel de foto",
+        "canonical": "oklch(99.4% 0.007 88.6)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#252420",
+          "#41403c",
+          "#5f5d59",
+          "#82807c",
+          "#a3a19d",
+          "#c9c7c2",
+          "#f0eee9"
+        ],
+        "note": "El papel de la foto de grupo; el único papel claro que la lona no tiñe."
+      },
       "papel": {
         "role": "neutral",
         "displayName": "Papel teñido por la lona",
@@ -569,12 +585,12 @@
       {
         "name": "sombra-hoja",
         "value": "0 1px 1px rgb(43 18 56 / 0.22), 0 14px 26px -10px rgb(43 18 56 / 0.55)",
-        "purpose": "La hoja colgada del tendedero."
+        "purpose": "La hoja colgada del tendedero; en tu banda, la foto, su ficha y la hoja de avisos."
       },
       {
         "name": "sombra-cartulina",
         "value": "0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55)",
-        "purpose": "Cartulinas pegadas: botón marcatextos, chip, pestaña activa, confirmación, etiqueta, letreros."
+        "purpose": "Cartulinas pegadas: botón marcatextos, chip, pestaña activa, confirmación, etiqueta, letreros, recados y la calcomanía «N nuevas»."
       },
       {
         "name": "sombra-cartulina-hundida",
@@ -599,7 +615,7 @@
       {
         "name": "halo-foco",
         "value": "radial-gradient(circle, rgb(255 240 178 / 0.78) 0%, rgb(255 228 150 / 0.36) 22%, rgb(255 228 150 / 0.12) 46%, transparent 70%)",
-        "purpose": "Luz del foco pelón en mezcla screen; marca lo elegido. No es sombra: es la luz como énfasis."
+        "purpose": "Luz del foco pelón en mezcla screen; marca lo elegido. Va en CSS salvo en la foto de grupo, donde se pinta en el lienzo (ver luz-foto)."
       },
       {
         "name": "sombra-rotulista",
@@ -615,6 +631,11 @@
         "name": "tira",
         "value": "0 1px 0 rgb(23 16 27 / 0.14), 0 6px 12px -7px rgb(43 18 56 / 0.6)",
         "purpose": "Las tiras del chat cerrado y la nota de la sala."
+      },
+      {
+        "name": "luz-foto",
+        "value": "canvas: radial rgb(255 240 178 / 0.62) → 0, radio 0.85 × alto del sprite, sobre quien elegiste; sin elegir, / 0.34 y radio 42% del ancho. Sombra de persona: elipse 6×1.4 px de arte rgb(43 18 56 / 0.3); raya de grada rgb(43 18 56 / 0.35)",
+        "purpose": "La luz del foco y las sombras dentro de la foto de grupo, pintadas en el lienzo porque el marco es la orilla de la imagen."
       }
     ],
     "motion": [
@@ -717,6 +738,21 @@
         "name": "gente-colgar",
         "value": "220ms ease-salida, desde −8px",
         "purpose": "La lista de «Gente aquí» se cuelga del letrero."
+      },
+      {
+        "name": "foto-flash",
+        "value": "700ms ease-salida · opacidad 0 → 0.88 (10%) → 0 · velo #fffdf2",
+        "purpose": "La foto se vuelve a tomar cuando alguien se une; solo con movimiento, nunca al cargar."
+      },
+      {
+        "name": "foto-ficha-pegar",
+        "value": "260ms ease-salida, desde −10px y −2° hasta 0.6°",
+        "purpose": "La ficha de alguien de la foto se pega debajo de ella."
+      },
+      {
+        "name": "banda-entrada",
+        "value": "marco: y −24px, −3° → 0, 0.9s back.out(1.5) · lado: y 14px, 0.5s, escalonado 0.08s",
+        "purpose": "La foto se pega en la lona y los recados llegan detrás (entrance())."
       }
     ],
     "breakpoints": [
@@ -739,6 +775,11 @@
         "name": "puntero",
         "value": "(hover: hover)",
         "purpose": "Todo hover vive aquí; en táctil no existe."
+      },
+      {
+        "name": "banda-una-columna",
+        "value": "900px",
+        "purpose": "Tu banda pasa a una columna: la foto a todo lo ancho, la ficha debajo y luego el lado; el marco gira −0.8°."
       }
     ]
   },
@@ -846,6 +887,38 @@
       "description": "Seis cartulinas chicas blancas en dos columnas; la elegida en marcatextos con canto de plumón.",
       "html": "<fieldset class=\"ds-motivos\"><legend class=\"ds-motivos__pregunta\">¿Qué pasó?</legend><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\" checked>Me está molestando</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Spam o mensajes repetidos</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Contenido sexual</label><label class=\"ds-motivo\"><input type=\"radio\" name=\"ds-motivo\">Otra cosa</label></fieldset>",
       "css": ".ds-motivos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 380px; margin: 0; padding: 0; border: 0; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); color: var(--plumon, #17101b); } .ds-motivos__pregunta { margin: 0 0 10px; font-family: var(--font-cartel, \"Big Shoulders Display Variable\", \"Arial Narrow\", sans-serif); font-weight: 850; font-size: 1.3rem; line-height: 1.05; text-transform: uppercase; } .ds-motivo { position: relative; display: flex; align-items: center; min-height: 46px; padding: 8px 11px; border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; background: #ffffff; box-shadow: inset 0 0 0 2px var(--cartulina-borde, #e9dfc8); font-size: 0.9rem; font-weight: 650; line-height: 1.2; cursor: pointer; transition: background-color 140ms ease, box-shadow 140ms ease; } .ds-motivo input { position: absolute; opacity: 0; pointer-events: none; } .ds-motivo:hover { background: color-mix(in oklab, var(--fosfo-amarillo, #efff3a) 35%, white); } .ds-motivo:has(input:checked) { background: var(--fosfo-amarillo, #efff3a); box-shadow: inset 0 0 0 2px var(--plumon, #17101b), 0 4px 8px -5px rgb(43 18 56 / 0.5); } .ds-motivo:has(input:focus-visible) { outline: 3px solid var(--plumon, #17101b); outline-offset: 2px; }"
+    },
+    {
+      "name": "Foto de grupo",
+      "kind": "custom",
+      "refersTo": "marco-foto",
+      "description": "Tu banda como foto de generación: marco de papel de foto girado −1.4° y pegado con masking en dos esquinas, escena en pixel art (aquí, un sustituto en CSS del lienzo) y los nombres por filas al pie.",
+      "html": "<figure class=\"ds-foto\"><span class=\"ds-foto__masking ds-foto__masking--izq\" aria-hidden=\"true\"></span><span class=\"ds-foto__masking ds-foto__masking--der\" aria-hidden=\"true\"></span><div class=\"ds-foto__imagen\"><span class=\"ds-foto__luz\" aria-hidden=\"true\"></span></div><figcaption class=\"ds-foto__pie\"><p class=\"ds-foto__titulo\">Tu banda</p><p class=\"ds-foto__cuenta\">5 amigos</p><p class=\"ds-foto__nombres\"><span class=\"ds-foto__renglon\"><span class=\"ds-foto__fila\">Arriba:</span> <button type=\"button\" class=\"ds-foto__nombre\">Ximena</button>, <button type=\"button\" class=\"ds-foto__nombre\" aria-expanded=\"true\">Iván</button>.</span><span class=\"ds-foto__renglon\"><span class=\"ds-foto__fila\">Abajo:</span> <button type=\"button\" class=\"ds-foto__nombre\">Fer</button>, <button type=\"button\" class=\"ds-foto__nombre\">Chuy</button>, <button type=\"button\" class=\"ds-foto__nombre\">Rocío</button>.</span></p></figcaption></figure>",
+      "css": ".ds-foto { position: relative; max-width: 460px; margin: 24px; padding: 16px 16px 22px; color: var(--plumon, #17101b); background: #fffdf8; border-radius: 3px 4px 3px 5px; box-shadow: 0 1px 1px rgb(43 18 56 / 0.22), 0 14px 26px -10px rgb(43 18 56 / 0.55); rotate: -1.4deg; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); } .ds-foto__masking { position: absolute; top: -8px; width: 92px; height: 22px; background: color-mix(in oklab, var(--masking, #e9dbb1) 86%, transparent); clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%); box-shadow: 0 1px 2px rgb(23 16 27 / 0.18); } .ds-foto__masking--izq { left: -26px; rotate: -36deg; } .ds-foto__masking--der { right: -26px; rotate: 38deg; } .ds-foto__imagen { position: relative; height: 180px; overflow: hidden; background: linear-gradient(#075a2f 0 12px, transparent 12px), linear-gradient(transparent 78%, #9c8f95 78%), repeating-linear-gradient(90deg, #0f8a4a 0 20px, #13a058 20px 26px, #0f8a4a 26px 32px, #0b7a41 32px 34px); border-radius: 1px; box-shadow: inset 0 0 0 1px rgb(23 16 27 / 0.2); } .ds-foto__luz { position: absolute; left: 50%; top: 12px; width: 60%; height: 100%; translate: -50% 0; background: radial-gradient(circle at 50% 40%, rgb(255 240 178 / 0.62), rgb(255 240 178 / 0) 60%); } .ds-foto__pie { display: grid; gap: 4px; padding: 14px 4px 0; } .ds-foto__titulo { margin: 0; font-family: var(--font-cartel, \"Big Shoulders Display Variable\", \"Arial Narrow\", sans-serif); font-weight: 850; font-size: 2.4rem; line-height: 1; text-transform: uppercase; } .ds-foto__cuenta { margin: 0; font-weight: 700; color: var(--plumon-suave, #4a3a51); } .ds-foto__nombres { margin: 6px 0 0; font-size: 0.98rem; line-height: 1.75; color: var(--plumon-suave, #4a3a51); } .ds-foto__renglon { display: block; } .ds-foto__fila { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; } .ds-foto__nombre { padding: 0; border: 0; background: none; border-radius: 3px; font: inherit; font-weight: 750; color: var(--plumon, #17101b); text-decoration: underline; text-decoration-color: var(--lona, #0f8a4a); text-decoration-thickness: 3px; text-underline-offset: 0.2em; cursor: pointer; } .ds-foto__nombre[aria-expanded=\"true\"] { background: var(--fosfo-amarillo, #efff3a); text-decoration-color: var(--plumon, #17101b); } .ds-foto__nombre:hover { background: color-mix(in oklab, var(--fosfo-amarillo, #efff3a) 70%, transparent); } .ds-foto__nombre:focus-visible { outline: 3px solid var(--plumon, #17101b); outline-offset: 2px; }"
+    },
+    {
+      "name": "Recado",
+      "kind": "card",
+      "refersTo": "recado",
+      "description": "Quien te busca: recado blanco pegado con masking, girado, con retrato, nombre y «Aceptar» en marcatextos junto a «Ahora no» a trazo.",
+      "html": "<div class=\"ds-recado\"><span class=\"ds-recado__masking\" aria-hidden=\"true\"></span><p class=\"ds-recado__quien\"><strong>Dani Olvera</strong><span>Te mandó solicitud hace 2 horas</span></p><div class=\"ds-recado__botones\"><button type=\"button\" class=\"ds-recado__si\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19.7c-4.9-3-8.1-6.1-8.1-9.6 0-2.5 1.9-4.4 4.2-4.4 1.7 0 3.1 1 3.9 2.5.9-1.6 2.3-2.5 4-2.5 2.3 0 4.1 1.9 4.1 4.4 0 3.5-3.2 6.6-8.1 9.6Z\"/></svg>Aceptar</button><button type=\"button\" class=\"ds-recado__no\">Ahora no</button></div></div>",
+      "css": ".ds-recado { position: relative; max-width: 420px; margin: 20px; padding: 20px 16px 14px; color: var(--plumon, #17101b); background: #ffffff; border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55); rotate: 0.9deg; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); } .ds-recado__masking { position: absolute; top: -9px; left: 50%; width: 66px; height: 18px; translate: -50% 0; rotate: -3deg; background: color-mix(in oklab, var(--masking, #e9dbb1) 86%, transparent); clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%); box-shadow: 0 1px 2px rgb(23 16 27 / 0.18); } .ds-recado__quien { display: grid; margin: 0; } .ds-recado__quien strong { font-size: 1.12rem; font-weight: 800; } .ds-recado__quien span { font-size: 0.92rem; color: var(--plumon-suave, #4a3a51); } .ds-recado__botones { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; margin-top: 14px; } .ds-recado__si, .ds-recado__no { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 12px; border: 0; border-radius: 7px 12px 9px 13px / 12px 8px 13px 9px; font-family: var(--font-plumon, \"Permanent Marker\", \"Segoe Print\", cursive); color: var(--plumon, #17101b); cursor: pointer; transition: transform 110ms var(--ease-presion, cubic-bezier(0.3, 0, 0.1, 1)), box-shadow 110ms var(--ease-presion, cubic-bezier(0.3, 0, 0.1, 1)); } .ds-recado__si { font-size: 1.16rem; background: var(--fosfo-amarillo, #efff3a); box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55); } .ds-recado__si:hover { background: color-mix(in oklab, var(--fosfo-amarillo, #efff3a) 86%, white); } .ds-recado__si:active { transform: translateY(3px); box-shadow: 0 0 0 rgb(23 16 27 / 0.2), 0 2px 4px -2px rgb(43 18 56 / 0.5); } .ds-recado__no { font-size: 1.06rem; background: transparent; box-shadow: inset 0 0 0 2.5px currentColor; } .ds-recado__no:active { transform: translateY(2px); } .ds-recado__si:focus-visible, .ds-recado__no:focus-visible { outline: 3px solid var(--plumon, #17101b); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chip de estado",
+      "kind": "chip",
+      "refersTo": "chip-estado",
+      "description": "Dice cómo están las cosas con alguien: masking al 70% («Te mandó solicitud») o verde de hecho al 60% cuando ya son amigos («Es de tu banda», «Desde el …»).",
+      "html": "<div class=\"ds-estados\"><p class=\"ds-estado\">Te mandó solicitud</p><p class=\"ds-estado ds-estado--amigos\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19.7c-4.9-3-8.1-6.1-8.1-9.6 0-2.5 1.9-4.4 4.2-4.4 1.7 0 3.1 1 3.9 2.5.9-1.6 2.3-2.5 4-2.5 2.3 0 4.1 1.9 4.1 4.4 0 3.5-3.2 6.6-8.1 9.6Z\"/></svg>Es de tu banda</p><p class=\"ds-estado ds-estado--amigos\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19.7c-4.9-3-8.1-6.1-8.1-9.6 0-2.5 1.9-4.4 4.2-4.4 1.7 0 3.1 1 3.9 2.5.9-1.6 2.3-2.5 4-2.5 2.3 0 4.1 1.9 4.1 4.4 0 3.5-3.2 6.6-8.1 9.6Z\"/></svg>Desde el 27 de septiembre</p></div>",
+      "css": ".ds-estados { display: flex; flex-wrap: wrap; gap: 10px; } .ds-estado { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 2px 8px 3px 6px; font-family: var(--font-ui, \"Bricolage Grotesque Variable\", system-ui, sans-serif); font-size: 0.88rem; font-weight: 700; color: var(--plumon-suave, #4a3a51); background: color-mix(in oklab, var(--masking, #e9dbb1) 70%, transparent); border-radius: 5px 8px 6px 9px / 8px 5px 9px 6px; } .ds-estado--amigos { color: var(--plumon, #17101b); background: color-mix(in oklab, var(--fosfo-verde, #5dff86) 60%, transparent); }"
+    },
+    {
+      "name": "Calcomanía «N nuevas»",
+      "kind": "custom",
+      "refersTo": "calcomania-nuevas",
+      "description": "Pegada a la esquina de «Tu banda» en la casa cuando hay solicitudes sin ver: naranja fosforescente, plumón a 1.1rem, 6°.",
+      "html": "<a href=\"#\" class=\"ds-banda\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19.7c-4.9-3-8.1-6.1-8.1-9.6 0-2.5 1.9-4.4 4.2-4.4 1.7 0 3.1 1 3.9 2.5.9-1.6 2.3-2.5 4-2.5 2.3 0 4.1 1.9 4.1 4.4 0 3.5-3.2 6.6-8.1 9.6Z\"/></svg>Tu banda<span class=\"ds-banda__nuevas\">2 nuevas</span></a>",
+      "css": ".ds-banda { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 300px; min-height: 54px; margin: 20px; padding: 12px 24px; border-radius: 7px 12px 9px 13px / 12px 8px 13px 9px; box-shadow: inset 0 0 0 2.5px currentColor; font-family: var(--font-plumon, \"Permanent Marker\", \"Segoe Print\", cursive); font-size: 1.16rem; color: var(--plumon, #17101b); text-decoration: none; } .ds-banda:hover { background: color-mix(in oklab, currentColor 10%, transparent); } .ds-banda:active { transform: translateY(2px); } .ds-banda:focus-visible { outline: 3px solid var(--plumon, #17101b); outline-offset: 2px; } .ds-banda__nuevas { position: absolute; top: -14px; right: -10px; padding: 3px 10px; font-size: 1.1rem; line-height: 1.2; background: var(--fosfo-naranja, #ff7a21); border-radius: 3px 6px 4px 7px; box-shadow: 0 1px 0 rgb(23 16 27 / 0.2), 0 7px 14px -6px rgb(43 18 56 / 0.55); rotate: 6deg; }"
     }
   ],
   "narrative": {
@@ -881,6 +954,11 @@
         "section": "colors"
       },
       {
+        "name": "La Regla del Verde de Hecho",
+        "body": "En el papel de la interfaz, el verde fosforescente marca lo que ya pasó o lo que ya es tuyo: una confirmación, una amistad, el aviso de lo que acaba de pasar en el mundo. Nunca es la acción por hacer: esa es marcatextos. (En el pixel art del mundo, el verde también rotula fachadas; ahí no aplica.)",
+        "section": "colors"
+      },
+      {
         "name": "La Regla de las Tres Manos",
         "body": "El cartel rotula (títulos y letreros, siempre en mayúsculas), el plumón escribe cartulinas (de dos a cinco palabras) y la grotesca se lee. Ninguna mano hace el trabajo de otra.",
         "section": "typography"
@@ -912,7 +990,7 @@
       },
       {
         "name": "La Regla del Foco",
-        "body": "Lo elegido queda bajo la luz y lo demás, a la sombra de la lona. En la opción elegida es una luz cálida radial detrás de la pieza más un halo marcatextos; en el gancho con hover, un brillo cálido. El foco pelón nunca se usa como adorno suelto: siempre hay algo debajo de él.",
+        "body": "Lo elegido queda bajo la luz y lo demás, a la sombra de la lona. En la opción elegida es una luz cálida radial detrás de la pieza más un halo marcatextos; en el gancho con hover, un brillo cálido. En la foto de grupo, el foco se corre por la orilla hasta quedar sobre la persona elegida: luz cálida detrás de ella y un halo marcatextos de 1 pixel de arte alrededor de su silueta. El foco pelón nunca se usa como adorno suelto: siempre hay algo debajo de él, y en una foto sin gente no hay foco.",
         "section": "elevation"
       },
       {
@@ -923,6 +1001,11 @@
       {
         "name": "La Regla del Gesto Propio",
         "body": "Un gesto es pixel art del mundo y se ve de quien lo hace: lleva su piel, su playera o su cara. Nunca es un emoji, un ícono de sistema ni una imagen genérica.",
+        "section": "components"
+      },
+      {
+        "name": "La Regla de la Foto que Crece",
+        "body": "Tu banda no se muestra como lista: cada amistad es una persona más en la foto, en su grada y con su nombre al pie.",
         "section": "components"
       }
     ],
@@ -941,7 +1024,9 @@
       "**Do** pintar lo que escribe la gente siempre como texto ya saneado (un nodo de React o el canvas del globo), nunca como HTML.",
       "**Do** pintar globos y etiquetas del mundo en pixeles de pantalla, escalados 1/zoom y en Bricolage, y apilarlos para que ninguno tape a otro ni a una etiqueta.",
       "**Do** dibujar los gestos en pixel art por código, con la piel, la playera o la cara de quien los hace.",
-      "**Do** hacer que los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») no se queden el foco con el ratón (`onMouseDown` con `preventDefault`), para que Enter siga abriendo el chat. Con teclado se llega igual con Tab."
+      "**Do** hacer que los botones del HUD que se usan jugando (gestos, nombres del chat, «Gente aquí») no se queden el foco con el ratón (`onMouseDown` con `preventDefault`), para que Enter siga abriendo el chat. Con teclado se llega igual con Tab.",
+      "**Do** marcar la amistad con el verde de hecho (el papelito en la plaza, el chip al 60% en las fichas) y dejar que el bloqueo gane sobre ella.",
+      "**Do** colgar el foco solo sobre alguien: en la foto de grupo se corre hasta quien elegiste y, sin gente, no hay foco."
     ],
     "donts": [
       "**Don't** hacer la portada de juego pixel de siempre: cielo morado degradado, tipografía pixel, brillo neón y un gran botón JUGAR.",
@@ -955,7 +1040,8 @@
       "**Don't** extender la sombra dura del rótulo a cajas, botones o títulos de hoja: es la sombra del rotulista y vive solo en el rótulo.",
       "**Don't** usar las mayúsculas espaciadas (label caps) como antetítulo encima de un título.",
       "**Don't** hacer que algo dependa del hover: en teléfono no existe.",
-      "**Don't** usar la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco), ni emojis como gestos o como íconos."
+      "**Don't** usar la caja de chat translúcida de juego en línea (rectángulo negro al 60% con texto blanco), ni emojis como gestos o como íconos.",
+      "**Don't** mostrar a tu banda como lista de contactos con avatares redondos y botones de «Eliminar»."
     ]
   }
 }

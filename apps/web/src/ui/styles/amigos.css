@@ -1,0 +1,642 @@
+/*
+ * Tu banda (/friends, ADR-0011) bajo la lona verde, la de los correos de
+ * amistad: la foto de grupo pegada con masking y, a su lado, los recados de
+ * quien te busca, lo que mandaste y los avisos por correo.
+ */
+
+.banda {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(28px, 4vw, 64px);
+  padding: var(--s-7) clamp(16px, 4vw, 56px) var(--s-8);
+}
+
+.banda__lado {
+  display: grid;
+  gap: var(--s-6);
+  padding-top: var(--s-3);
+}
+
+.banda__letrero {
+  margin-bottom: var(--s-4);
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: var(--step-2);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--sobre-lona);
+}
+
+/* Sobre la lona verde solo va letrero grande o texto en negrita (DESIGN.md). */
+.banda__sobre-lona {
+  max-width: 36ch;
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--sobre-lona);
+  text-wrap: pretty;
+}
+
+.banda__error {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  background: var(--papel);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+}
+
+.banda__salida .cartulina {
+  color: var(--sobre-lona);
+}
+
+/* Lo secundario de un renglón: texto subrayado, con área de 44 px. */
+.banda__accion {
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 0;
+  background: none;
+  border-radius: var(--trazo-chico);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--plumon-suave);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in oklab, var(--plumon-suave) 55%, transparent);
+  cursor: pointer;
+}
+
+.banda__accion:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  .banda__accion:hover:not(:disabled) {
+    color: var(--plumon);
+    background: color-mix(in oklab, var(--fosfo-amarillo) 70%, transparent);
+  }
+}
+
+/* Retrato bajo el foco: luz cálida detrás de la cabeza, como en la ficha de la plaza. */
+.retrato {
+  flex: none;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-radius: var(--trazo-chico);
+  background:
+    radial-gradient(circle at 50% 38%, rgb(255 240 178 / 0.78), transparent 68%),
+    color-mix(in oklab, var(--masking) 55%, var(--cartulina));
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--plumon) 10%, transparent);
+}
+
+.retrato--recado {
+  width: 58px;
+  height: 58px;
+}
+
+.retrato--chico {
+  width: 42px;
+  height: 42px;
+}
+
+/* ─── La foto de grupo ─── */
+
+.foto__marco {
+  position: relative;
+  margin: 0;
+  padding: 16px 16px 22px;
+  color: var(--plumon);
+  background: var(--papel-foto);
+  border-radius: 3px 4px 3px 5px;
+  box-shadow: var(--sombra-hoja);
+  rotate: -1.4deg;
+}
+
+.foto__masking,
+.foto__ficha-masking {
+  position: absolute;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+.foto__masking {
+  top: -8px;
+  width: 92px;
+  height: 22px;
+}
+
+.foto__masking--izq {
+  left: -26px;
+  rotate: -36deg;
+}
+
+.foto__masking--der {
+  right: -26px;
+  rotate: 38deg;
+}
+
+.foto__imagen {
+  width: 100%;
+  overflow: hidden;
+  background: var(--lona-verde);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgb(23 16 27 / 0.2);
+}
+
+.foto__escena {
+  position: relative;
+  width: fit-content;
+  margin-inline: auto;
+  line-height: 0;
+}
+
+.foto__toques {
+  position: absolute;
+  inset: 0;
+}
+
+/* La foto se vuelve a tomar cuando alguien se une. Sin movimiento, no hay flash. */
+.foto__flash {
+  position: absolute;
+  inset: 0;
+  background: var(--papel-foto);
+  opacity: 0;
+  pointer-events: none;
+  animation: foto-flash 700ms var(--ease-salida);
+}
+
+@keyframes foto-flash {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.88;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.foto__revelando {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  padding: 6px 14px 7px;
+  font-family: var(--font-ui);
+  font-weight: 750;
+  font-size: 1rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--plumon);
+  background: color-mix(in oklab, var(--masking) 92%, transparent);
+  border-radius: var(--trazo-chico);
+  rotate: -1.5deg;
+}
+
+.foto__pie {
+  display: grid;
+  gap: 4px;
+  padding: 14px 4px 0;
+}
+
+.foto__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: clamp(2.05rem, 1.6rem + 1.6vw, 2.85rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.foto__titulo:focus {
+  outline: none;
+}
+
+.foto__cuenta {
+  font-weight: 700;
+  color: var(--plumon-suave);
+}
+
+.foto__nombres {
+  margin-top: 6px;
+  font-size: 0.98rem;
+  line-height: 1.75;
+  color: var(--plumon-suave);
+  text-wrap: pretty;
+}
+
+.foto__renglon {
+  display: block;
+}
+
+.foto__fila {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.foto__nombre {
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 3px;
+  font: inherit;
+  font-weight: 750;
+  color: var(--plumon);
+  text-decoration: underline;
+  text-decoration-color: var(--lona);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.foto__nombre[aria-expanded="true"] {
+  background: var(--fosfo-amarillo);
+  text-decoration-color: var(--plumon);
+}
+
+@media (hover: hover) {
+  .foto__nombre:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 70%, transparent);
+  }
+}
+
+.foto__album {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.foto__pagina {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.foto__hoja {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  border-radius: var(--trazo-chico);
+  box-shadow: inset 0 0 0 2.5px currentColor;
+  color: var(--plumon);
+  cursor: pointer;
+}
+
+.foto__hoja--antes svg {
+  rotate: 180deg;
+}
+
+.foto__hoja:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* La ficha de alguien de la foto: cartulina pegada bajo la foto. */
+.foto__ficha {
+  position: relative;
+  margin-top: var(--s-5);
+  padding: 20px 18px 16px;
+  rotate: 0.6deg;
+  color: var(--plumon);
+  background: var(--cartulina);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  animation: foto-ficha-pegar 260ms var(--ease-salida);
+}
+
+@keyframes foto-ficha-pegar {
+  from {
+    translate: 0 -10px;
+    rotate: -2deg;
+    opacity: 0;
+  }
+}
+
+.foto__ficha:focus {
+  outline: none;
+}
+
+.foto__ficha-masking {
+  top: -8px;
+  left: 50%;
+  width: 64px;
+  height: 17px;
+  translate: -50% 0;
+  rotate: 3deg;
+}
+
+.foto__ficha-cerrar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  border-radius: var(--trazo-chico);
+  color: var(--plumon);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .foto__ficha-cerrar:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 55%, transparent);
+  }
+}
+
+.foto__ficha-quien {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Solo el nombre deja lugar a la equis; la etiqueta de abajo usa todo el ancho. */
+.foto__ficha-nombre {
+  padding-right: 40px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.foto__ficha-desde {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 2px 8px 3px 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  background: color-mix(in oklab, var(--fosfo-verde) 60%, transparent);
+  border-radius: var(--trazo-chico);
+}
+
+/* Si llegara a partirse, el corazón se queda con el primer renglón. */
+.foto__ficha-desde svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.foto__ficha-botones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.foto__ficha .cartulina {
+  min-height: 48px;
+  padding: 8px 12px;
+  font-size: 1.08rem;
+}
+
+.foto__ficha .cartulina--fosfo {
+  width: auto;
+  font-size: 1.16rem;
+}
+
+.foto__ficha-pregunta {
+  margin-top: 16px;
+  font-family: var(--font-cartel);
+  font-size: 1.3rem;
+  font-weight: 850;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.foto__ficha-confirmar p:not(.foto__ficha-pregunta) {
+  margin-top: 8px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.foto__ficha .aviso {
+  margin-top: 14px;
+}
+
+/* ─── Los recados ─── */
+
+.te-buscan__recados {
+  display: grid;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+}
+
+.recado,
+.esperando {
+  position: relative;
+  padding: 20px 16px 14px;
+  color: var(--plumon);
+  background: var(--blanco);
+  border-radius: var(--trazo-chico);
+  box-shadow: var(--sombra-cartulina);
+  list-style: none;
+}
+
+.recado--a {
+  rotate: 0.9deg;
+}
+
+.recado--b {
+  rotate: -1.1deg;
+}
+
+.esperando {
+  rotate: -0.6deg;
+}
+
+.recado__masking {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 66px;
+  height: 18px;
+  translate: -50% 0;
+  rotate: -3deg;
+  background: color-mix(in oklab, var(--masking) 86%, transparent);
+  clip-path: polygon(3% 10%, 97% 0, 100% 88%, 0 100%);
+  box-shadow: 0 1px 2px rgb(23 16 27 / 0.18);
+}
+
+.recado__quien {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recado__nombre {
+  display: block;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.recado__cuando {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.92rem;
+  color: var(--plumon-suave);
+}
+
+.recado__botones {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.recado .cartulina {
+  min-height: 48px;
+  padding: 8px 12px;
+}
+
+.recado .cartulina--fosfo {
+  width: auto;
+  font-size: 1.16rem;
+}
+
+.recado .cartulina--trazo {
+  font-size: 1.06rem;
+}
+
+.recado .aviso {
+  margin-top: 12px;
+}
+
+/* Título de cartel, como «Te buscan» y «Avisos por correo» (la Regla de las Tres Manos). */
+.esperando__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 800;
+  font-size: var(--step-1);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.esperando__lista {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.espera {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+}
+
+.espera + .espera {
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.espera__quien {
+  display: grid;
+  min-width: 0;
+}
+
+.espera__quien strong {
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.espera__quien span {
+  font-size: 0.9rem;
+  color: var(--plumon-suave);
+}
+
+.espera__error {
+  grid-column: 1 / -1;
+  padding-bottom: 10px;
+}
+
+/* ─── Avisos por correo: una hoja chica al pie ─── */
+
+.banda__avisos {
+  padding: 22px 20px 20px;
+  color: var(--plumon);
+  background: var(--papel);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+  rotate: 0.4deg;
+}
+
+.avisos__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 800;
+  font-size: var(--step-1);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.avisos__casillas {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.avisos__nota {
+  margin-top: var(--s-3);
+  max-width: 46ch;
+  font-size: 0.9rem;
+  color: var(--plumon-suave);
+  text-wrap: pretty;
+}
+
+@media (max-width: 900px) {
+  .banda {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: var(--s-6);
+  }
+
+  .foto__marco {
+    rotate: -0.8deg;
+  }
+
+  /* En una columna la foto va de orilla a orilla: la cinta se pega más adentro para no cortarse. */
+  .foto__masking--izq {
+    left: -8px;
+  }
+
+  .foto__masking--der {
+    right: -8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foto__flash {
+    display: none;
+  }
+
+  .foto__ficha {
+    animation: none;
+  }
+}
+
+[data-quieto] .foto__flash {
+  display: none;
+}
+
+[data-quieto] .foto__ficha {
+  animation: none;
+}

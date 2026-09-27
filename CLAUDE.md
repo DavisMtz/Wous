@@ -16,7 +16,8 @@ cambies la arquitectura en silencio (§38).
 | 5 · Realtime / RoomDO | ✅ hecha · `/ws/world`, RoomDO con Hibernation (ADR-0008) |
 | 6 · Portales, Café y reconexión | ✅ hecha · el Café, `ENTER_PORTAL`, turno de presencia y ventana de gracia (ADR-0009) |
 | 7 · Chat, emotes y seguridad social | ✅ hecha · chat de sala, gestos, bloqueos y reportes por la sala; moderación por script (ADR-0010) |
-| 8 · Amigos + correo social | ⏳ |
+| 8 · Amigos + correo social | ✅ hecha · tu banda (`/friends`, la foto de grupo), solicitudes con vueltas y en la sombra, avisos por correo (ADR-0011) |
+| 9 · Alpha cerrada | ⏳ |
 
 No se empieza una fase sin cumplir el Definition of Done de la anterior (§1.15).
 
@@ -78,3 +79,14 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   el chat en vez de reactivar el botón. Con teclado se llega igual con Tab.
 - La suite E2E completa con 2 workers da falsos rojos por RAM en esta máquina; cada archivo por
   separado (`--workers=1`) es la prueba que cuenta.
+- Amistades (Fase 8, ADR-0011): van por HTTP (`/api/v1/friends…`), no por la sala. Una fila por
+  par (`account_low`/`account_high`) y una `round` que sube en cada solicitud nueva: la clave de
+  dedupe del correo lleva la vuelta. Pedirle a quien te bloqueó guarda la solicitud con
+  `hidden = 1` (quien pide la ve enviada; la otra persona nunca). Bloquear (sala o
+  `POST /users/:characterId/block`) termina la amistad en el mismo batch (`addBlock`), y el de HTTP
+  avisa a la sala de quien bloquea por RPC (`whereIs` + `applyBlock`).
+- La marca de amistad en la plaza sale de `RoomState.friends` (lo llena `setFriends` con la lista
+  HTTP), no de la sala. `apps/web/dev-amigos.html` abre tu banda sin sesión:
+  `?caso=vacio|album|cargando|error`, `?abrir=Nombre&paso=bloquear`, `?quieto`.
+- Capturas de revisión de tu banda: `WOUS_CAPTURAS=1 pnpm exec playwright test
+  tests/amigos-capturas.spec.ts --project=escritorio`.

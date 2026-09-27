@@ -476,7 +476,10 @@ export class WorldScene extends Phaser.Scene {
         persona.setZoom(this.cameras.main.zoom);
         this.remotes.set(id, { persona, x: 0, y: 0 });
       }
-      for (const [id, entry] of this.remotes) entry.persona.setBlocked(room.blocked.has(id));
+      for (const [id, entry] of this.remotes) {
+        entry.persona.setBlocked(room.blocked.has(id));
+        entry.persona.setFriend(room.friends.has(id));
+      }
       this.o.hud.set({ gente: room.remotes.size + 1 });
     }
     for (const [id, entry] of this.remotes) {

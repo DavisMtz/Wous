@@ -29,6 +29,9 @@
   --ciruela: #2b1238;
   --cartulina: #fffbf1;
   --cartulina-borde: #e9dfc8;
+  /* El papel de la foto de grupo: el único claro que la lona no tiñe. */
+  --papel-foto: #fffdf8;
+  --blanco: #ffffff;
   /* El papel bajo la lona: la luz que la atraviesa también lo tiñe. */
   --papel: color-mix(in oklab, var(--lona-luz, #ff72b4) 9%, var(--cartulina));
   --fosfo-amarillo: #efff3a;

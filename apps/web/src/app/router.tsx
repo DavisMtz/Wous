@@ -24,6 +24,8 @@ export const ROUTES = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   plaza: '/plaza',
+  /** Tus amigos (ADR-0011). La arman los correos de amistad: no se renombra. */
+  friends: '/friends',
 } as const;
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES];

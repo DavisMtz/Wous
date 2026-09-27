@@ -1,8 +1,14 @@
 import { SOCIAL } from '@wous/config';
-import { type AppearanceInput, REPORT_REASONS, type ReportReason } from '@wous/contracts';
+import {
+  type AppearanceInput,
+  type FriendRelation,
+  REPORT_REASONS,
+  type ReportReason,
+} from '@wous/contracts';
 import { type FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ficha, RespuestaSocial } from '../../game/hud-store.ts';
 import { lookFromAppearance } from '../../game/rendering/appearance.ts';
+import { mensajeDeError } from '../../ui/components/Formulario.tsx';
 import { Icono } from '../../ui/components/Icono.tsx';
 import { Aviso, Cartulina, Sello } from '../../ui/components/Tianguis.tsx';
 import { Miniatura } from '../../ui/scene/Miniatura.tsx';
@@ -40,17 +46,32 @@ const ESPERA_MS = 7_000;
 /** Cabeza y hombros para el retrato de la ficha (filas de arte del sprite). */
 const RETRATO = { desde: 0, hasta: 19 } as const;
 
+/**
+ * La amistad con esta persona (ADR-0011), desde tu lado. Viaja por HTTP, no
+ * por la sala: la sala no sabe de amigos. Sin sesión (banco) no hay.
+ */
+export type AmistadEnFicha = {
+  relacion: FriendRelation;
+  /** Agregar o aceptar: resuelven con cómo quedó y fallan con el error del servidor. */
+  onAgregar: () => Promise<FriendRelation>;
+  onAceptar: () => Promise<FriendRelation>;
+};
+
 type Props = {
   ficha: Ficha;
   /** Apariencia, si la persona sigue en la sala (si ya se fue, no hay retrato). */
   apariencia: AppearanceInput | null;
   bloqueada: boolean;
   respuesta: RespuestaSocial | null;
+  amistad: AmistadEnFicha | null;
   /** Devuelven false si no hay conexión. */
   onReportar: (motivo: ReportReason, nota: string, messageId: string | null) => boolean;
   onBloquear: (bloquear: boolean) => boolean;
   onCerrar: () => void;
 };
+
+/** Lo que acaba de pasar con la amistad en esta ficha (se confirma con la cartulina verde). */
+type PasoAmistad = 'quieto' | 'pidiendo' | 'enviada' | 'aceptando' | 'amigos';
 
 /**
  * La ficha de alguien de la sala (ADR-0010): tocas a la persona o su nombre
@@ -63,11 +84,14 @@ export function FichaDePersona({
   apariencia,
   bloqueada,
   respuesta,
+  amistad,
   onReportar,
   onBloquear,
   onCerrar,
 }: Props) {
   const [paso, setPaso] = useState<Paso>('inicio');
+  const [pasoAmistad, setPasoAmistad] = useState<PasoAmistad>('quieto');
+  const [errorAmistad, setErrorAmistad] = useState<string | null>(null);
   const [motivo, setMotivo] = useState<ReportReason | null>(null);
   const [nota, setNota] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -145,8 +169,33 @@ export function FichaDePersona({
     pedir('reportando', () => onReportar(motivo, nota, ficha.mensaje?.id ?? null));
   };
 
+  const amistadPedida = async (pedir: () => Promise<FriendRelation>, espera: PasoAmistad) => {
+    setErrorAmistad(null);
+    setPasoAmistad(espera);
+    try {
+      const quedo = await pedir();
+      setPasoAmistad(quedo === 'FRIENDS' ? 'amigos' : quedo === 'OUTGOING' ? 'enviada' : 'quieto');
+    } catch (err) {
+      setErrorAmistad(mensajeDeError(err));
+      setPasoAmistad('quieto');
+    }
+  };
+
   const nombre = ficha.nombre;
   const esperando = paso === 'reportando' || paso === 'bloqueando' || paso === 'desbloqueando';
+  // A quien bloqueaste no se le pide amistad (el servidor diría que primero desbloquees).
+  const conAmistad = amistad !== null && !bloqueada;
+  const relacion = amistad?.relacion ?? 'NONE';
+  const estadoAmistad =
+    !conAmistad || pasoAmistad === 'enviada' || pasoAmistad === 'amigos'
+      ? null
+      : relacion === 'FRIENDS'
+        ? { icono: 'corazon' as const, texto: 'Es de tu banda' }
+        : relacion === 'OUTGOING'
+          ? { icono: 'agregar' as const, texto: 'Le mandaste solicitud' }
+          : relacion === 'INCOMING'
+            ? { icono: 'agregar' as const, texto: 'Te mandó solicitud' }
+            : null;
 
   return (
     <div
@@ -179,6 +228,12 @@ export function FichaDePersona({
               Con bloqueo: no se oyen
             </p>
           ) : null}
+          {estadoAmistad ? (
+            <p className={`ficha__estado${relacion === 'FRIENDS' ? ' ficha__estado--amigos' : ''}`}>
+              <Icono name={estadoAmistad.icono} size={17} />
+              {estadoAmistad.texto}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -189,6 +244,40 @@ export function FichaDePersona({
               <figcaption>Dijo:</figcaption>
               <blockquote>«{ficha.mensaje.texto}»</blockquote>
             </figure>
+          ) : null}
+          {conAmistad && amistad ? (
+            <div className="ficha__amistad" aria-live="polite">
+              {pasoAmistad === 'enviada' ? (
+                <div className="ficha__hecho ficha__hecho--amistad">
+                  <Sello>¡Enviada!</Sello>
+                  <p>Si acepta, aparece en tu banda.</p>
+                </div>
+              ) : pasoAmistad === 'amigos' ? (
+                <div className="ficha__hecho ficha__hecho--amistad">
+                  <Sello>¡Ya son amigos!</Sello>
+                  <p>{nombre} ya es de tu banda.</p>
+                </div>
+              ) : relacion === 'NONE' ? (
+                <Cartulina
+                  type="button"
+                  icono="agregar"
+                  cargando={pasoAmistad === 'pidiendo'}
+                  onClick={() => amistadPedida(amistad.onAgregar, 'pidiendo')}
+                >
+                  Agregar amigo
+                </Cartulina>
+              ) : relacion === 'INCOMING' ? (
+                <Cartulina
+                  type="button"
+                  icono="corazon"
+                  cargando={pasoAmistad === 'aceptando'}
+                  onClick={() => amistadPedida(amistad.onAceptar, 'aceptando')}
+                >
+                  Aceptar solicitud
+                </Cartulina>
+              ) : null}
+              {errorAmistad ? <Aviso>{errorAmistad}</Aviso> : null}
+            </div>
           ) : null}
           <div className="ficha__acciones">
             <Cartulina

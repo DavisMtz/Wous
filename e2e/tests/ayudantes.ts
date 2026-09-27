@@ -17,6 +17,7 @@ declare global {
       yo(): string | null;
       colgado(): { id: string; globo: boolean; gesto: string | null }[];
       bloqueados(): string[];
+      amigos(): string[];
     };
   }
 }
@@ -100,7 +101,11 @@ const TURNSTILE_PRUEBA = 'XXXX.DUMMY.TOKEN.XXXX';
  * flujo lo cubre cuenta.spec con la interfaz): no dependen del widget de
  * Turnstile, que en una máquina cargada puede no cargar. Deja la página en la casa.
  */
-export async function cuentaPorApi(page: Page, info: TestInfo, nombre: string): Promise<void> {
+export async function cuentaPorApi(
+  page: Page,
+  info: TestInfo,
+  nombre: string,
+): Promise<{ email: string }> {
   const origin = new URL(info.project.use.baseURL ?? 'http://localhost:5173').origin;
   // IP propia por cuenta, como useOwnIp: los límites por IP no se pisan entre corridas.
   const ip = `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
@@ -144,4 +149,5 @@ export async function cuentaPorApi(page: Page, info: TestInfo, nombre: string): 
   expect(personaje.status(), await personaje.text()).toBe(201);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: `¡Qué onda, ${nombre}!` })).toBeVisible();
+  return { email };
 }

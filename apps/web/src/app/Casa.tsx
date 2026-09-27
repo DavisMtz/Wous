@@ -3,20 +3,26 @@ import { useState } from 'react';
 import { Mostrador } from '../auth/Mostrador.tsx';
 import { lookFromAppearance } from '../game/rendering/appearance.ts';
 import { mensajeDeError } from '../ui/components/Formulario.tsx';
+import { Icono } from '../ui/components/Icono.tsx';
 import { Aviso, Cartulina, Hoja } from '../ui/components/Tianguis.tsx';
+import { useAmigos } from './amigos/useAmigos.ts';
 import { Bloqueados } from './Bloqueados.tsx';
-import { ROUTES, useRouter } from './router.tsx';
+import { Link, ROUTES, useRouter } from './router.tsx';
 import { useSession } from './session.tsx';
 
 /**
  * Con sesión iniciada y personaje armado: el vestíbulo antes de la plaza.
- * Muestra tu personaje, tu cuenta, a quién bloqueaste y cómo cerrar sesión.
+ * Muestra tu personaje, tu cuenta, el camino a tu banda (con las solicitudes
+ * nuevas en una calcomanía), a quién bloqueaste y cómo cerrar sesión.
  */
 export function Casa({ session }: { session: SessionResponse }) {
   const { logout } = useSession();
   const { navigate } = useRouter();
   const [cargando, setCargando] = useState<'una' | 'todas' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Solo para la calcomanía de solicitudes nuevas; la lista vive en /friends.
+  const amigos = useAmigos({ activo: session.character !== null });
+  const nuevas = amigos.listas?.incoming.length ?? 0;
 
   const salir = async (everywhere: boolean) => {
     setCargando(everywhere ? 'todas' : 'una');
@@ -65,6 +71,18 @@ export function Casa({ session }: { session: SessionResponse }) {
         >
           Salir a la plaza
         </Cartulina>
+        <Link to={ROUTES.friends} className="cartulina cartulina--trazo casa__banda">
+          <Icono name="corazon" />
+          <span className="cartulina__texto">Tu banda</span>
+          {nuevas > 0 ? (
+            <span className="casa__nuevas">
+              {nuevas === 1 ? '1 nueva' : `${nuevas} nuevas`}
+              <span className="visually-hidden">
+                {nuevas === 1 ? ' solicitud de amistad' : ' solicitudes de amistad'}
+              </span>
+            </span>
+          ) : null}
+        </Link>
         <div className="hoja__acciones">
           <Cartulina
             type="button"

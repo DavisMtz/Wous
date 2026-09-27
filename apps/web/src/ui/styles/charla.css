@@ -729,6 +729,37 @@ button.renglon__nombre {
   margin-top: 18px;
 }
 
+/*
+ * Tu banda en la ficha (ADR-0011): agregar o aceptar es la acción principal,
+ * en marcatextos y a todo lo ancho; reportar y bloquear quedan debajo, a trazo.
+ */
+.ficha__amistad {
+  display: grid;
+  margin-top: 18px;
+}
+
+.ficha__amistad:empty {
+  display: none;
+}
+
+.ficha__amistad .cartulina--fosfo {
+  width: 100%;
+}
+
+.ficha__amistad + .ficha__acciones {
+  margin-top: 10px;
+}
+
+.ficha__hecho--amistad .sello {
+  margin-top: 2px;
+}
+
+/* Ya son amigos: el estado va en el verde de hecho, como su marca en la plaza. */
+.ficha__estado--amigos {
+  background: color-mix(in oklab, var(--fosfo-verde) 60%, transparent);
+  color: var(--plumon);
+}
+
 .ficha .cartulina {
   min-height: 50px;
   padding: 8px 14px;
