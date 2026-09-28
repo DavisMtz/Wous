@@ -180,7 +180,7 @@ export class Noche {
     if (turno === this.ultimoCohete) return;
     this.ultimoCohete = turno;
     const x = cat.x + cat.w * (0.1 + hash(turno, 1, 5) * 0.8);
-    const y = cat.pie - 190 - hash(turno, 2, 5) * 190;
+    const y = cat.pie - 100 - hash(turno, 2, 5) * 170;
     const color = COLORES_FUEGO[Math.floor(hash(turno, 3, 5) * COLORES_FUEGO.length)] ?? '#ffd23f';
     for (const c of COLORES_FUEGO) {
       addCanvasTexture(this.scene, `chispa:${c}`, () => chispa(c));
