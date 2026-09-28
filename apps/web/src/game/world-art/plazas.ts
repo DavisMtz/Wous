@@ -449,7 +449,12 @@ export function farolDeCampanas(): Art {
   p.rect(cx - 12, pie - 55, 25, 2, HERRERIA.base);
   p.rect(cx - 12, pie - 55, 25, 1, HERRERIA.light);
   for (const bx of [cx - 11, cx + 11]) campana(p, bx, pie - 53);
-  return { canvas: p.canvas, ox: -7, oy: -60 };
+  return {
+    canvas: p.canvas,
+    ox: -7,
+    oy: -60,
+    luces: [cx - 11, cx + 11].map((x) => ({ x, y: pie - 43 })),
+  };
 }
 
 function campana(p: Painter, cx: number, y: number): void {
@@ -516,7 +521,7 @@ export function pilastra(brazo: string | undefined): Art {
   p.rect(lx + 6, ly, 1, 8, HERRERIA.base);
   p.rect(lx, ly + 8, 7, 1, HERRERIA.base);
   p.px(lx + 3, ly + 9, HERRERIA.base);
-  return { canvas: p.canvas, ox: -9, oy: -(H - TILE) + 2 };
+  return { canvas: p.canvas, ox: -9, oy: -(H - TILE) + 2, luces: [{ x: lx + 3, y: ly + 4 }] };
 }
 
 // ─── Fuente de columna ────────────────────────────────────────────────────

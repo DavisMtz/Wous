@@ -126,7 +126,12 @@ export function portal(wTiles: number, hTiles: number, variant: string | undefin
   // letrero del comercio (la cadena sube a un techo que desde aquí no se ve).
   for (let k = 0; k < tramos; k++) farolColgante(p, k * TRAMO + PILAR + 5, pie - 68, 4);
 
-  return { canvas: p.canvas, ox: 0, oy: -REMATE };
+  return {
+    canvas: p.canvas,
+    ox: 0,
+    oy: -REMATE,
+    luces: Array.from({ length: tramos }, (_, k) => ({ x: k * TRAMO + PILAR + 7, y: pie - 60 })),
+  };
 }
 
 function pilarToscano(p: Painter, x: number, imposta: number, pie: number): void {

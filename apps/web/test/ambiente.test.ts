@@ -6,8 +6,11 @@ import {
   campanada,
   danzantesEncendidas,
   horaDeMorelia,
+  lucesDeCatedral,
+  nocheDe,
   relojDelServidor,
   relojDesde,
+  solDeMorelia,
 } from '../src/game/ambiente/hora.ts';
 import {
   lugaresDeParvada,
@@ -69,10 +72,48 @@ describe('la hora de Morelia', () => {
     expect(relojDelServidor((t) => t + 1.9e12)(5_000)).toBe(1.9e12 + 5_000);
   });
 
+  it('el sol sale y se pone en Morelia a su hora, según la temporada', () => {
+    const minutos = (h: number, m: number) => h * 60 + m;
+    const junio = solDeMorelia(utc('2026-06-21T18:00:00Z'));
+    expect(junio.salida).toBeGreaterThan(minutos(5, 55));
+    expect(junio.salida).toBeLessThan(minutos(6, 15));
+    expect(junio.puesta).toBeGreaterThan(minutos(19, 15));
+    expect(junio.puesta).toBeLessThan(minutos(19, 35));
+    const diciembre = solDeMorelia(utc('2026-12-21T18:00:00Z'));
+    expect(diciembre.salida).toBeGreaterThan(minutos(7, 5));
+    expect(diciembre.salida).toBeLessThan(minutos(7, 25));
+    expect(diciembre.puesta).toBeGreaterThan(minutos(18, 5));
+    expect(diciembre.puesta).toBeLessThan(minutos(18, 20));
+  });
+
+  it('de día no hay noche; oscurece con la puesta del sol y es noche cerrada a las diez', () => {
+    expect(nocheDe(utc('2026-09-28T18:00:00Z'))).toBe(0); // mediodía
+    expect(nocheDe(utc('2026-09-29T04:00:00Z'))).toBe(1); // 22:00
+    expect(nocheDe(utc('2026-09-28T10:00:00Z'))).toBe(1); // 4:00
+    // A media tarde del crepúsculo (18:50 con la puesta a las 18:34), a medias.
+    const crepusculo = nocheDe(utc('2026-09-29T00:50:00Z'));
+    expect(crepusculo).toBeGreaterThan(0.3);
+    expect(crepusculo).toBeLessThan(0.7);
+  });
+
+  it('las Luces de Catedral: los sábados, a oscuras a las 20:58 y fuegos de 21:00 a 21:07', () => {
+    // El sábado 3 de octubre de 2026, hora de Morelia.
+    expect(lucesDeCatedral(utc('2026-10-04T02:57:00Z'))).toBeNull(); // 20:57
+    expect(lucesDeCatedral(utc('2026-10-04T02:59:00Z'))).toEqual({ fase: 'oscura', avance: 0 });
+    expect(lucesDeCatedral(utc('2026-10-04T03:03:30Z'))).toMatchObject({ fase: 'fuegos' });
+    expect(lucesDeCatedral(utc('2026-10-04T03:03:30Z'))?.avance).toBeCloseTo(3.5 / 7, 3);
+    expect(lucesDeCatedral(utc('2026-10-04T03:07:00Z'))).toBeNull(); // 21:07
+    // El viernes a la misma hora, nada.
+    expect(lucesDeCatedral(utc('2026-10-03T03:03:00Z'))).toBeNull();
+  });
+
   it('el banco puede arrancar el reloj a cualquier hora de Morelia', () => {
     const reloj = relojDesde(11 * 60, 1_000);
     expect(horaDeMorelia(reloj(1_000))).toMatchObject({ h: 11, m: 0 });
     expect(horaDeMorelia(reloj(1_000 + 61_000))).toMatchObject({ h: 11, m: 1 });
+    // Y en sábado, para ver las Luces de Catedral.
+    const sabado = relojDesde(21 * 60 + 1, 0, 6);
+    expect(lucesDeCatedral(sabado(0))).toMatchObject({ fase: 'fuegos' });
   });
 });
 

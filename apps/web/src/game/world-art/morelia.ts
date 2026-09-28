@@ -26,7 +26,16 @@ import {
  * faroles de hierro. El mobiliario de cada plaza va en `plazas.ts`.
  */
 
-export type Art = { canvas: HTMLCanvasElement; ox: number; oy: number };
+/** Un punto de luz de una pieza (px de su lienzo) y el radio de su halo de noche. */
+export type Luz = { x: number; y: number; r?: number };
+
+export type Art = {
+  canvas: HTMLCanvasElement;
+  ox: number;
+  oy: number;
+  /** Dónde tiene faroles: de noche, de ahí sale su halo (ambiente). */
+  luces?: readonly Luz[];
+};
 
 const C = CANTERA_ROSA;
 const G = CANTERA_GRIS;
@@ -208,7 +217,10 @@ export function porton(wTiles: number): Art {
   const W = Math.round(wTiles * TILE);
   const top = 70;
   const H = TILE + top;
-  const p = painter(W, H);
+  // Los faroles salen hacia afuera de los pilares: el lienzo lleva margen para ellos.
+  const M = 10;
+  const p = painter(W + M * 2, H);
+  p.ctx.translate(M, 0);
   const pie = H - 1;
   const pw = 16;
   const alto = 58;
@@ -275,7 +287,16 @@ export function porton(wTiles: number): Art {
   }
   // Escalón.
   p.rect(pw, pie - 2, W - pw * 2, 2, C.light);
-  return { canvas: p.canvas, ox: 0, oy: -top };
+  p.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  return {
+    canvas: p.canvas,
+    ox: -M,
+    oy: -top,
+    luces: [
+      { x: M - 6, y: pie - 40, r: 18 },
+      { x: M + W + 6, y: pie - 40, r: 18 },
+    ],
+  };
 }
 
 /** Portón en una reja parada: dos pilares de cantera con perillón, uno en cada punta. */
@@ -483,7 +504,7 @@ export function kiosko(wTiles: number, hTiles: number): Art {
   p.rect(cx - 2, cupBase - cupAlto - 4, 5, 4, LAMINA.light);
   p.rect(cx, cupBase - cupAlto - 16, 1, 12, HERRERIA.base);
   p.rect(cx - 3, cupBase - cupAlto - 13, 7, 1, HERRERIA.base);
-  return { canvas: p.canvas, ox: 0, oy: -alto };
+  return { canvas: p.canvas, ox: 0, oy: -alto, luces: [{ x: cx, y: aleroY + E + 8, r: 26 }] };
 }
 
 // ─── Fuentes ──────────────────────────────────────────────────────────────
@@ -1068,7 +1089,16 @@ export function farol(): Art {
     const ly = lx === cx - 2 ? pie - 66 : pie - 60;
     linterna(p, lx, ly);
   }
-  return { canvas: p.canvas, ox: -5, oy: -58 };
+  return {
+    canvas: p.canvas,
+    ox: -5,
+    oy: -58,
+    luces: [
+      { x: cx - 9, y: pie - 56 },
+      { x: cx + 9, y: pie - 56 },
+      { x: cx, y: pie - 62 },
+    ],
+  };
 }
 
 /**
@@ -1111,7 +1141,12 @@ export function posteDeGlobos(): Art {
   p.px(cx - 2, pie - 87, HERRERIA.light);
   p.px(cx + 2, pie - 87, HERRERIA.light);
   p.px(cx, pie - 89, HERRERIA.base);
-  return { canvas: p.canvas, ox: -(cx - 8), oy: -(H - TILE) };
+  return {
+    canvas: p.canvas,
+    ox: -(cx - 8),
+    oy: -(H - TILE),
+    luces: [-1, 1].map((lado) => ({ x: cx + lado * 13, y: pie - 90, r: 30 })),
+  };
 }
 
 function linterna(p: Painter, x: number, y: number): void {

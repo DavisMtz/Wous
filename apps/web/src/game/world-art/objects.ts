@@ -12,6 +12,7 @@ import {
   fresno,
   fuenteDeTaza,
   kiosko,
+  type Luz,
   laurel,
   liquidambar,
   placa,
@@ -61,6 +62,8 @@ export type ObjectArt = {
   depth: number;
   /** Se transparenta si tapa a la persona que juega (copa, techo). */
   occluder: boolean;
+  /** Sus faroles (px del lienzo): de noche, de ahí sale su halo. */
+  luces?: readonly Luz[];
 };
 
 /**
@@ -79,7 +82,10 @@ export function cuadrosDe(o: MapObject): number {
  */
 export function paintObject(o: MapObject, cuadro = 0, encendida = true): ObjectArt | null {
   const depth = (o.y + o.h) * TILE;
-  const at = (art: { canvas: HTMLCanvasElement; ox: number; oy: number }, occluder = false) => ({
+  const at = (
+    art: { canvas: HTMLCanvasElement; ox: number; oy: number; luces?: readonly Luz[] },
+    occluder = false,
+  ) => ({
     ...art,
     depth,
     occluder,

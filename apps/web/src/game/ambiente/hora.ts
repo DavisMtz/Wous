@@ -81,13 +81,75 @@ export function relojDelServidor(serverNow: ((local: number) => number) | undefi
 }
 
 /**
- * Solo el banco de desarrollo (`?hora=HH:MM`): un reloj que arranca hoy a esa
- * hora de Morelia y de ahí corre normal, para revisar las fuentes danzantes o
- * las campanadas sin esperar.
+ * Solo el banco de desarrollo (`?hora=HH:MM`, `?sabado`): un reloj que
+ * arranca hoy (o el último `diaSemana`) a esa hora de Morelia y de ahí corre
+ * normal, para revisar las fuentes danzantes, las campanadas, la noche o las
+ * Luces de Catedral sin esperar.
  */
-export function relojDesde(minutos: number, localAhora: number) {
+export function relojDesde(minutos: number, localAhora: number, diaSemana?: number) {
   const hoy = Date.now();
   const enElDia = (((hoy + MORELIA_UTC_MS) % DIA_MS) + DIA_MS) % DIA_MS;
-  const arranque = hoy - enElDia + minutos * 60_000;
+  const atras = diaSemana === undefined ? 0 : (horaDeMorelia(hoy).diaSemana - diaSemana + 7) % 7;
+  const arranque = hoy - enElDia - atras * DIA_MS + minutos * 60_000;
   return (localNow: number): number => arranque + (localNow - localAhora);
+}
+
+/** La Catedral de Morelia, para el sol. */
+const LATITUD = 19.7026;
+const LONGITUD = -101.1923;
+/** El meridiano del horario del centro (UTC−6). */
+const MERIDIANO = -90;
+
+/**
+ * La salida y la puesta del sol en Morelia el día de `serverMs`, en minutos
+ * desde la medianoche (hora local). Fórmulas de almanaque (declinación y
+ * ecuación del tiempo aproximadas): un par de minutos de error bastan.
+ */
+export function solDeMorelia(serverMs: number): { salida: number; puesta: number } {
+  const local = serverMs + MORELIA_UTC_MS;
+  const inicioDelAnio = Date.UTC(new Date(local).getUTCFullYear(), 0, 1);
+  const n = Math.floor((local - inicioDelAnio) / DIA_MS) + 1;
+  const rad = Math.PI / 180;
+  const declinacion = 23.44 * rad * Math.sin((2 * Math.PI * (284 + n)) / 365);
+  // −0.833°: el borde del sol y la refracción.
+  const cosAngulo =
+    (Math.sin(-0.833 * rad) - Math.sin(LATITUD * rad) * Math.sin(declinacion)) /
+    (Math.cos(LATITUD * rad) * Math.cos(declinacion));
+  const medioDia = (Math.acos(Math.max(-1, Math.min(1, cosAngulo))) / rad) * 4;
+  const b = (2 * Math.PI * (n - 81)) / 364;
+  const ecuacion = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+  const mediodia = 12 * 60 + 4 * (MERIDIANO - LONGITUD) - ecuacion;
+  return { salida: mediodia - medioDia, puesta: mediodia + medioDia };
+}
+
+/**
+ * Qué tan de noche es: 0 de día, 1 de noche cerrada. Oscurece de un cuarto
+ * de hora antes de la puesta del sol a tres cuartos después, y aclara al revés.
+ */
+export function nocheDe(serverMs: number): number {
+  const { h, enLaHora } = horaDeMorelia(serverMs);
+  const minuto = h * 60 + enLaHora / 60_000;
+  const { salida, puesta } = solDeMorelia(serverMs);
+  const rampa = (x: number) => Math.max(0, Math.min(1, x));
+  return Math.max(rampa((minuto - (puesta - 15)) / 60), rampa((salida + 15 - minuto) / 60));
+}
+
+/**
+ * «Luces de Catedral»: cada sábado a las 21:00 la Catedral se apaga, suenan
+ * la música y los fuegos artificiales y la iluminación vuelve poco a poco
+ * (investigacion.md §1.6). Dura unos minutos: aquí siete, con dos de
+ * Catedral a oscuras antes. `avance` va de 0 a 1 durante los fuegos.
+ */
+export const LUCES_DE_CATEDRAL = { diaSemana: 6, hora: 21, oscura: 2, fuegos: 7 } as const;
+
+export function lucesDeCatedral(
+  serverMs: number,
+): { fase: 'oscura' | 'fuegos'; avance: number } | null {
+  const { h, diaSemana, enLaHora } = horaDeMorelia(serverMs);
+  const minutos = enLaHora / 60_000;
+  const { diaSemana: sabado, hora, oscura, fuegos } = LUCES_DE_CATEDRAL;
+  if (diaSemana !== sabado) return null;
+  if (h === hora - 1 && minutos >= 60 - oscura) return { fase: 'oscura', avance: 0 };
+  if (h === hora && minutos < fuegos) return { fase: 'fuegos', avance: minutos / fuegos };
+  return null;
 }

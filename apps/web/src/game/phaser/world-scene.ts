@@ -38,6 +38,7 @@ import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
 import { Ambiente } from './ambiente.ts';
 import { globoMs, paintGlobo } from './globo.ts';
+import { Noche } from './noche.ts';
 import { addCanvasTexture, type GloboRect, NAME_FONT, Persona, type Postura } from './persona.ts';
 import { SueloPorTrozos } from './suelo.ts';
 
@@ -73,6 +74,8 @@ export type WorldSceneOptions = {
   zoom?: number;
   /** Solo el banco de desarrollo: la hora de Morelia con que arranca el ambiente (minutos). */
   hora?: number;
+  /** Solo el banco de desarrollo: el día de la semana del ambiente (0 = domingo). */
+  dia?: number;
 };
 
 /** Al arrancar o reiniciar la escena: qué sala y en qué punto. */
@@ -141,6 +144,7 @@ export class WorldScene extends Phaser.Scene {
   private grid!: CollisionGrid;
   private suelo!: SueloPorTrozos;
   private ambiente!: Ambiente;
+  private noche!: Noche;
   private position!: Vec;
   private facing: Facing = 'down';
   private self!: Persona;
@@ -210,16 +214,12 @@ export class WorldScene extends Phaser.Scene {
 
     this.suelo = new SueloPorTrozos(this, map);
     const net = this.o.net;
-    this.ambiente = new Ambiente({
-      scene: this,
-      map,
-      grid: this.grid,
-      quiet: this.o.quiet,
-      reloj:
-        this.o.hora === undefined
-          ? relojDelServidor(net ? (t) => net.room.serverNow(t) : undefined)
-          : relojDesde(this.o.hora, this.time.now),
-    });
+    const reloj =
+      this.o.hora === undefined
+        ? relojDelServidor(net ? (t) => net.room.serverNow(t) : undefined)
+        : relojDesde(this.o.hora, this.time.now, this.o.dia);
+    this.ambiente = new Ambiente({ scene: this, map, grid: this.grid, quiet: this.o.quiet, reloj });
+    this.noche = new Noche({ scene: this, map, quiet: this.o.quiet, reloj });
     for (const object of map.objects) {
       if (object.kind === 'papel-picado') this.papelPicado(object);
       else if (object.kind === 'focos') this.focos(object);
@@ -377,6 +377,7 @@ export class WorldScene extends Phaser.Scene {
     this.updateOccluders();
     this.followCamera(delta, this.o.quiet);
     const vista = this.vista();
+    this.noche.update(time, delta, vista);
     this.suelo.pintarVisibles(vista);
     this.suelo.pintarPendientes(vista, SUELO_MS);
   }
@@ -719,6 +720,7 @@ export class WorldScene extends Phaser.Scene {
       .setDepth(art.depth);
     if (art.occluder) this.occluders.push({ image, depth: art.depth });
     this.ambiente.registrar(object, image, art);
+    this.noche.registrar(object, image, art);
   }
 
   /** Tira de papel picado: una cuerda que se cuelga en tramos y banderitas que se mecen solas. */

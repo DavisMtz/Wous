@@ -1,8 +1,9 @@
 // Banco de desarrollo: el mundo sin sesión, para revisar el arte y el HUD a
 // ojo. ?mapa=cafe elige la sala, ?spawn=… el punto, ?en=x,y cualquier lugar
 // (en tiles), ?zoom=N fija el zoom (1 = el mapa entero), ?persona=N el look,
-// ?hora=HH:MM la hora de Morelia del ambiente (fuentes danzantes, campanadas)
-// y ?quieto congela el movimiento ambiental.
+// ?hora=HH:MM la hora de Morelia del ambiente (fuentes danzantes, campanadas,
+// la noche), ?sabado el día (las Luces de Catedral, a las 21:00) y ?quieto
+// congela el movimiento ambiental.
 // Las puertas cruzan sin servidor.
 import '@fontsource-variable/big-shoulders-display';
 import '@fontsource-variable/bricolage-grotesque';
@@ -44,6 +45,7 @@ createRoot(root).render(
       {...(inicio ? { inicio } : {})}
       {...(params.get('zoom') ? { zoom: Number(params.get('zoom')) } : {})}
       {...(hora !== undefined ? { hora } : {})}
+      {...(params.has('sabado') ? { dia: 6 } : {})}
     />
   </StrictMode>,
 );
