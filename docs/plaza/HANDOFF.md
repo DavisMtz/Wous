@@ -60,10 +60,12 @@ desplegar lo tuyo.**
 
 ## 2. Estado al cerrar esta sesión
 
-- **Fases 0–9 del plan: hechas** y en producción (`https://wous.logidma.com`) con la Plaza v2;
-  staging igual (`https://wous-staging.logidma.workers.dev`). El PR #1 ya se fusionó a `main`.
-- **La Plaza v3 (el doble de grande, ADR-0014) vive en la rama `claude/plaza-wous-morelia-1j16v9`
-  y su PR, sin desplegar.** El usuario pidió: «Antes de desplegar a producción, pregúntame».
+- **Fases 0–9 del plan: hechas.** El PR #1 ya se fusionó a `main`.
+- **La Plaza v3 (el doble de grande, ADR-0014) está en producción** (`https://wous.logidma.com`)
+  **y en staging** (`https://wous-staging.logidma.workers.dev`) desde el 28 de septiembre de 2026,
+  con el visto bueno del usuario («Despliega a producción»). Salió del commit `1527528` de la rama
+  `claude/plaza-wous-morelia-1j16v9` (PR #2): mientras ese PR no se fusione, `main` va detrás de
+  lo desplegado.
 - **Producción tiene registro solo por invitación.** Las invitaciones se crean en la caseta
   (`/caseta`), y el rol de la caseta solo lo da el script
   `node scripts/moderacion/moderar.mts <entorno> dar-caseta @usuario --motivo "…"` (nunca la web).
@@ -510,6 +512,12 @@ Todo con fuentes en `docs/plaza/investigacion.md`. Lo esencial:
   `CLOUDFLARE_API_TOKEN` en el entorno). No las escribas en archivos del repo ni en logs.
 - Verificar después: `/api/v1/health` (migraciones y secretos), `/api/v1/config` (registro por
   invitación), `/api/v1/admin/*` en 404 sin rol, y que el chunk de la Plaza nueva se sirve.
+- Desde la nube, Chromium no abre staging ni producción: el proxy firma con su propia CA y la
+  confianza no se toca. Se verifica con `curl`, comparando el hash de cada archivo servido con
+  `apps/web/dist` (`/index.html` redirige con 307 a `/`: se compara `/`). `/ws/world` sin sesión
+  responde 401 con `--http1.1`; por HTTP/2 se pierde el `Upgrade` y sale 426.
+- Con el token de API de la nube, el deploy de producción ató `wous.logidma.com` sin el error
+  10000 del que avisa CLAUDE.md (el dominio ya estaba atado).
 - Un mapa con versión nueva hace recargar a quien tenga el viejo; los lugares guardados que ya no
   caben entran por el spawn (`lugarValido`).
 - La prueba de carga (`scripts/carga/carga.mts`) necesita el `SESSION_PEPPER` de staging. Se

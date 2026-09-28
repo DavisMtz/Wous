@@ -67,9 +67,10 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
 
 - Node portable en `C:\Users\seguimientos\.local\node`; pnpm instalado ahí.
 - Toda orden con red (install, wrangler remoto) necesita el sandbox desactivado.
-- `wous.logidma.com` va en `routes` con `custom_domain: true` (entorno production) y funciona con la
-  sesión OAuth de `wrangler login`. En otros proyectos con **token de API** eso fallaba con
-  `Authentication error [10000]`: si algún día se despliega con token, atar el dominio por API.
+- `wous.logidma.com` va en `routes` con `custom_domain: true` (entorno production). Funciona con la
+  sesión OAuth de `wrangler login` y también funcionó con el **token de API** de la sesión en la nube
+  (septiembre de 2026, con el dominio ya atado). En otros proyectos, con token, eso fallaba con
+  `Authentication error [10000]`: si vuelve a salir, atar el dominio por API.
 - Heredocs largos en Bash se truncan: los archivos se escriben con la herramienta de escritura.
 - `apps/web/dev-plaza.html?quieto&spawn=desde-cafe` abre la Plaza sin sesión (solo desarrollo);
   `?mapa=cafe` abre el Café y las puertas cruzan sin servidor. El E2E lee posición, sala e ID de
