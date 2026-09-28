@@ -120,10 +120,11 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   entero); lo que no se ve en un plano sale de la investigación (fotos, IMPLAN), no de memoria.
 - E2E en un contenedor sin Chrome: `WOUS_CHROMIUM=/opt/pw-browsers/chromium-<versión>/chrome-linux/chrome`
   (la config lo usa en lugar del canal `chrome`). Capturas: `node e2e/scripts/captura.mjs "<url>" out.png`.
-- Caminar en E2E: soltar una tecla tarda (sin GPU, casi un tile). `caminarHasta` de
-  `portales.spec.ts` camina a toquecitos midiendo, y cada tramo pide la holgura que su pasillo
-  permite; una ruta nueva va por pasillos anchos (la del Café cruza el atrio poniente) y se mide con
-  `node scripts/plaza/pasillos.mts`. Un tramo que acaba contra una pared incluye el tope en su
-  tolerancia.
+- Caminar en E2E: soltar una tecla tarda (sin GPU y con la sala corrigiendo, el toque más corto
+  llegó a recorrer 1.7 tiles en la nube). `caminarHasta` de `portales.spec.ts` mide esa inercia en
+  cada toque, suelta antes para que la deje en la meta y, si falta menos de lo que avanza un toque,
+  primero se aleja. Una ruta nueva va por pasillos anchos (la del Café cruza el atrio poniente) y se
+  mide con `node scripts/plaza/pasillos.mts`. Un tramo que acaba contra una pared incluye el tope en
+  su tolerancia.
 - El Worker local no arranca sin `apps/web/dist` (lo sirve como assets): `pnpm build` una vez antes
   del primer `pnpm dev` en un contenedor nuevo.

@@ -493,7 +493,7 @@ export function kiosko(wTiles: number, hTiles: number): Art {
  * agua, el pedestal abalaustrado y la copa ancha al centro con su borbotón.
  * `r` en tiles.
  */
-export function fuenteDeTaza(r: number): Art {
+export function fuenteDeTaza(r: number, cuadro = 0): Art {
   const d = Math.round(r * 2 * TILE);
   const alto = Math.round(d * 0.75);
   const W = d + 2;
@@ -512,17 +512,24 @@ export function fuenteDeTaza(r: number): Art {
   p.ellipse(cx, cy, R - 3, R - 4, G.base);
   p.ellipse(cx, cy + 1, R - 4, R - 5, AGUA.shade);
   p.ellipse(cx, cy + 1, R - 5, R - 6, AGUA.base);
+  // Destellos en el agua: cada cuadro brillan otros.
   for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
+    const a = (i / 6 + hash(i, cuadro, 71) * 0.12) * Math.PI * 2;
+    const k = 0.55 + hash(i, cuadro, 72) * 0.4;
     p.px(
-      Math.round(cx + Math.cos(a) * (R - 7)),
-      Math.round(cy + Math.sin(a) * (R - 8)),
+      Math.round(cx + Math.cos(a) * (R - 6) * k),
+      Math.round(cy + 1 + Math.sin(a) * (R - 7) * k),
       AGUA.light,
     );
   }
-  // Ondas del chorro que cae.
-  p.ellipse(cx, cy + 1, Math.max(3, R / 3), Math.max(2, R / 4), AGUA.light);
-  p.ellipse(cx, cy + 1, Math.max(2, R / 3) - 1, Math.max(1, R / 4) - 1, AGUA.base);
+  // Ondas del agua que cae de la taza: se abren y se desvanecen, una tras otra.
+  for (const fase of [cuadro % 4, (cuadro + 2) % 4]) {
+    const rx = Math.max(3, R / 3) + fase * 1.5;
+    const ry = Math.max(2, R / 4) + fase;
+    if (rx > R - 5) continue;
+    p.ellipse(cx, cy + 1, rx, ry, fase < 3 ? AGUA.light : AGUA.base);
+    p.ellipse(cx, cy + 1, rx - 1, ry - 1, AGUA.base);
+  }
   // Pedestal y taza.
   const tazaY = cy - Math.round(alto * 0.72);
   p.rect(cx - 4, cy - 4, 8, 4, G.shade);
@@ -534,15 +541,17 @@ export function fuenteDeTaza(r: number): Art {
   p.ellipse(cx, tazaY + 2, tr, 3, G.shade);
   p.ellipse(cx, tazaY, tr, 3, G.lighter);
   p.ellipse(cx, tazaY, tr - 2, 2, AGUA.base);
-  // Remate y chorrito.
+  // Remate y el borbotón, que sube y baja un pixel.
   p.rect(cx - 1, tazaY - 8, 3, 8, G.base);
   p.px(cx - 1, tazaY - 8, G.lighter);
-  p.rect(cx, tazaY - 12, 1, 4, AGUA.foam);
-  p.px(cx - 1, tazaY - 11, AGUA.light);
-  p.px(cx + 1, tazaY - 10, AGUA.light);
-  // El agua que cae de la taza.
+  const borbollon = 4 + (cuadro % 2);
+  p.rect(cx, tazaY - 8 - borbollon, 1, borbollon, AGUA.foam);
+  p.px(cx - 1, tazaY - 7 - borbollon + (cuadro % 2), AGUA.light);
+  p.px(cx + 1, tazaY - 6 - borbollon + ((cuadro + 1) % 2), AGUA.light);
+  // El agua que cae de la taza: las gotas bajan un pixel por cuadro.
   for (const dx of [-tr, tr - 1]) {
-    for (let y = tazaY + 2; y < cy - 1; y += 2) p.px(cx + dx, y, AGUA.light);
+    for (let y = tazaY + 2 + (cuadro % 2); y < cy - 1; y += 2) p.px(cx + dx, y, AGUA.light);
+    p.px(cx + dx + (cuadro % 2 ? 1 : -1), cy, AGUA.foam);
   }
   return { canvas: p.canvas, ox: -1, oy: -alto };
 }

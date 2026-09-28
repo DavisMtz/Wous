@@ -216,11 +216,12 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
 - `e2e/tests/plaza.spec.ts` (banca en `?en=151.5,88.25`, placa UNESCO en `?en=137.1,88`, puerta
   de la Catedral en `?en=66.5,78.3`), `portales.spec.ts` (ruta a pie al Café),
   `multijugador.spec.ts` (caminar 0.8 s hacia arriba).
-  **Caminar en E2E:** soltar una tecla tarda (sin GPU, casi un tile); `caminarHasta` de
-  `portales.spec.ts` camina a toquecitos midiendo, y cada tramo pide la holgura de su pasillo.
-  Diseña las rutas por pasillos de ±0.6 tiles o más y mídelas con `scripts/plaza/pasillos.mts`. Si
-  un tramo termina contra una pared, su tolerancia debe incluir el tope (la puerta del Café: la
-  pared deja a los pies en y 15.16).
+  **Caminar en E2E:** soltar una tecla tarda (sin GPU y con la sala corrigiendo, el toque más corto
+  llegó a recorrer 1.7 tiles en la nube); `caminarHasta` de `portales.spec.ts` mide esa inercia en
+  cada toque, suelta antes para que la deje en la meta y, si falta menos de lo que avanza un toque,
+  primero se aleja. Diseña las rutas por pasillos de ±0.6 tiles o más y mídelas con
+  `scripts/plaza/pasillos.mts`. Si un tramo termina contra una pared, su tolerancia debe incluir el
+  tope (la puerta del Café: la pared deja a los pies en y 15.16).
 
 ---
 

@@ -118,6 +118,7 @@ export function PlazaJuego({
   mapa,
   inicio,
   zoom,
+  hora,
   conectar = true,
 }: {
   look: Look;
@@ -132,6 +133,8 @@ export function PlazaJuego({
   inicio?: { x: number; y: number };
   /** Solo el banco de desarrollo: zoom fijo. */
   zoom?: number;
+  /** Solo el banco de desarrollo: la hora de Morelia del ambiente (minutos desde la medianoche). */
+  hora?: number;
   /** Sin red (banco de desarrollo): solo tú, como en la Fase 4. */
   conectar?: boolean;
 }) {
@@ -334,6 +337,7 @@ export function PlazaJuego({
         ...(spawn ? { spawn } : {}),
         ...(inicio ? { inicio } : {}),
         ...(zoom ? { zoom } : {}),
+        ...(hora !== undefined ? { hora } : {}),
         look,
         ...(nombre ? { name: nombre } : {}),
         input: nextControls.manager,
@@ -385,7 +389,7 @@ export function PlazaJuego({
       nextControls.dispose();
       if (import.meta.env.DEV) delete window.__wousJuego;
     };
-  }, [hud, look, nombre, spawn, mapa, inicio, zoom, conectar]);
+  }, [hud, look, nombre, spawn, mapa, inicio, zoom, hora, conectar]);
 
   // Cada cambio en tu banda llega a la escena (la marca en la etiqueta).
   useEffect(() => {

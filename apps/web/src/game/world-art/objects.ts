@@ -24,6 +24,7 @@ import { hash, type Painter, painter } from './paint.ts';
 import {
   asta,
   bolero,
+  CUADROS_DANZA,
   chorros,
   churros,
   elotes,
@@ -62,7 +63,21 @@ export type ObjectArt = {
   occluder: boolean;
 };
 
-export function paintObject(o: MapObject): ObjectArt | null {
+/**
+ * Cuántos cuadros tiene la animación de un objeto (el agua de las fuentes y
+ * las fuentes danzantes); 0 si no se anima. El cuadro 0 es el dibujo quieto.
+ */
+export function cuadrosDe(o: MapObject): number {
+  if (o.kind === 'chorros') return CUADROS_DANZA;
+  if (o.kind === 'fuente') return 4;
+  return 0;
+}
+
+/**
+ * Un objeto pintado. `cuadro` elige el cuadro de su animación (ver
+ * `cuadrosDe`); `encendida`, si las fuentes danzantes están prendidas.
+ */
+export function paintObject(o: MapObject, cuadro = 0, encendida = true): ObjectArt | null {
   const depth = (o.y + o.h) * TILE;
   const at = (art: { canvas: HTMLCanvasElement; ox: number; oy: number }, occluder = false) => ({
     ...art,
@@ -86,12 +101,12 @@ export function paintObject(o: MapObject): ObjectArt | null {
     case 'kiosko':
       return at(kiosko(o.w, o.h), true);
     case 'fuente':
-      if (o.variant === 'ocampo') return at(monumentoOcampo(o.w, o.h), true);
-      if (o.variant === 'columna') return at(fuenteDeColumna(o.w / 2), true);
-      return at(fuenteDeTaza(o.w / 2));
+      if (o.variant === 'ocampo') return at(monumentoOcampo(o.w, o.h, cuadro), true);
+      if (o.variant === 'columna') return at(fuenteDeColumna(o.w / 2, cuadro), true);
+      return at(fuenteDeTaza(o.w / 2, cuadro));
     case 'chorros':
       // A ras de piso: quien pasa por en medio va encima.
-      return { ...chorros(o.w, o.h), depth: o.y * TILE, occluder: false };
+      return { ...chorros(o.w, o.h, cuadro, encendida), depth: o.y * TILE, occluder: false };
     case 'estatua':
       if (o.variant === 'martir') return at(martir(o.w, o.h, o.id));
       return at(estatua(), true);

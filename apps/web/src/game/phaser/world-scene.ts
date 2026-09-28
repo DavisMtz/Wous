@@ -25,6 +25,7 @@ import {
   spawnOf,
 } from '@wous/world-data';
 import Phaser from 'phaser';
+import { relojDelServidor, relojDesde } from '../ambiente/hora.ts';
 import type { HudStore } from '../hud-store.ts';
 import type { InputManager } from '../input/input-manager.ts';
 import { InputSampler } from '../network/input-sampler.ts';
@@ -35,6 +36,7 @@ import { foco, focoXs, haloDeFoco } from '../world-art/interior.ts';
 import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/objects.ts';
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
+import { Ambiente } from './ambiente.ts';
 import { globoMs, paintGlobo } from './globo.ts';
 import { addCanvasTexture, type GloboRect, NAME_FONT, Persona, type Postura } from './persona.ts';
 import { SueloPorTrozos } from './suelo.ts';
@@ -69,6 +71,8 @@ export type WorldSceneOptions = {
   inicio?: Vec;
   /** Solo el banco de desarrollo: zoom fijo (1 = el mapa entero en una captura grande). */
   zoom?: number;
+  /** Solo el banco de desarrollo: la hora de Morelia con que arranca el ambiente (minutos). */
+  hora?: number;
 };
 
 /** Al arrancar o reiniciar la escena: qué sala y en qué punto. */
@@ -136,6 +140,7 @@ export class WorldScene extends Phaser.Scene {
   private spawnName: string | undefined;
   private grid!: CollisionGrid;
   private suelo!: SueloPorTrozos;
+  private ambiente!: Ambiente;
   private position!: Vec;
   private facing: Facing = 'down';
   private self!: Persona;
@@ -204,6 +209,17 @@ export class WorldScene extends Phaser.Scene {
     this.facing = spawn.facing;
 
     this.suelo = new SueloPorTrozos(this, map);
+    const net = this.o.net;
+    this.ambiente = new Ambiente({
+      scene: this,
+      map,
+      grid: this.grid,
+      quiet: this.o.quiet,
+      reloj:
+        this.o.hora === undefined
+          ? relojDelServidor(net ? (t) => net.room.serverNow(t) : undefined)
+          : relojDesde(this.o.hora, this.time.now),
+    });
     for (const object of map.objects) {
       if (object.kind === 'papel-picado') this.papelPicado(object);
       else if (object.kind === 'focos') this.focos(object);
@@ -342,7 +358,12 @@ export class WorldScene extends Phaser.Scene {
     this.self.tick(time, !this.o.quiet);
     for (const { persona } of this.remotes.values()) persona.tick(time, !this.o.quiet);
 
+    const gente = [this.position, ...[...this.remotes.values()].map(({ x, y }) => ({ x, y }))];
+    this.ambiente.update(time, delta, this.position, gente);
+
     const accion = this.crossing ? null : this.accionDisponible();
+    const objetivo = accion ? dondeSeMarca(accion) : null;
+    this.ambiente.marcar(objetivo?.punto ?? null, objetivo?.alto ?? 0, time);
     const key = accion ? `${accion.type}:${accionId(accion)}` : null;
     if (key !== this.accionKey) {
       this.accionKey = key;
@@ -697,6 +718,7 @@ export class WorldScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(art.depth);
     if (art.occluder) this.occluders.push({ image, depth: art.depth });
+    this.ambiente.registrar(object, image, art);
   }
 
   /** Tira de papel picado: una cuerda que se cuelga en tramos y banderitas que se mecen solas. */
@@ -867,6 +889,23 @@ function accionLabel(accion: Accion): string {
       return 'Levantarse';
     case 'sign':
       return accion.sign.label;
+  }
+}
+
+/**
+ * Dónde flota la marca de lo que harías con «E» (tiles) y cuántos pixeles
+ * arriba: sobre el asiento, la placa o la puerta. Sentada no hay marca.
+ */
+function dondeSeMarca(accion: Accion): { punto: Vec; alto: number } | null {
+  switch (accion.type) {
+    case 'seat':
+      return { punto: accion.seat, alto: 24 + (accion.seat.lift ?? 0) };
+    case 'sign':
+      return { punto: accion.sign, alto: 30 };
+    case 'portal':
+      return { punto: accion.portal, alto: 36 };
+    case 'stand':
+      return null;
   }
 }
 

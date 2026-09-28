@@ -68,6 +68,57 @@ const TORRE_PONIENTE = { x: 438, w: 154 };
 const CENTRO = { x: TORRE_ORIENTE.x + TORRE_ORIENTE.w, w: TORRE_PONIENTE.x - 218 };
 /** Altura del cuerpo central hasta su remate (px sobre el pie). */
 const CENTRO_ALTO = 250;
+/** Las torres: el fuste liso, la cornisa con su balaustrada y el primer cuerpo (px). */
+const FUSTE = 258;
+const BALAUSTRADA = 16;
+const PRIMER_CUERPO = 168;
+/** El vano de la campana grande: su pie sobre el del primer cuerpo, su ancho y su alto (px). */
+const VANO = { sobre: 58, w: 40, h: 78 };
+
+/** La boca de la campana grande (px). */
+const BOCA = Math.max(6, Math.round(VANO.w * 0.36));
+
+/**
+ * Dónde cuelga la campana grande de cada torre, desde la esquina del lienzo
+ * de la Catedral (px): el eje de su yugo. De ahí se mece y salen las
+ * campanadas del ambiente.
+ */
+export function campanasDeCatedral(wTiles: number, hTiles: number): { x: number; y: number }[] {
+  const dx = Math.round((Math.round(wTiles * TILE) - ANCHO) / 2);
+  const pieDelVano = Math.round(hTiles * TILE) - FUSTE - BALAUSTRADA - VANO.sobre;
+  // Como en `campanario`: la campana arranca media anchura abajo del arco; el yugo, encima.
+  const y = pieDelVano - VANO.h + Math.round(VANO.w / 2) + 4 - 2;
+  return [TORRE_ORIENTE, TORRE_PONIENTE].map((t) => ({ x: dx + t.x + Math.round(t.w / 2), y }));
+}
+
+/** La campana grande sola, con su yugo, para mecerla: el eje del yugo en (`x`, `y`). */
+export function campanaSola(): { canvas: HTMLCanvasElement; x: number; y: number } {
+  const p = painter(BOCA + 6, BOCA + 10);
+  const cx = Math.round((BOCA + 6) / 2);
+  pintarCampana(p, cx, 3, BOCA);
+  return { canvas: p.canvas, x: cx, y: 1 };
+}
+
+/** El hueco oscuro del vano donde cuelga la campana (tapa la del dibujo mientras se mece). */
+export function huecoDeCampana(): { canvas: HTMLCanvasElement; x: number; y: number } {
+  const p = painter(BOCA + 6, BOCA + 10);
+  p.rect(0, 0, BOCA + 6, BOCA + 10, OSCURO);
+  return { canvas: p.canvas, x: Math.round((BOCA + 6) / 2), y: 1 };
+}
+
+/** La campana de bronce con su yugo de madera; `by` es donde empieza el bronce. */
+function pintarCampana(p: Painter, cx: number, by: number, cw: number): void {
+  p.rect(cx - cw / 2 - 2, by - 3, cw + 4, 2, MADERA.shade);
+  for (let yy = 0; yy < cw + 4; yy++) {
+    const half = Math.min(cw / 2 + 1, 2 + Math.floor(yy / 2));
+    for (let xx = -half; xx < half; xx++) {
+      const c = xx < -half + 2 ? BRONCE.light : xx > half - 2 ? BRONCE.shade : BRONCE.base;
+      p.px(cx + xx, by + yy, c);
+    }
+  }
+  p.rect(cx - cw / 2 - 1, by + cw + 4, cw + 2, 1, BRONCE.deep);
+  p.px(cx, by + cw + 5, BRONCE.deep);
+}
 
 export function catedral(
   wTiles: number,
@@ -259,8 +310,8 @@ function torre(
   const cx = x + Math.round(w / 2);
   const seed = poniente ? 300 : 310;
   // Fuste.
-  const fusteTop = base - 258;
-  sillares(p, x, fusteTop, w, 258, seed, C, 18, 8);
+  const fusteTop = base - FUSTE;
+  sillares(p, x, fusteTop, w, FUSTE, seed, C, 18, 8);
   // Zócalo.
   p.rect(x - 2, base - 14, w + 4, 14, C.shade);
   p.rect(x - 2, base - 14, w + 4, 1, C.lighter);
@@ -280,15 +331,15 @@ function torre(
   // Primer cuerpo (cuadrado, un poco más angosto).
   const c1x = x + 10;
   const c1w = w - 20;
-  const c1Alto = 168;
-  const c1Top = fusteTop - 16 - c1Alto;
+  const c1Alto = PRIMER_CUERPO;
+  const c1Top = fusteTop - BALAUSTRADA - c1Alto;
   sillares(p, c1x, c1Top, c1w, c1Alto, seed + 1, alta, 14, 7);
   pilastra(p, c1x, c1Top, 12, c1Alto, alta);
   pilastra(p, c1x + c1w - 12, c1Top, 12, c1Alto, alta);
   // El reloj en su marco de sol de piedra, abajo del vano.
   reloj(p, cx, c1Top + c1Alto - 34, 13, alta);
   // El gran vano de la campana con su balcón de balaustres.
-  campanario(p, cx, c1Top + c1Alto - 58, 40, 78, alta);
+  campanario(p, cx, c1Top + c1Alto - VANO.sobre, VANO.w, VANO.h, alta);
   // Nichos con santos a los lados del vano.
   for (const nx of [c1x + 26, c1x + c1w - 26]) {
     nicho(p, nx, c1Top + 66, 12, 26, alta);
@@ -401,18 +452,7 @@ function campanario(p: Painter, cx: number, bottom: number, w: number, h: number
   marco(p, cx, bottom, w, h, s);
   arco(p, cx, bottom, w, h, OSCURO);
   // Campana.
-  const cw = Math.max(6, Math.round(w * 0.36));
-  const by = bottom - h + Math.round(w / 2) + 4;
-  p.rect(cx - cw / 2 - 2, by - 3, cw + 4, 2, MADERA.shade);
-  for (let yy = 0; yy < cw + 4; yy++) {
-    const half = Math.min(cw / 2 + 1, 2 + Math.floor(yy / 2));
-    for (let xx = -half; xx < half; xx++) {
-      const c = xx < -half + 2 ? BRONCE.light : xx > half - 2 ? BRONCE.shade : BRONCE.base;
-      p.px(cx + xx, by + yy, c);
-    }
-  }
-  p.rect(cx - cw / 2 - 1, by + cw + 4, cw + 2, 1, BRONCE.deep);
-  p.px(cx, by + cw + 5, BRONCE.deep);
+  pintarCampana(p, cx, bottom - h + Math.round(w / 2) + 4, Math.max(6, Math.round(w * 0.36)));
   // Balcón de balaustres al pie del vano.
   const bw = w + 8;
   balaustrada(p, cx - bw / 2, bottom - 9, bw, s);

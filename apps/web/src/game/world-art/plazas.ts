@@ -45,7 +45,7 @@ function semilla(id: string): number {
  * su placa, al centro de una pileta baja (a la rodilla) de piedra gris oscura.
  * El agua apenas cubre el fondo y brota en chorritos alrededor del dado.
  */
-export function monumentoOcampo(wTiles: number, hTiles: number): Art {
+export function monumentoOcampo(wTiles: number, hTiles: number, cuadro = 0): Art {
   const W = Math.round(wTiles * TILE);
   const fondoTotal = Math.round(hTiles * TILE);
   const extra = 36;
@@ -65,7 +65,9 @@ export function monumentoOcampo(wTiles: number, hTiles: number): Art {
   p.rect(4, top + 4, W - 8, fondo - 8, '#34505c');
   p.rect(5, top + 5, W - 10, fondo - 10, '#44697a');
   for (let i = 0; i < 18; i++) {
-    const gx = 8 + ((i * 17) % (W - 16));
+    // Los reflejos se mecen un pixel, cada uno a su tiempo.
+    const vaiven = (i + cuadro) % 4 < 2 ? 0 : 1;
+    const gx = 8 + ((i * 17) % (W - 16)) + vaiven;
     const gy = top + 8 + ((i * 11) % Math.max(1, fondo - 16));
     p.rect(gx, gy, 2, 1, '#6d97a8');
   }
@@ -87,10 +89,11 @@ export function monumentoOcampo(wTiles: number, hTiles: number): Art {
   for (const dx of [-20, 20]) {
     const x = cx + dx;
     const y = dadoPie + 4;
-    p.rect(x, y - 7, 1, 7, AGUA.foam);
-    p.px(x - 1, y - 5, AGUA.light);
-    p.px(x + 1, y - 4, AGUA.light);
-    p.ellipse(x, y, 3, 1, AGUA.light);
+    const alto = 7 + ((cuadro + (dx > 0 ? 1 : 0)) % 2);
+    p.rect(x, y - alto, 1, alto, AGUA.foam);
+    p.px(x - 1, y - alto + 2 + (cuadro % 2), AGUA.light);
+    p.px(x + 1, y - alto + 3 - (cuadro % 2), AGUA.light);
+    p.ellipse(x, y, 3 + (cuadro % 2), 1, AGUA.light);
   }
   // Ocampo: levita larga, el brazo al frente con un papel.
   ocampo(p, cx, dadoPie - dadoAlto - 3, 38);
@@ -119,11 +122,17 @@ function ocampo(p: Painter, cx: number, pie: number, h: number): void {
   p.px(cx - 3, cabeza + 20, B.patina);
 }
 
+/** Alturas de un chorro danzante a lo largo de su vuelta (px): sube, llega arriba y baja. */
+const DANZA = [2, 5, 9, 14, 17, 14, 9, 5] as const;
+export const CUADROS_DANZA = DANZA.length;
+
 /**
  * Las fuentes danzantes: boquillas en el piso y chorros que brotan a
- * distintas alturas. Se camina por en medio (no estorban).
+ * distintas alturas. Se camina por en medio (no estorban). Encendidas, cada
+ * cuadro sube una ola que cruza la retícula en diagonal; apagadas, solo quedan
+ * las boquillas y algún charco.
  */
-export function chorros(wTiles: number, hTiles: number): Art {
+export function chorros(wTiles: number, hTiles: number, cuadro = 0, encendida = true): Art {
   const W = wTiles * TILE;
   const extra = 22;
   const H = hTiles * TILE + extra;
@@ -136,6 +145,8 @@ export function chorros(wTiles: number, hTiles: number): Art {
       const d = dx * dx + dy * dy;
       if (d > 1) continue;
       if (d > 0.82 && hash(x, y, 91) < 0.5) continue;
+      // Apagadas, el piso se va secando: quedan charcos sueltos.
+      if (!encendida && hash(x >> 3, y >> 3, 93) > 0.22) continue;
       p.px(x, extra + y, hash(x >> 2, y >> 2, 92) > 0.8 ? '#9bb8c6' : EXPLANADA.wet);
     }
   }
@@ -147,8 +158,9 @@ export function chorros(wTiles: number, hTiles: number): Art {
       const y = extra + Math.round(((j + 1) * hTiles * TILE) / (m + 1));
       p.rect(x - 1, y, 3, 2, O.deep);
       p.px(x, y, '#c8d6dc');
-      // Cada boquilla con su altura: unas apenas burbujean.
-      const alto = [4, 10, 16, 7][(i + j * 3) % 4] ?? 8;
+      if (!encendida) continue;
+      // Cada boquilla va a su tiempo en la vuelta: la ola cruza en diagonal.
+      const alto = DANZA[(i + j + cuadro) % DANZA.length] ?? 8;
       p.rect(x, y - alto, 1, alto, AGUA.foam);
       p.px(x - 1, y - alto + 2, AGUA.light);
       p.px(x + 1, y - alto + 3, AGUA.light);
@@ -514,7 +526,7 @@ export function pilastra(brazo: string | undefined): Art {
  * tableros y un escalón alrededor; al centro, una columna anillada con su
  * copa chica y, arriba, un jarrón con piña. Cantera gris-café.
  */
-export function fuenteDeColumna(r: number): Art {
+export function fuenteDeColumna(r: number, cuadro = 0): Art {
   const d = Math.round(r * 2 * TILE);
   const alto = 44;
   const W = d + 4;
@@ -534,13 +546,20 @@ export function fuenteDeColumna(r: number): Art {
   p.ellipse(cx, cy - 2, R - 1, R - 3, G.lighter);
   p.ellipse(cx, cy - 2, R - 4, R - 6, AGUA.shade);
   p.ellipse(cx, cy - 1, R - 5, R - 7, AGUA.base);
+  // Destellos que cambian de lugar y las ondas donde cae el agua de la copa.
   for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
+    const a = (i / 7 + hash(i, cuadro, 73) * 0.1) * Math.PI * 2;
+    const k = 0.6 + hash(i, cuadro, 74) * 0.35;
     p.px(
-      Math.round(cx + Math.cos(a) * (R - 8)),
-      Math.round(cy - 1 + Math.sin(a) * (R - 10)),
+      Math.round(cx + Math.cos(a) * (R - 8) * k),
+      Math.round(cy - 1 + Math.sin(a) * (R - 10) * k),
       AGUA.light,
     );
+  }
+  for (const dx of [-8, 7]) {
+    const fase = (cuadro + (dx > 0 ? 2 : 0)) % 4;
+    p.ellipse(cx + dx, cy - 1, 1 + fase, 1 + Math.floor(fase / 2), AGUA.light);
+    p.ellipse(cx + dx, cy - 1, fase, Math.floor(fase / 2), AGUA.base);
   }
   // La columna anillada.
   const base = cy - 2;
@@ -555,7 +574,7 @@ export function fuenteDeColumna(r: number): Art {
   p.ellipse(cx, copa, 8, 3, G.light);
   p.ellipse(cx, copa, 6, 2, AGUA.base);
   for (const dx of [-8, 7]) {
-    for (let y = copa + 3; y < base - 1; y += 2) p.px(cx + dx, y, AGUA.light);
+    for (let y = copa + 3 + (cuadro % 2); y < base - 1; y += 2) p.px(cx + dx, y, AGUA.light);
   }
   // El jarrón con piña.
   p.rect(cx - 2, colTop - 2, 5, 2, G.light);

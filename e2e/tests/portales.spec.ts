@@ -21,12 +21,21 @@ async function enLinea(page: Page, sala?: string) {
   );
 }
 
+/** Velocidad de la persona (tiles por segundo), la de `MOVEMENT`. */
+const VELOCIDAD = 4.2;
+/** El toque más corto que se manda (ms). */
+const TOQUE_MIN_MS = 40;
+
 /**
- * Camina por un eje hasta `meta` (± `tolerancia`) a toquecitos: cada uno
- * cubre parte de lo que falta y se vuelve a medir. Soltar una tecla tarda
- * (sin GPU, un cuadro dura tanto que el toque más corto avanza casi un tile):
- * mantenerla hasta pasarse deja al personaje donde sea y la ruta se atora en
- * el primer farol. Por eso cada tramo pide la holgura que su camino permite.
+ * Camina por un eje hasta `meta` (± `tolerancia`) a toques medidos. Soltar
+ * una tecla tarda: sin GPU y con la sala corrigiendo, la persona sigue de
+ * largo un buen trecho (aquí se midió hasta 1.7 tiles con el toque más
+ * corto). Esa inercia se mide en cada toque; cada toque se suelta antes para
+ * que la inercia la deje en la meta, y si falta menos de lo que avanza el
+ * toque más corto, primero se aleja un poco y vuelve. Mantener la tecla hasta
+ * pasarse dejaría a la persona donde sea y la ruta se atoraría en el primer
+ * farol: por eso cada tramo va por un pasillo con holgura
+ * (`node scripts/plaza/pasillos.mts`).
  */
 async function caminarHasta(
   page: Page,
@@ -35,26 +44,40 @@ async function caminarHasta(
   tolerancia: number,
 ): Promise<void> {
   await page.bringToFront();
-  let antes: number | null = null;
-  let quieto = 0;
-  for (let i = 0; i < 60; i++) {
+  const posicion = async () => {
     const p = await page.evaluate(() => window.__wousJuego?.posicion() ?? null);
     if (!p) throw new Error('El juego no reporta posición');
+    return p;
+  };
+  let inercia = 0.5;
+  let quieto = 0;
+  for (let i = 0; i < 40; i++) {
+    const p = await posicion();
     const falta = meta - p[eje];
     if (Math.abs(falta) <= tolerancia) return;
-    // Cuatro toques seguidos sin avanzar: algo estorba.
-    quieto = antes !== null && Math.abs(p[eje] - antes) < 0.01 ? quieto + 1 : 0;
-    if (quieto >= 4) {
-      throw new Error(`Atorada en ${p.x.toFixed(2)},${p.y.toFixed(2)} rumbo a ${eje}=${meta}`);
-    }
-    antes = p[eje];
-    const key = eje === 'x' ? (falta > 0 ? 'KeyD' : 'KeyA') : falta > 0 ? 'KeyS' : 'KeyW';
-    // El 70 % de lo que falta a 4.2 tiles/s, sin pasar de 3 s ni bajar de 80 ms.
-    const ms = Math.max(80, Math.min(3000, ((Math.abs(falta) * 0.7) / 4.2) * 1000));
+    // Lo que avanza el toque más corto: si falta menos, se pasaría; primero se aleja.
+    const minimo = (VELOCIDAD * TOQUE_MIN_MS) / 1000 + inercia;
+    const alejarse = Math.abs(falta) < minimo + 0.15;
+    const rumbo = alejarse ? -Math.sign(falta) : Math.sign(falta);
+    const trecho = alejarse ? minimo : Math.abs(falta);
+    const ms = Math.max(TOQUE_MIN_MS, Math.min(3000, ((trecho - inercia) / VELOCIDAD) * 1000));
+    const key = eje === 'x' ? (rumbo > 0 ? 'KeyD' : 'KeyA') : rumbo > 0 ? 'KeyS' : 'KeyW';
     await page.keyboard.down(key);
     await page.waitForTimeout(ms);
     await page.keyboard.up(key);
-    await page.waitForTimeout(60);
+    await page.waitForTimeout(120);
+    const despues = await posicion();
+    const avanzo = Math.abs(despues[eje] - p[eje]);
+    // Cuatro toques seguidos sin avanzar: algo estorba.
+    quieto = avanzo < 0.01 ? quieto + 1 : 0;
+    if (quieto >= 4) {
+      throw new Error(`Atorada en ${p.x.toFixed(2)},${p.y.toFixed(2)} rumbo a ${eje}=${meta}`);
+    }
+    // La inercia de este toque (si nada lo detuvo antes), promediada con las anteriores.
+    const medida = avanzo - (VELOCIDAD * ms) / 1000;
+    if (avanzo > 0.01 && medida > -0.2) {
+      inercia = Math.min(3, Math.max(0, inercia * 0.5 + medida * 0.5));
+    }
   }
   throw new Error(`No llegó a ${eje}=${meta}`);
 }

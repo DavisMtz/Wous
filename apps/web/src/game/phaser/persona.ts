@@ -21,7 +21,7 @@ import type { GloboArt } from './globo.ts';
 /** Los pies del sprite están en la fila 30 de 32: ahí se ancla al suelo. */
 const FEET_ORIGIN_Y = 31 / FRAME_H;
 /** Los nombres van sobre todo el mundo (incluido el papel picado). */
-const NAME_DEPTH = 200_000;
+export const NAME_DEPTH = 200_000;
 /** Tamaño del nombre en pixeles de PANTALLA (se escala 1/zoom para verse nítido). */
 const NAME_FONT_PX = 13;
 export const NAME_FONT = '"Bricolage Grotesque Variable", system-ui, sans-serif';
