@@ -23,6 +23,162 @@ export const CANTERA = {
   deep: '#7d5f53',
 };
 
+/** Cantera rosa en losas grandes (atrio de la Catedral, plazas): más clara y más rosa. */
+export const LOSA = {
+  base: '#d9bcaa',
+  light: '#e2c8b8',
+  lighter: '#ebd6c9',
+  shade: '#cdae9b',
+  joint: '#bb9985',
+  vein: '#d2b09d',
+};
+
+/**
+ * Cantera rosa de Morelia al sol: la de la Catedral, los portales y las
+ * casas. Más cálida y más oscura que la de las losas del piso.
+ */
+export const CANTERA_ROSA = {
+  base: '#c4907f',
+  light: '#d6a898',
+  lighter: '#e6bfb1',
+  shade: '#a87565',
+  deep: '#8a5c50',
+  joint: '#b37d6c',
+  dark: '#3a2230',
+};
+
+/** Azulejo de las cúpulas: damero de blanco y azul cobalto. */
+export const AZULEJO = {
+  blue: '#2d56a8',
+  blueLight: '#4d78c8',
+  blueDeep: '#1c3a78',
+  white: '#eef1f6',
+  whiteShade: '#c3cddc',
+};
+
+/** Las bóvedas de la Catedral vistas desde arriba: impermeabilizante rojo con nervaduras claras. */
+export const TECHO = {
+  base: '#b0503b',
+  light: '#c46850',
+  shade: '#8f3f2f',
+  rib: '#eadfd4',
+  ribShade: '#c8b9ac',
+};
+
+/** Herrería negra de rejas, portones y faroles. */
+export const HERRERIA = { base: '#262129', light: '#4b4252', shade: '#141116' };
+
+/** Bronce de las estatuas y las placas, con su pátina. */
+export const BRONCE = { base: '#56523a', light: '#857e52', shade: '#34311f', patina: '#5f8b72' };
+
+/** El techo del kiosko: lámina gris clara. */
+export const LAMINA = { base: '#bec5cc', light: '#dde3e8', shade: '#98a1aa', deep: '#6c7680' };
+
+/** Agua de las fuentes. */
+export const AGUA = { base: '#5ea6c6', light: '#8fcfe6', shade: '#3e84a6', foam: '#e6f6fb' };
+
+/**
+ * Laurel de la India (ficus) recortado en bloque: verde brillante, lima donde
+ * le da el sol (la firma de la Plaza de Armas).
+ */
+export const LAUREL = {
+  base: '#5f9432',
+  light: '#77ab3c',
+  lighter: '#93c64c',
+  shade: '#467628',
+  deep: '#2f5424',
+};
+
+/** Naranjo: hoja oscura y brillosa, y su fruta. */
+export const NARANJO = {
+  base: '#2f6b35',
+  light: '#438a44',
+  shade: '#23522a',
+  deep: '#173b1d',
+  fruta: '#f28a1f',
+  frutaLuz: '#ffb44f',
+};
+
+/** Bugambilias de las jardineras de la Melchor Ocampo. */
+export const BUGAMBILIA = {
+  magenta: '#d23c8c',
+  light: '#f070b4',
+  morada: '#9b3fa8',
+  deep: '#86205c',
+  hoja: '#3f7a34',
+};
+
+/** Losas gris rosado de los andadores de la Plaza de Armas, en hilada corrida. */
+export const ENLOSADO = {
+  base: '#c3afa3',
+  light: '#cdbbaf',
+  lighter: '#d8c8bd',
+  shade: '#b29e93',
+  joint: '#a08c81',
+};
+
+/** La explanada de la Melchor Ocampo: losas grises con su retícula de bandas oscuras. */
+export const EXPLANADA = {
+  base: '#aca59b',
+  light: '#b8b1a7',
+  lighter: '#c5bfb5',
+  shade: '#9c958b',
+  joint: '#928b81',
+  band: '#77726a',
+  bandLight: '#847f76',
+  /** Piso mojado junto a las fuentes danzantes (se pinta encima, translúcido). */
+  wet: 'rgb(70 90 110 / 0.28)',
+};
+
+/** Piedra gris oscura: la pileta y el dado de la estatua de Ocampo. */
+export const PIEDRA_OSCURA = {
+  base: '#57545c',
+  light: '#6f6b75',
+  lighter: '#87838d',
+  shade: '#423f47',
+  deep: '#2e2c33',
+};
+
+/** Cantera gris-café: la base del kiosko y las fuentes de la Plaza de Armas. */
+export const CANTERA_GRIS = {
+  base: '#a99b8f',
+  light: '#bcaea2',
+  lighter: '#cec2b7',
+  shade: '#8e8075',
+  deep: '#706459',
+  joint: '#7e7167',
+};
+
+/** Bronce oscuro, casi negro azulado (la estatua de Ocampo). */
+export const BRONCE_OSCURO = {
+  base: '#303642',
+  light: '#4c5564',
+  shade: '#1d212a',
+  patina: '#4f6f63',
+};
+
+/** Madera color miel del plafón del kiosko. */
+export const MIEL = { base: '#b36b2c', light: '#cc8743', shade: '#84491e' };
+
+/** Cal con que se pinta el pie de los troncos. */
+export const CAL_TRONCO = { base: '#f1eee7', shade: '#d4cfc4' };
+
+/** Piedra boleada del empedrado (calle Allende). */
+export const EMPEDRADO = {
+  stones: ['#8e8580', '#9b918a', '#857a73', '#a39a92', '#7c726c'] as const,
+  joint: '#4f4743',
+};
+
+/** Azoteas vistas desde arriba: impermeabilizante rojo, pretiles y tinacos. */
+export const AZOTEA = {
+  roofs: ['#b5543d', '#a84a36', '#bf6147', '#9e4432', '#c26a4e'] as const,
+  parapet: '#d9cfc4',
+  parapetShade: '#a99d92',
+  tank: '#26222a',
+  tankLight: '#4a4550',
+  tankShadow: '#7d3527',
+};
+
 export const LADRILLO = {
   base: '#c4683f',
   light: '#d9845a',
@@ -129,7 +285,19 @@ export const PAPEL_PICADO = [
   '#b06cff',
 ] as const;
 
-/** Oscurece hacia ciruela: para cantos y contornos de objetos. */
+const HUNDIDOS = new Map<string, string>();
+
+/**
+ * Oscurece hacia ciruela: para cantos y contornos de objetos (con `amount`
+ * negativo, aclara). Memorizado: el suelo lo pide por pixel.
+ */
 export function hundido(hex: string, amount = 0.35): string {
-  return mix(hex, CIRUELA, amount);
+  const key = `${hex}|${amount}`;
+  let color = HUNDIDOS.get(key);
+  if (color === undefined) {
+    color = mix(hex, CIRUELA, amount);
+    if (HUNDIDOS.size > 4096) HUNDIDOS.clear();
+    HUNDIDOS.set(key, color);
+  }
+  return color;
 }

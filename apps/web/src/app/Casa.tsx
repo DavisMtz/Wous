@@ -13,7 +13,8 @@ import { useSession } from './session.tsx';
 /**
  * Con sesión iniciada y personaje armado: el vestíbulo antes de la plaza.
  * Muestra tu personaje, tu cuenta, el camino a tu banda (con las solicitudes
- * nuevas en una calcomanía), a quién bloqueaste y cómo cerrar sesión.
+ * nuevas en una calcomanía), la caseta si la atiendes, a quién bloqueaste y
+ * cómo cerrar sesión.
  */
 export function Casa({ session }: { session: SessionResponse }) {
   const { logout } = useSession();
@@ -83,6 +84,12 @@ export function Casa({ session }: { session: SessionResponse }) {
             </span>
           ) : null}
         </Link>
+        {session.staffRole === 'ADMIN' ? (
+          <Link to={ROUTES.caseta} className="cartulina cartulina--trazo casa__caseta">
+            <Icono name="bandera" />
+            <span className="cartulina__texto">La caseta</span>
+          </Link>
+        ) : null}
         <div className="hoja__acciones">
           <Cartulina
             type="button"
@@ -103,6 +110,11 @@ export function Casa({ session }: { session: SessionResponse }) {
           </Cartulina>
         </div>
         {session.character ? <Bloqueados /> : null}
+        <p className="casa__reglas">
+          <Link to={ROUTES.rules} className="enlace">
+            Reglas de convivencia y tus datos
+          </Link>
+        </p>
       </Hoja>
     </Mostrador>
   );

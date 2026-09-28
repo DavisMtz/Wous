@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { CHAT, EMOTE, NETWORK, PORTALS, SOCIAL, TIME } from '@wous/config';
+import { CHAT, EMOTE, NETWORK, PORTALS, SEATS, SOCIAL, TIME } from '@wous/config';
 import {
   type ChatSendMessage,
   ClientMessage,
@@ -8,6 +8,7 @@ import {
   type PlayerInputMessage,
   type ReportPlayerMessage,
   type ServerMessage,
+  type SitMessage,
   sanitizeChat,
   WS_CLOSE,
   WS_MAX_CLIENT_MESSAGE,
@@ -18,13 +19,15 @@ import {
   WsEnvelopeHeader,
   type WsErrorCode,
 } from '@wous/contracts';
-import type { CollisionGrid, Facing, Vec } from '@wous/game-core';
+import { type CollisionGrid, canStandAt, type Facing, type Vec } from '@wous/game-core';
 import {
   canReachPortal,
+  canReachSeat,
   collisionGrid,
   getMap,
   type MapDef,
   type MapId,
+  seatOf,
   spawnOf,
 } from '@wous/world-data';
 import { systemClock } from '../lib/clock.ts';
@@ -54,6 +57,8 @@ import {
   type RoomIdentity,
   roomRef,
   round3,
+  sitDown,
+  standUp,
   toPlayerView,
   toStateView,
 } from '../world/players.ts';
@@ -203,22 +208,26 @@ export class RoomDO extends DurableObject<Env> {
     const now = Date.now();
 
     // La misma persona en otra pestaña: la conexión nueva gana y hereda el lugar.
-    let heredado: { x: number; y: number; f: Facing } | null = null;
+    // Con su asiento: quien estaba sentado sigue sentado.
+    let heredado: { x: number; y: number; f: Facing; st?: string } | null = null;
     let from: 'socket' | 'ghost' | null = null;
     for (const old of this.ctx.getWebSockets(identity.characterId)) {
       const att = attachmentOf(old);
       if (!att || att.gone) continue;
-      heredado = { ...positionAt(att, now, grid), f: att.f };
+      heredado = { ...positionAt(att, now, grid), f: att.f, ...seatPart(att) };
       from = 'socket';
       this.retire(old, att, 'replaced', WS_CLOSE.REPLACED, 'CONNECTION_REPLACED');
     }
     // Volvió dentro de la ventana de gracia: su lugar lo esperaba (§17).
     const ghost = this.ghosts.get(identity.characterId);
     if (ghost) {
-      heredado ??= { x: ghost.att.x, y: ghost.att.y, f: ghost.att.f };
+      heredado ??= { x: ghost.att.x, y: ghost.att.y, f: ghost.att.f, ...seatPart(ghost.att) };
       from ??= 'ghost';
       await this.forgetGhost(identity.characterId);
     }
+    // El lugar guardado pudo quedar de otra versión del mapa (un despliegue a
+    // media ventana de gracia): si ya no cabe, entra como recién llegada.
+    if (heredado && !lugarValido(map, grid, heredado)) heredado = null;
 
     const present = this.live();
     if (!heredado && present.length + this.ghosts.size >= identity.hardLimit) {
@@ -246,6 +255,7 @@ export class RoomDO extends DurableObject<Env> {
       my: 0,
       seq: 0,
       at: now,
+      ...(heredado?.st !== undefined ? { st: heredado.st } : {}),
       seen: now,
       win: now,
       n: 0,
@@ -378,6 +388,10 @@ export class RoomDO extends DurableObject<Env> {
         return this.onBlock(ws, att, parsed.data.payload.characterId, true, now);
       case 'UNBLOCK_PLAYER':
         return this.onBlock(ws, att, parsed.data.payload.characterId, false, now);
+      case 'SIT':
+        return this.onSit(ws, att, parsed.data, now);
+      case 'STAND':
+        return this.onStand(ws, att, now);
     }
   }
 
@@ -413,10 +427,87 @@ export class RoomDO extends DurableObject<Env> {
       ws.serializeAttachment(att);
       return;
     }
-    const next = applyInput(att, { ...msg.payload, seq: msg.seq }, now, this.grid as CollisionGrid);
+    const seat = att.st !== undefined ? seatOf(this.map as MapDef, att.st) : undefined;
+    const next = applyInput(
+      att,
+      { ...msg.payload, seq: msg.seq },
+      now,
+      this.grid as CollisionGrid,
+      seat,
+    );
     ws.serializeAttachment(next);
     this.dirty.add(next.id);
     this.scheduleFlush();
+  }
+
+  // ─── Asientos (ADR-0013) ────────────────────────────────────────────────
+
+  /**
+   * Sentarse: el asiento existe en ESTE mapa, lo alcanzas desde donde la
+   * sala te tiene ahora (o desde donde te levantarías, si ya estás sentado
+   * en otro) y nadie más lo ocupa, ni quien se desconectó y tiene su lugar
+   * guardado. La sala no espera nada entre revisar y sentar: nadie se cuela.
+   */
+  private onSit(ws: WebSocket, att: PlayerAttachment, msg: SitMessage, now: number): void {
+    const about = { about: 'SIT' };
+    if (att.tr) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'INVALID_STATE', 'Ya vas en camino.', about);
+      return;
+    }
+    if (att.sa !== undefined && now - att.sa < SEATS.minIntervalMs) {
+      this.strike(ws, att, 'RATE_LIMITED', 'SIT', 'Con calma: una vez basta.');
+      return;
+    }
+    att.sa = now;
+    const map = this.map as MapDef;
+    const seat = seatOf(map, msg.payload.seatId);
+    if (!seat) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'SEAT_NOT_FOUND', 'Aquí no hay ese asiento.', about);
+      return;
+    }
+    if (att.st === seat.id) {
+      ws.serializeAttachment(att);
+      return;
+    }
+    const current = att.st !== undefined ? seatOf(map, att.st) : undefined;
+    const here = current ? current.exit : positionAt(att, now, this.grid as CollisionGrid);
+    if (!canReachSeat(here, seat, SEATS.reach)) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'SEAT_NOT_REACHABLE', 'Acércate más para sentarte.', about);
+      return;
+    }
+    if (this.seatTaken(seat.id, att.id)) {
+      ws.serializeAttachment(att);
+      this.sendError(ws, 'SEAT_TAKEN', 'Ya hay alguien sentado ahí.', about);
+      return;
+    }
+    const next = sitDown(att, seat, now);
+    ws.serializeAttachment(next);
+    this.dirty.add(next.id);
+    this.scheduleFlush();
+  }
+
+  /** Levantarse: de pie en la salida del asiento. Sin asiento, no pasa nada. */
+  private onStand(ws: WebSocket, att: PlayerAttachment, now: number): void {
+    if (att.st === undefined || att.tr) {
+      ws.serializeAttachment(att);
+      return;
+    }
+    const next = standUp(att, seatOf(this.map as MapDef, att.st), now);
+    ws.serializeAttachment(next);
+    this.dirty.add(next.id);
+    this.scheduleFlush();
+  }
+
+  /** ¿Alguien más (presente o con lugar guardado) está sentado ahí? */
+  private seatTaken(seatId: string, except: string): boolean {
+    if (this.live().some(({ att }) => att.st === seatId && att.id !== except)) return true;
+    for (const ghost of this.ghosts.values()) {
+      if (ghost.att.st === seatId && ghost.att.id !== except) return true;
+    }
+    return false;
   }
 
   /**
@@ -451,7 +542,9 @@ export class RoomDO extends DurableObject<Env> {
       this.sendError(ws, 'PORTAL_NOT_FOUND', 'Aquí no hay esa puerta.', about);
       return;
     }
-    const here = positionAt(att, now, grid);
+    // Sentado, se mide desde donde te levantarías: se cruza de pie.
+    const sentado = att.st !== undefined ? seatOf(map, att.st) : undefined;
+    const here = sentado ? sentado.exit : positionAt(att, now, grid);
     if (!canReachPortal(here, portal)) {
       ws.serializeAttachment(att);
       this.sendError(ws, 'PORTAL_NOT_REACHABLE', 'Acércate más a la puerta.', about);
@@ -460,8 +553,9 @@ export class RoomDO extends DurableObject<Env> {
 
     // En camino ANTES de cualquier espera: D1 y el directorio no pasan por la
     // compuerta de entrada del objeto, así que otros mensajes pueden colarse.
+    const { st: _asiento, ...dePie } = att;
     const crossing: PlayerAttachment = {
-      ...att,
+      ...dePie,
       x: round3(here.x),
       y: round3(here.y),
       mx: 0,
@@ -850,6 +944,16 @@ export class RoomDO extends DurableObject<Env> {
   }
 
   /**
+   * La caseta cambió la situación de alguien que está aquí (ADR-0012):
+   * silencio, suspensión, cierre o sesiones cerradas. La sala no recibe la
+   * sanción: la vuelve a leer de D1 para todos los presentes, la misma
+   * revisión que corre cada minuto, pero ya.
+   */
+  async recheck(): Promise<void> {
+    await this.review(Date.now());
+  }
+
+  /**
    * Reportar (§18). La evidencia sale de la ventana reciente de ESTA sala:
    * el cliente dice qué mensaje (por ID), nunca qué decía. Un mensaje que no
    * es de la persona reportada es un cliente alterado y cuenta como falta.
@@ -1219,6 +1323,25 @@ export class RoomDO extends DurableObject<Env> {
 
 function attachmentOf(ws: WebSocket): PlayerAttachment | null {
   return ws.deserializeAttachment() as PlayerAttachment | null;
+}
+
+/** El asiento de alguien, para heredarlo (o nada). */
+function seatPart(att: PlayerAttachment): { st?: string } {
+  return att.st !== undefined ? { st: att.st } : {};
+}
+
+/**
+ * ¿Un lugar heredado cabe en ESTE mapa? De pie, donde se puede estar; sentado,
+ * en un asiento que siga existiendo, justo donde está.
+ */
+function lugarValido(map: MapDef, grid: CollisionGrid, lugar: Vec & { st?: string }): boolean {
+  if (lugar.st !== undefined) {
+    const seat = seatOf(map, lugar.st);
+    return (
+      seat !== undefined && Math.abs(seat.x - lugar.x) < 0.01 && Math.abs(seat.y - lugar.y) < 0.01
+    );
+  }
+  return canStandAt(grid, lugar);
 }
 
 /** Tras esperar a D1, ¿el socket sigue representando a alguien? */

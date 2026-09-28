@@ -1,5 +1,5 @@
 import { ROOM_CAPACITY } from '@wous/config';
-import { AppEnv } from '@wous/contracts';
+import { AppEnv, RegistrationMode } from '@wous/contracts';
 import { z } from 'zod';
 
 /**
@@ -17,6 +17,8 @@ const RuntimeConfig = z.object({
   MAIL_FROM_EMAIL: z.email(),
   /** Correos o `@dominios` permitidos; vacío = sin restricción. Solo para staging. */
   EMAIL_ALLOWLIST: z.string(),
+  /** `invite` = alpha cerrada: registrarse pide invitación (ADR-0012). */
+  REGISTRATION_MODE: RegistrationMode,
   BREVO_TEMPLATE_VERIFY_EMAIL: TemplateId,
   BREVO_TEMPLATE_WELCOME: TemplateId,
   BREVO_TEMPLATE_PASSWORD_RESET: TemplateId,
@@ -42,6 +44,7 @@ export type AppConfig = {
   origin: string;
   isProduction: boolean;
   turnstileSiteKey: string;
+  registration: RegistrationMode;
   email: {
     mode: 'log' | 'brevo';
     fromName: string;
@@ -67,6 +70,7 @@ export function readConfig(env: Env): AppConfig {
       hardLimit: p.ROOM_HARD_LIMIT ?? ROOM_CAPACITY.hardLimit,
     },
     turnstileSiteKey: p.TURNSTILE_SITE_KEY,
+    registration: p.REGISTRATION_MODE,
     email: {
       mode: p.EMAIL_MODE,
       fromName: p.MAIL_FROM_NAME,

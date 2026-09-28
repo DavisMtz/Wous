@@ -1,0 +1,755 @@
+/*
+ * La caseta (Fase 9, ADR-0012): donde se atiende el tianguis. Bajo la lona
+ * azul, hojas anchas del mismo papel que las colgadas, sin pinzas: aquí se
+ * trabaja. Lo elegido va en cartulina fosforescente; los estados, en
+ * etiquetas con texto (nunca solo color).
+ */
+
+.caseta {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: var(--s-4) clamp(12px, 3vw, 32px) var(--s-7);
+  display: grid;
+  align-content: start;
+  gap: var(--s-5);
+}
+
+/* ─── Cabecera y pestañas ─── */
+
+.caseta__cabecera {
+  display: grid;
+  gap: var(--s-3);
+  color: var(--sobre-lona);
+}
+
+.caseta__letrero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.caseta__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 900;
+  font-size: var(--step-3);
+  line-height: 0.9;
+  text-transform: uppercase;
+  text-shadow:
+    2px 2px 0 var(--lona-hondo),
+    4px 4px 0 var(--lona-hondo);
+}
+
+/* El entorno siempre a la vista: no es lo mismo actuar en staging que en producción. */
+.caseta__entorno {
+  padding: 4px 12px;
+  font-family: var(--font-plumon);
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--plumon);
+  background: var(--fosfo-verde);
+  border-radius: 3px 6px 4px 7px;
+  box-shadow: var(--sombra-cartulina);
+  rotate: -3deg;
+}
+
+.caseta__entorno--staging {
+  background: var(--fosfo-amarillo);
+}
+
+.caseta__entorno--production {
+  background: var(--fosfo-naranja);
+}
+
+.caseta__quien {
+  font-weight: 700;
+}
+
+/* Pocas pestañas: se acomodan en dos renglones antes que esconder alguna. */
+.caseta__pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding: 4px 2px 6px;
+}
+
+.caseta__pestana {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 18px;
+  font-weight: 800;
+  color: var(--sobre-lona);
+  text-decoration: none;
+  border-radius: var(--trazo-chico);
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.caseta__pestana[aria-current="page"] {
+  color: var(--plumon);
+  background: var(--fosfo-amarillo);
+  box-shadow: var(--sombra-cartulina);
+}
+
+.caseta__pestana:focus-visible {
+  outline: 3px solid var(--fosfo-amarillo);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .caseta__pestana:not([aria-current="page"]):hover {
+    background: color-mix(in oklab, currentColor 12%, transparent);
+  }
+}
+
+.caseta__seccion {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.caseta__salida {
+  justify-self: start;
+}
+
+/* Sobre la lona, el plumón es el de la lona (como la salida de tu banda). */
+.caseta__salida .cartulina--trazo,
+.caseta-tablero__pie .cartulina--trazo {
+  color: var(--sobre-lona);
+}
+
+.caseta__nota {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--plumon-suave);
+  text-wrap: pretty;
+}
+
+.caseta__volver {
+  justify-self: start;
+  font-weight: 750;
+}
+
+/* ─── Hojas ─── */
+
+.caseta-hoja {
+  display: grid;
+  gap: var(--s-4);
+  padding: clamp(18px, 3vw, 32px);
+  color: var(--plumon);
+  background-color: var(--papel);
+  background-image:
+    radial-gradient(rgb(43 18 56 / 0.035) 1px, transparent 1.3px),
+    radial-gradient(rgb(43 18 56 / 0.025) 1px, transparent 1.3px);
+  background-size:
+    7px 7px,
+    11px 11px;
+  background-position:
+    0 0,
+    3px 5px;
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+}
+
+.caseta-hoja__cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.caseta-hoja__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: var(--step-2);
+  line-height: 1;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* ─── Tablero ─── */
+
+.caseta-tablero {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+  gap: var(--s-4);
+}
+
+.caseta-tarjeta {
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  color: var(--plumon);
+  background: var(--papel);
+  border-radius: 3px 5px 4px 6px;
+  box-shadow: var(--sombra-hoja);
+}
+
+.caseta-tarjeta__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  font-size: var(--step-1);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.caseta-tarjeta__cifra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.caseta-tarjeta__cifra strong {
+  font-family: var(--font-cartel);
+  font-weight: 900;
+  font-size: var(--step-3);
+  line-height: 0.95;
+}
+
+.caseta-tarjeta__cifra span {
+  font-weight: 650;
+  color: var(--plumon-suave);
+}
+
+.caseta-tarjeta__lista {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caseta-tarjeta__lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.caseta-tablero__pie {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--sobre-lona);
+}
+
+.caseta-tablero__pie .caseta__nota {
+  color: inherit;
+}
+
+/* ─── Datos ─── */
+
+.caseta-datos {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.caseta-datos div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.caseta-datos dt {
+  color: var(--plumon-suave);
+}
+
+.caseta-datos dd {
+  margin: 0;
+  font-weight: 750;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* En la ficha: etiqueta arriba, dato abajo, en columnas que se acomodan. */
+.caseta-datos--linea {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: var(--s-3) var(--s-5);
+}
+
+.caseta-datos--linea div {
+  display: grid;
+  gap: 2px;
+}
+
+.caseta-datos--linea dt {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.caseta-datos--linea dd {
+  text-align: left;
+}
+
+/* ─── Listas ─── */
+
+.caseta-lista {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caseta-lista > li + li {
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.caseta-fila {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 12px 6px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--trazo-chico);
+}
+
+.caseta-lista--compacta .caseta-fila {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.caseta-fila:focus-visible {
+  outline: 3px solid var(--plumon);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .caseta-fila:hover {
+    background: color-mix(in oklab, var(--fosfo-amarillo) 35%, transparent);
+  }
+}
+
+.caseta-fila__cuerpo {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.caseta-fila__nombre {
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.caseta-fila__detalle {
+  font-size: 0.92rem;
+  color: var(--plumon-suave);
+  overflow-wrap: anywhere;
+}
+
+.caseta-fila__cita {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.caseta-fila__lado {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.caseta-fila__cuenta {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--tinta-error);
+}
+
+.caseta-retrato {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.caseta-persona {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.caseta-persona .caseta-retrato {
+  width: 60px;
+  height: 52px;
+}
+
+.caseta-persona__etiquetas {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+/* ─── Etiquetas de estado ─── */
+
+.caseta-etiqueta {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: 3px 6px 4px 7px;
+}
+
+.caseta-etiqueta--bien {
+  color: var(--tinta-ok);
+  background: color-mix(in oklab, var(--fosfo-verde) 45%, white);
+}
+
+.caseta-etiqueta--aviso {
+  color: var(--plumon);
+  background: var(--fosfo-amarillo);
+}
+
+.caseta-etiqueta--mal {
+  color: var(--tinta-error);
+  background: color-mix(in oklab, var(--rojo-plumon) 12%, white);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon) 55%, white);
+}
+
+.caseta-etiqueta--neutro {
+  color: var(--plumon);
+  background: var(--cartulina-borde);
+}
+
+/* ─── Chips (opciones y filtros) ─── */
+
+.caseta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.caseta-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-weight: 750;
+  color: var(--plumon);
+  text-decoration: none;
+  background: var(--blanco);
+  border-radius: var(--trazo-chico);
+  box-shadow: inset 0 0 0 2px var(--plumon);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* El radio sigue ahí para el teclado y los lectores; se ve la cartulina. */
+.caseta-chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.caseta-chip:has(input:checked),
+.caseta-chip[aria-current="page"] {
+  background: var(--fosfo-amarillo);
+  box-shadow:
+    inset 0 0 0 2px var(--plumon),
+    var(--sombra-cartulina);
+}
+
+.caseta-chip--peligro:has(input:checked) {
+  color: var(--tinta-error);
+  background: color-mix(in oklab, var(--rojo-plumon) 16%, white);
+  box-shadow: inset 0 0 0 2px var(--rojo-plumon);
+}
+
+.caseta-chip:has(input:focus-visible),
+.caseta-chip:focus-visible {
+  outline: 3px solid var(--plumon);
+  outline-offset: 2px;
+}
+
+/* ─── Actuar ─── */
+
+.caseta-acciones,
+.caseta-bloque {
+  display: grid;
+  gap: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.caseta-acciones__titulo {
+  font-family: var(--font-cartel);
+  font-weight: 800;
+  font-size: var(--step-1);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.caseta-sancion,
+.caseta-descartar {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.caseta-sancion__grupo {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.caseta-sancion__pregunta {
+  padding: 0;
+  font-weight: 800;
+}
+
+.caseta-sancion__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.caseta-sancion .cartulina--fosfo,
+.caseta-sancion__botones .cartulina--fosfo {
+  width: auto;
+  justify-self: start;
+}
+
+.caseta-sancion__confirmar {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  color: var(--tinta-error);
+  background: color-mix(in oklab, var(--rojo-plumon) 8%, white);
+  border-radius: var(--trazo-chico);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--rojo-plumon) 55%, white);
+}
+
+.caseta-motivo {
+  min-height: 90px;
+  resize: vertical;
+  font-family: var(--font-ui);
+  line-height: 1.4;
+}
+
+.caseta-descartar .cartulina--trazo {
+  justify-self: start;
+}
+
+.caseta-acciones .caseta-descartar {
+  padding-top: var(--s-4);
+  border-top: 2px dashed var(--cartulina-borde);
+}
+
+.caseta-resuelto {
+  padding: 12px 14px;
+  font-weight: 700;
+  background: var(--cartulina-borde);
+  border-radius: var(--trazo-chico);
+}
+
+/* ─── Evidencia de un reporte ─── */
+
+.caseta-evidencia {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.caseta-evidencia__titulo {
+  font-weight: 800;
+}
+
+.caseta-evidencia__lineas {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caseta-evidencia__linea {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgb(255 255 255 / 0.65);
+  border-radius: var(--trazo-chico);
+}
+
+.caseta-evidencia__linea--reportada {
+  background: color-mix(in oklab, var(--fosfo-amarillo) 55%, white);
+  box-shadow: inset 0 0 0 2px var(--plumon);
+}
+
+.caseta-evidencia__hora {
+  font-size: 0.82rem;
+  color: var(--plumon-suave);
+  white-space: nowrap;
+}
+
+.caseta-evidencia__quien {
+  font-weight: 800;
+}
+
+.caseta-evidencia__texto {
+  overflow-wrap: anywhere;
+}
+
+/* ─── Bitácora ─── */
+
+.caseta-bitacora {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caseta-bitacora li {
+  display: grid;
+  grid-template-columns: minmax(0, 12ch) minmax(0, 1fr) auto;
+  gap: var(--s-3);
+  font-size: 0.95rem;
+}
+
+.caseta-bitacora__cuando {
+  color: var(--plumon-suave);
+}
+
+.caseta-bitacora__que {
+  overflow-wrap: anywhere;
+}
+
+.caseta-bitacora__quien {
+  font-weight: 750;
+}
+
+/* ─── Buscador ─── */
+
+.caseta-buscador {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--s-3);
+}
+
+.caseta-buscador .cartulina--fosfo {
+  width: auto;
+}
+
+/* ─── Invitaciones ─── */
+
+.caseta-invitaciones {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.caseta-invitacion {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+}
+
+.caseta-invitacion__cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.caseta-invitacion__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.cartulina.caseta-boton-chico {
+  min-height: 44px;
+  padding: 6px 14px;
+  font-size: 1rem;
+}
+
+.caseta-codigo {
+  font-family: var(--font-cartel);
+  font-weight: 900;
+  font-size: clamp(2rem, 1.4rem + 3vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+}
+
+.caseta-codigo--chico {
+  font-family: var(--font-cartel);
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  color: var(--plumon);
+}
+
+.caseta-recien {
+  background-color: color-mix(in oklab, var(--fosfo-verde) 16%, var(--papel));
+}
+
+.caseta-recien__enlace {
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* ─── Teléfono ─── */
+
+@media (max-width: 600px) {
+  .caseta-buscador {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .caseta-buscador .cartulina--fosfo {
+    justify-self: start;
+  }
+
+  .caseta-persona {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .caseta-persona__etiquetas {
+    grid-column: 1 / -1;
+    justify-items: start;
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+
+  .caseta-evidencia__linea {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .caseta-evidencia__texto {
+    grid-column: 1 / -1;
+  }
+
+  .caseta-bitacora li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .caseta-bitacora__que {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caseta__entorno {
+    rotate: 0deg;
+  }
+}

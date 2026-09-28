@@ -1,4 +1,12 @@
-import { type APIRequestContext, expect, type Page, type TestInfo } from '@playwright/test';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import {
+  type APIRequestContext,
+  type BrowserContext,
+  expect,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 
 /**
  * Ayudantes de las pruebas contra el stack local. El correo va en modo log:
@@ -105,18 +113,19 @@ export async function cuentaPorApi(
   page: Page,
   info: TestInfo,
   nombre: string,
-): Promise<{ email: string }> {
+): Promise<{ email: string; username: string }> {
   const origin = new URL(info.project.use.baseURL ?? 'http://localhost:5173').origin;
   // IP propia por cuenta, como useOwnIp: los límites por IP no se pisan entre corridas.
   const ip = `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
   const headers = { Origin: origin, 'CF-Connecting-IP': ip };
   const tag = `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
   const email = `e2e.api.${tag}@example.com`;
+  const username = `e2e_${tag}`.slice(0, 20);
   const registro = await page.request.post('/api/v1/auth/register', {
     headers,
     data: {
       email,
-      username: `e2e_${tag}`.slice(0, 20),
+      username,
       password: 'Tianguis de prueba 2026',
       turnstileToken: TURNSTILE_PRUEBA,
       termsVersion: '2026-01',
@@ -149,5 +158,109 @@ export async function cuentaPorApi(
   expect(personaje.status(), await personaje.text()).toBe(201);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: `¡Qué onda, ${nombre}!` })).toBeVisible();
-  return { email };
+  return { email, username };
+}
+
+/**
+ * Da el rol de la caseta con el script de moderación, como en la vida real
+ * (ADR-0012): la web no tiene forma de darlo. Habla con la D1 local.
+ */
+export function darCaseta(username: string): void {
+  const raiz = path.join(import.meta.dirname, '../..');
+  const r = spawnSync(
+    process.execPath,
+    [
+      'scripts/moderacion/moderar.mts',
+      'local',
+      'dar-caseta',
+      `@${username}`,
+      '--motivo',
+      'Prueba E2E',
+      '--moderador',
+      'e2e',
+    ],
+    { cwd: raiz, encoding: 'utf8' },
+  );
+  if (r.status !== 0) throw new Error(`dar-caseta falló:\n${r.stderr || r.stdout}`);
+}
+
+/**
+ * Turnstile de mentiras para los formularios: entrega el token que el Worker
+ * local acepta con las llaves de prueba, sin depender de challenges.cloudflare.com
+ * (que en una máquina sin salida no carga). Lo que se prueba es la pantalla.
+ */
+export async function turnstileDePrueba(page: Page): Promise<void> {
+  await page.route('https://challenges.cloudflare.com/turnstile/**', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: `(() => {
+        const widgets = new Map();
+        const dar = (id) => setTimeout(() => widgets.get(id)?.callback?.('XXXX.DUMMY.TOKEN.XXXX'), 30);
+        window.turnstile = {
+          render(el, opts) {
+            const id = 'prueba-' + Math.random().toString(36).slice(2);
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'cf-turnstile-response';
+            input.value = 'XXXX.DUMMY.TOKEN.XXXX';
+            el.append(input);
+            widgets.set(id, opts);
+            dar(id);
+            return id;
+          },
+          reset(id) { dar(id); },
+          remove(id) { widgets.delete(id); },
+        };
+      })();`,
+    }),
+  );
+}
+
+/** La cookie de sesión de un contexto (para hablar con la sala desde la prueba). */
+export async function sesionDe(context: BrowserContext): Promise<string> {
+  const cookie = (await context.cookies()).find((c) => c.name === '__Host-wous_session');
+  if (!cookie) throw new Error('El contexto no tiene sesión');
+  return cookie.value;
+}
+
+type Mensaje = { type: string; payload: Record<string, unknown> };
+
+/**
+ * Una conexión a la sala desde Node, con la sesión de una cuenta: para
+ * preparar escenas (quién dice qué) sin abrir otra plaza en el navegador.
+ */
+export async function salaDesdeNode(baseURL: string, sesion: string) {
+  const url = new URL('/ws/world', baseURL);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  const recibidos: Mensaje[] = [];
+  // El WebSocket de Node (undici) acepta cabeceras; el tipo estándar no lo sabe.
+  const ws = new WebSocket(url, {
+    headers: { Origin: new URL(baseURL).origin, Cookie: `__Host-wous_session=${sesion}` },
+  } as unknown as string[]);
+  ws.addEventListener('message', (e) => recibidos.push(JSON.parse(String(e.data)) as Mensaje));
+  await new Promise<void>((resolve, reject) => {
+    ws.addEventListener('open', () => resolve());
+    ws.addEventListener('error', () => reject(new Error('No abrió la sala')));
+  });
+  const esperar = async (cumple: (m: Mensaje) => boolean, ms = 15_000): Promise<Mensaje> => {
+    const fin = Date.now() + ms;
+    while (Date.now() < fin) {
+      const m = recibidos.find(cumple);
+      if (m) {
+        recibidos.splice(recibidos.indexOf(m), 1);
+        return m;
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`No llegó (${recibidos.map((m) => m.type).join(', ')})`);
+  };
+  await esperar((m) => m.type === 'ROOM_SNAPSHOT');
+  return {
+    decir: (text: string) =>
+      ws.send(JSON.stringify({ v: 1, type: 'CHAT_SEND', payload: { text } })),
+    reportar: (payload: Record<string, unknown>) =>
+      ws.send(JSON.stringify({ v: 1, type: 'REPORT_PLAYER', payload })),
+    esperar,
+    cerrar: () => ws.close(1000),
+  };
 }

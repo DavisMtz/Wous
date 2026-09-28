@@ -26,6 +26,10 @@ export const ROUTES = {
   plaza: '/plaza',
   /** Tus amigos (ADR-0011). La arman los correos de amistad: no se renombra. */
   friends: '/friends',
+  /** Reglas de convivencia y datos (§30). Se lee sin sesión. */
+  rules: '/reglas',
+  /** La caseta: moderación, tablero e invitaciones, solo para staff (ADR-0012). */
+  caseta: '/caseta',
 } as const;
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES];

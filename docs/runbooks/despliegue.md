@@ -21,6 +21,29 @@ curl -s https://wous-staging.logidma.workers.dev/api/v1/health
 Producción igual con `pnpm deploy:production` y `https://wous.logidma.com/api/v1/health`.
 Toda migración D1 pasa primero por staging.
 
+### Sin los archivos de secretos (otra máquina, CI o un token)
+
+Los cinco secretos están en `secrets.required` de `wrangler.jsonc`: un `wrangler deploy --env <entorno>`
+**sin** `--secrets-file` los hereda del Worker ya desplegado (no los borra ni los cambia). Con un
+token de API en `CLOUDFLARE_API_TOKEN` (más `CLOUDFLARE_ACCOUNT_ID`):
+
+```bash
+pnpm --filter @wous/web build
+cd apps/worker
+npx wrangler d1 migrations apply DB --remote --env <entorno>
+npx wrangler deploy --env <entorno>
+```
+
+Así se desplegó la Fase 9 (27 sep 2026). Un secreto que NO esté en `secrets.required` sí se
+perdería en un deploy sin archivo: todo secreto nuevo va en esa lista.
+
+### Después de desplegar la Fase 9 en un entorno
+
+- `REGISTRATION_MODE` (var) decide si registrarse pide invitación: `invite` en staging y producción,
+  `open` en local.
+- Nombra a quien atiende la caseta (ver `docs/runbooks/moderacion.md`) y crea las primeras
+  invitaciones desde `/caseta`: sin invitación nadie nuevo puede registrarse.
+
 ## Recursos por entorno
 
 | Recurso | staging | production |
@@ -44,4 +67,6 @@ Editar el valor en `secrets.<entorno>.json` y volver a desplegar, o
 `wrangler secret bulk secrets.<entorno>.json --env <entorno>` (surte efecto sin desplegar código).
 Nunca `wrangler secret put` por tubería: añade un salto de línea al valor.
 Rotar `SESSION_PEPPER` cierra todas las sesiones; rotar `TOKEN_PEPPER` invalida los enlaces de
-verificación y reset pendientes.
+verificación y reset pendientes **y las invitaciones** (no se pueden encontrar ni mostrar).
+Las pruebas de carga (`docs/carga/`) necesitan el `SESSION_PEPPER` del entorno para acuñar
+sesiones de bots.

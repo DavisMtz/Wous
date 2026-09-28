@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AccountStatus } from '../domain/account.ts';
+import { AccountStatus, StaffRole } from '../domain/account.ts';
 import {
   EmailInput,
   OpaqueToken,
@@ -7,8 +7,16 @@ import {
   TurnstileToken,
   UsernameInput,
 } from '../domain/identity.ts';
+import { InvitationCodeInput } from '../domain/invitation.ts';
 import { CharacterView } from './characters.ts';
 import { AppEnv } from './health.ts';
+
+/**
+ * Cómo se abre una cuenta en cada entorno (ADR-0012): con registro abierto o
+ * solo con invitación (alpha cerrada).
+ */
+export const RegistrationMode = z.enum(['open', 'invite']);
+export type RegistrationMode = z.infer<typeof RegistrationMode>;
 
 /** POST /api/v1/auth/register */
 export const RegisterRequest = z.object({
@@ -17,6 +25,8 @@ export const RegisterRequest = z.object({
   password: PasswordInput,
   turnstileToken: TurnstileToken,
   termsVersion: z.string().min(1).max(20),
+  /** Obligatorio con `registration: 'invite'`; con registro abierto se ignora. */
+  invitationCode: InvitationCodeInput.optional(),
 });
 export type RegisterRequest = z.infer<typeof RegisterRequest>;
 
@@ -77,6 +87,8 @@ export const SessionResponse = z.object({
   hasCharacter: z.boolean(),
   /** El personaje de la cuenta (uno por cuenta en el MVP), o null si aún no lo arma. */
   character: CharacterView.nullable(),
+  /** Rol en la caseta (ADR-0012), o null para quien solo juega. */
+  staffRole: StaffRole.nullable(),
 });
 export type SessionResponse = z.infer<typeof SessionResponse>;
 
@@ -85,5 +97,7 @@ export const ClientConfig = z.object({
   environment: AppEnv,
   turnstileSiteKey: z.string(),
   termsVersion: z.string(),
+  /** Con `invite`, el registro pide código de invitación (alpha cerrada). */
+  registration: RegistrationMode,
 });
 export type ClientConfig = z.infer<typeof ClientConfig>;

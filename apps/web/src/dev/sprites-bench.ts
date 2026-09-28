@@ -7,10 +7,12 @@ import {
   drawCharacter,
   type Look,
   SHOE_STYLES,
+  type SheetFrame,
+  SIT_FRAME,
   TOP_STYLES,
   WALK_FRAMES,
 } from '../game/rendering/pixel-character.ts';
-import { ACCESSORIES, type Frame, HAIR_STYLES } from '../game/rendering/sprite-maps.ts';
+import { ACCESSORIES, HAIR_STYLES } from '../game/rendering/sprite-maps.ts';
 
 const SCALE = 4;
 
@@ -33,7 +35,7 @@ function section(
   title: string,
   looks: Look[],
   directions: readonly Direction[] = DIRECTIONS,
-  frames: readonly Frame[] = [0],
+  frames: readonly SheetFrame[] = [0],
 ) {
   const h = document.createElement('h2');
   h.textContent = title;
@@ -57,6 +59,16 @@ function section(
 
 section('Direcciones', [base]);
 section('Caminata (abajo e izquierda)', [base], ['down', 'left'], WALK_FRAMES);
+section(
+  'Sentado',
+  [
+    base,
+    { ...base, hair: 'largo', top: 'sudadera', bottom: 'falda', topColor: 'rosa' },
+    { ...base, body: 'b', bottom: 'short', shoes: 'chanclas', hair: 'chongo' },
+  ],
+  DIRECTIONS,
+  [SIT_FRAME],
+);
 section(
   'Peinados',
   HAIR_STYLES.map((hair, i) => ({

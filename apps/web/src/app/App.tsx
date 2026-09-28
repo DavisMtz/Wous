@@ -12,11 +12,14 @@ import { Amigos } from './amigos/Amigos.tsx';
 import { Casa } from './Casa.tsx';
 import { Creador } from './creador/Creador.tsx';
 import { FronteraDeError } from './FronteraDeError.tsx';
+import { Reglas } from './reglas/Reglas.tsx';
 import { ROUTES, RouterProvider, useRouter } from './router.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
 // La plaza trae Phaser: se descarga solo cuando alguien entra.
 const Plaza = lazy(() => import('./plaza/Plaza.tsx'));
+// La caseta es solo para staff (ADR-0012): quien juega nunca baja su código.
+const Caseta = lazy(() => import('./caseta/Caseta.tsx'));
 
 /** Cada puesto, su lona. */
 const LONA_POR_RUTA: Record<string, LonaColor> = {
@@ -30,6 +33,8 @@ const LONA_POR_RUTA: Record<string, LonaColor> = {
   [ROUTES.plaza]: 'naranja',
   // La de los correos de amistad: el enlace del correo cae bajo la misma lona.
   [ROUTES.friends]: 'verde',
+  [ROUTES.rules]: 'amarilla',
+  [ROUTES.caseta]: 'azul',
 };
 
 /** Rutas que piden sesión y personaje; sin ellos se regresa al inicio. */
@@ -56,13 +61,18 @@ function Pantallas() {
   const autenticado = state.status === 'authenticated';
 
   const conPersonaje = state.status === 'authenticated' && state.session.hasCharacter;
+  const esStaff = state.status === 'authenticated' && state.session.staffRole === 'ADMIN';
   useEffect(() => {
     if (autenticado && SOLO_SIN_SESION.has(path)) navigate(ROUTES.home, { replace: true });
     // A la plaza y a tu banda solo se entra con sesión y personaje.
     if (CON_PERSONAJE.has(path) && state.status !== 'loading' && !conPersonaje) {
       navigate(ROUTES.home, { replace: true });
     }
-  }, [autenticado, conPersonaje, path, navigate, state.status]);
+    // La caseta, solo con rol (el servidor igual responde 404 a cualquier otra persona).
+    if (path === ROUTES.caseta && state.status !== 'loading' && !esStaff) {
+      navigate(ROUTES.home, { replace: true });
+    }
+  }, [autenticado, conPersonaje, esStaff, path, navigate, state.status]);
 
   let lona: LonaColor = LONA_POR_RUTA[path] ?? 'rosa';
   if (path === ROUTES.home && autenticado) lona = 'naranja';
@@ -109,6 +119,24 @@ function Pantallas() {
         screen =
           state.status === 'authenticated' && state.session.hasCharacter ? (
             <Amigos />
+          ) : (
+            <Cargando />
+          );
+        break;
+      case ROUTES.rules:
+        screen = <Reglas />;
+        break;
+      case ROUTES.caseta:
+        screen =
+          state.status === 'authenticated' && state.session.staffRole === 'ADMIN' ? (
+            <FronteraDeError
+              titulo="La caseta no abrió"
+              onSalir={() => navigate(ROUTES.home, { replace: true })}
+            >
+              <Suspense fallback={<Cargando />}>
+                <Caseta session={state.session} />
+              </Suspense>
+            </FronteraDeError>
           ) : (
             <Cargando />
           );

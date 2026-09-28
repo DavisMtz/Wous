@@ -3,6 +3,7 @@ import type { LoginRequest } from '@wous/contracts';
 import { auditStatement } from '../accounts/audit.ts';
 import { normalizeEmail, normalizeUsername } from '../accounts/normalize.ts';
 import { type AccountRow, findAccountByEmail, findAccountByUsername } from '../accounts/repo.ts';
+import { liftSuspensionStatements } from '../accounts/suspensions.ts';
 import { enforceRateLimit, identityRateKey, ipRateKey } from '../security/rate-limit.ts';
 import { AuthErrors } from './errors.ts';
 import {
@@ -14,15 +15,25 @@ import {
 } from './sessions.ts';
 import type { UseCaseContext } from './use-case.ts';
 
-/** Estados que no pueden abrir sesión, con su código de dominio (§6). */
-function assertCanLogin(account: AccountRow) {
+/**
+ * Estados que no pueden abrir sesión, con su código de dominio (§6). Una
+ * suspensión que ya terminó y el cron todavía no levantó se levanta aquí
+ * (ADR-0012): `lift`.
+ */
+function checkCanLogin(account: AccountRow, now: number): 'ok' | 'lift' {
   switch (account.status) {
     case 'ACTIVE':
-      return;
+      return 'ok';
     case 'PENDING_EMAIL':
       throw AuthErrors.emailNotVerified();
-    case 'SUSPENDED':
-      throw AuthErrors.accountSuspended();
+    case 'SUSPENDED': {
+      // Sin correo confirmado no se levanta sola (ver suspensions.ts): no tiene fin.
+      const until = account.email_verified_at !== null ? account.suspended_until : null;
+      if (until !== null && until <= now) return 'lift';
+      throw AuthErrors.accountSuspended(
+        until === null ? undefined : Math.max(1, Math.ceil((until - now) / 1000)),
+      );
+    }
     case 'BANNED':
       throw AuthErrors.accountBanned();
     case 'DELETED':
@@ -67,9 +78,12 @@ export async function login(
     log.info('auth.login_failed', { accountId: account.id });
     throw AuthErrors.invalidCredentials();
   }
-  assertCanLogin(account);
+  const now = deps.clock.now();
+  const lift = checkCanLogin(account, now) === 'lift';
 
-  const statements: D1PreparedStatement[] = [];
+  const statements: D1PreparedStatement[] = lift
+    ? liftSuspensionStatements(env.DB, deps, account.id, now, 'login')
+    : [];
   if (deps.hasher.needsRehash(account.password_hash)) {
     const rehashed = await deps.hasher.hash(input.password);
     statements.push(
@@ -84,8 +98,12 @@ export async function login(
   statements.push(session.statement);
   await env.DB.batch(statements);
 
+  if (lift) log.info('moderation.suspension_lifted', { accountId: account.id, via: 'login' });
   log.info('auth.login_success', { accountId: account.id });
-  return { session, account };
+  return {
+    session,
+    account: lift ? { ...account, status: 'ACTIVE', suspended_until: null } : account,
+  };
 }
 
 export async function logout(ctx: UseCaseContext, session: SessionContext): Promise<void> {

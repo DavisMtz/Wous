@@ -21,6 +21,8 @@ export type Sample = {
   facing: Facing;
   moveX: number;
   moveY: number;
+  /** Sentado en este asiento (ADR-0013). */
+  seat?: string;
 };
 
 export type RemotePlayer = {
@@ -38,13 +40,15 @@ export type RenderedRemote = {
   facing: Facing;
   moving: boolean;
   away: boolean;
+  /** Sentado en este asiento (ADR-0013). */
+  seat: string | null;
 };
 
 /** A dónde te lleva el portal que la sala aceptó (mientras se vuelve a entrar). */
 export type Transfer = RoomTransferMessage['payload']['to'];
 
 /** Estado propio que manda el servidor: con él se corrige la predicción. */
-export type SelfState = { x: number; y: number; seq: number };
+export type SelfState = { x: number; y: number; seq: number; seat?: string };
 
 /** Un error de la sala y el pedido que lo causó (`about`), si lo dijo. */
 export type RoomError = Pick<ErrorPayload, 'code' | 'about' | 'retryAfterMs'>;
@@ -208,7 +212,12 @@ export class RoomState {
 
   private applyState(state: PlayerStateView): void {
     if (state.id === this.selfId) {
-      this.selfStates.push({ x: state.x, y: state.y, seq: state.seq });
+      this.selfStates.push({
+        x: state.x,
+        y: state.y,
+        seq: state.seq,
+        ...(state.seat !== undefined ? { seat: state.seat } : {}),
+      });
       return;
     }
     const remote = this.remotes.get(state.id);
@@ -223,6 +232,7 @@ export class RoomState {
       facing: state.facing,
       moveX: state.moveX,
       moveY: state.moveY,
+      ...(state.seat !== undefined ? { seat: state.seat } : {}),
     });
     if (remote.samples.length > MAX_SAMPLES) remote.samples.shift();
   }
@@ -230,6 +240,17 @@ export class RoomState {
   /** Estados propios llegados desde la última vez (y se vacían). */
   takeSelfStates(): SelfState[] {
     return this.selfStates.splice(0, this.selfStates.length);
+  }
+
+  /**
+   * ¿Alguien más está sentado ahí, según lo último que dijo la sala? Solo
+   * sirve para no ofrecer un asiento ocupado: quien decide es la sala.
+   */
+  seatTaken(seatId: string): boolean {
+    for (const remote of this.remotes.values()) {
+      if (remote.samples[remote.samples.length - 1]?.seat === seatId) return true;
+    }
+    return false;
   }
 
   /** Consume el punto de entrada (la escena salta ahí una sola vez por snapshot). */
@@ -266,23 +287,29 @@ export class RoomState {
       if (!moving) return still(last, away);
       const dt = Math.min(t - last.t, MAX_EXTRAPOLATION_MS);
       const p = stepMovement(last, { x: last.moveX, y: last.moveY }, dt, grid);
-      return { x: p.x, y: p.y, facing: last.facing, moving: true, away };
+      return { x: p.x, y: p.y, facing: last.facing, moving: true, away, seat: null };
     }
     for (let i = samples.length - 1; i > 0; i--) {
       const a = samples[i - 1] as Sample;
       const b = samples[i] as Sample;
       if (t >= a.t && t <= b.t) {
+        // Sentarse o levantarse es un salto (del piso al asiento): no se desliza.
+        if (a.seat !== b.seat) return still(t - a.t < (b.t - a.t) / 2 ? a : b, away);
         const k = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
         const x = a.x + (b.x - a.x) * k;
         const y = a.y + (b.y - a.y) * k;
         const speed = Math.hypot(b.x - a.x, b.y - a.y) / Math.max(1, b.t - a.t);
+        // Mismo asiento en las dos muestras (o ninguno): sigue sentado o de pie.
+        const seat = a.seat ?? null;
         return {
           x,
           y,
           facing: b.facing,
           moving:
-            speed > (MOVEMENT.speedTilesPerSecond / 1000) * 0.2 || a.moveX !== 0 || a.moveY !== 0,
+            seat === null &&
+            (speed > (MOVEMENT.speedTilesPerSecond / 1000) * 0.2 || a.moveX !== 0 || a.moveY !== 0),
           away,
+          seat,
         };
       }
     }
@@ -295,11 +322,21 @@ function fromView(p: PlayerView, t: number): RemotePlayer {
     id: p.id,
     displayName: p.displayName,
     appearance: p.appearance,
-    samples: [{ t, x: p.x, y: p.y, facing: p.facing, moveX: p.moveX, moveY: p.moveY }],
+    samples: [
+      {
+        t,
+        x: p.x,
+        y: p.y,
+        facing: p.facing,
+        moveX: p.moveX,
+        moveY: p.moveY,
+        ...(p.seat !== undefined ? { seat: p.seat } : {}),
+      },
+    ],
     away: p.away === true,
   };
 }
 
 function still(s: Sample, away: boolean): RenderedRemote {
-  return { x: s.x, y: s.y, facing: s.facing, moving: false, away };
+  return { x: s.x, y: s.y, facing: s.facing, moving: false, away, seat: s.seat ?? null };
 }

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <title>Wous</title>
+  <!-- La W de cartulina fosforescente sobre la lona rosa, a pixel exacto. -->
+  <rect width="16" height="16" rx="3" fill="#d81b72"/>
+  <g fill="#a10f57">
+    <rect x="3" y="4" width="2" height="8"/>
+    <rect x="12" y="4" width="2" height="8"/>
+    <rect x="8" y="7" width="2" height="5"/>
+    <rect x="5" y="11" width="2" height="2"/>
+    <rect x="10" y="11" width="2" height="2"/>
+  </g>
+  <g fill="#efff3a">
+    <rect x="2" y="3" width="2" height="8"/>
+    <rect x="11" y="3" width="2" height="8"/>
+    <rect x="7" y="6" width="2" height="5"/>
+    <rect x="4" y="10" width="2" height="2"/>
+    <rect x="9" y="10" width="2" height="2"/>
+  </g>
+</svg>

@@ -104,17 +104,18 @@ describe('la sala en tiempo real', () => {
   });
 
   it('las paredes del mapa detienen al servidor', async () => {
-    // Frente a la puerta del Café: arriba está la fachada (filas 0–2).
+    // Bajo el portal, frente a la puerta del Café: arriba está el muro de los
+    // comercios (el andador cubierto son las filas 5–6).
     const { socket } = await joinRoomDirectly('colision', { spawn: 'desde-cafe' });
     const snap = await socket.next('ROOM_SNAPSHOT');
-    expect(snap.payload.players[0]?.y).toBeCloseTo(4.6, 3);
+    expect(snap.payload.players[0]?.y).toBeCloseTo(5.75, 3);
     const seq = await hold(socket, 1, 0, -1, 900);
     const estado = await socket.next('PLAYER_STATE', (m) =>
       m.payload.states.some((s) => s.seq === seq),
     );
     const y = estado.payload.states[0]?.y ?? 0;
-    expect(y).toBeGreaterThanOrEqual(3 + MOVEMENT.footprint.halfHeight - 0.01);
-    expect(y).toBeLessThan(3.4);
+    expect(y).toBeGreaterThanOrEqual(5 + MOVEMENT.footprint.halfHeight - 0.01);
+    expect(y).toBeLessThan(5.4);
     socket.close();
   });
 

@@ -29,6 +29,7 @@ import { Gestos } from './Gestos.tsx';
 import { GiraTuTelefono } from './GiraTuTelefono.tsx';
 import { Joystick } from './Joystick.tsx';
 import { Pistas } from './Pistas.tsx';
+import { Placa } from './Placa.tsx';
 
 declare global {
   interface Window {
@@ -115,6 +116,8 @@ export function PlazaJuego({
   onSalir,
   spawn,
   mapa,
+  inicio,
+  zoom,
   conectar = true,
 }: {
   look: Look;
@@ -125,6 +128,10 @@ export function PlazaJuego({
   spawn?: string;
   /** Sala del banco de desarrollo (sin red). Con red, la decide el servidor. */
   mapa?: string;
+  /** Solo el banco de desarrollo: dónde aparecer (tiles). */
+  inicio?: { x: number; y: number };
+  /** Solo el banco de desarrollo: zoom fijo. */
+  zoom?: number;
   /** Sin red (banco de desarrollo): solo tú, como en la Fase 4. */
   conectar?: boolean;
 }) {
@@ -150,6 +157,7 @@ export function PlazaJuego({
         mapa: conectar ? '' : (getMap(mapa ?? '') ?? PLAZA).id,
         metodo: 'KEYBOARD_MOUSE',
         cercano: null,
+        placa: null,
         aviso: null,
         camino: false,
         listo: false,
@@ -324,6 +332,8 @@ export function PlazaJuego({
       game = createGame(host, {
         map,
         ...(spawn ? { spawn } : {}),
+        ...(inicio ? { inicio } : {}),
+        ...(zoom ? { zoom } : {}),
         look,
         ...(nombre ? { name: nombre } : {}),
         input: nextControls.manager,
@@ -336,6 +346,8 @@ export function PlazaJuego({
                 send: (input) => net.send(input),
                 enterPortal: (portalId) => net.enterPortal(portalId),
                 emote: (emote) => net.emote(emote),
+                sit: (seatId) => net.sit(seatId),
+                stand: () => net.stand(),
               },
             }
           : {}),
@@ -373,7 +385,7 @@ export function PlazaJuego({
       nextControls.dispose();
       if (import.meta.env.DEV) delete window.__wousJuego;
     };
-  }, [hud, look, nombre, spawn, mapa, conectar]);
+  }, [hud, look, nombre, spawn, mapa, inicio, zoom, conectar]);
 
   // Cada cambio en tu banda llega a la escena (la marca en la etiqueta).
   useEffect(() => {
@@ -441,6 +453,7 @@ export function PlazaJuego({
     [hud],
   );
   const cerrarFicha = useCallback(() => hud.set({ ficha: null }), [hud]);
+  const cerrarPlaca = useCallback(() => hud.set({ placa: null }), [hud]);
 
   const reportar = useCallback(
     (motivo: ReportReason, nota: string, messageId: string | null): boolean => {
@@ -578,6 +591,8 @@ export function PlazaJuego({
       ) : null}
 
       <Pistas metodo={metodo} cercano={state.cercano} camino={state.camino} />
+
+      {state.placa ? <Placa placa={state.placa} onCerrar={cerrarPlaca} /> : null}
 
       {metodo === 'TOUCH' && controls ? (
         <div className="hud hud--tactil">

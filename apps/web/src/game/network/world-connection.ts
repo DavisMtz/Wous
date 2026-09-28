@@ -149,6 +149,16 @@ export class WorldConnection {
     return this.write({ v: WS_PROTOCOL_VERSION, type: 'CHAT_SEND', payload: { text } });
   }
 
+  /** Pide sentarse (solo el ID del asiento, ADR-0013). */
+  sit(seatId: string): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'SIT', payload: { seatId } });
+  }
+
+  /** Pide levantarse. Caminar también levanta: esto es para «Levantarse» sin caminar. */
+  stand(): boolean {
+    return this.write({ v: WS_PROTOCOL_VERSION, type: 'STAND', payload: {} });
+  }
+
   /** Un gesto del catálogo (§19): solo su ID. */
   emote(emote: Emote): boolean {
     return this.write({ v: WS_PROTOCOL_VERSION, type: 'EMOTE_PLAY', payload: { emote } });

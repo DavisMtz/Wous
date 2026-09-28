@@ -13,7 +13,12 @@ import { Hono } from 'hono';
 import { login, logout, logoutEverywhere } from '../../auth/login.ts';
 import { forgotPassword, resetPassword } from '../../auth/password-reset.ts';
 import { registerAccount } from '../../auth/register.ts';
-import { clearSessionCookie, type SessionAccount, setSessionCookie } from '../../auth/sessions.ts';
+import {
+  clearSessionCookie,
+  type SessionAccount,
+  setSessionCookie,
+  staffRoleOf,
+} from '../../auth/sessions.ts';
 import { useCaseContext } from '../../auth/use-case.ts';
 import { resendVerification, verifyEmail } from '../../auth/verify-email.ts';
 import { findCharacterByAccount } from '../../characters/characters.ts';
@@ -36,7 +41,12 @@ function accountView(account: SessionAccount): AccountView {
 
 async function sessionResponse(env: Env, account: SessionAccount): Promise<SessionResponse> {
   const character = await findCharacterByAccount(env.DB, account.id);
-  return { account: accountView(account), hasCharacter: character !== null, character };
+  return {
+    account: accountView(account),
+    hasCharacter: character !== null,
+    character,
+    staffRole: account.staffRole,
+  };
 }
 
 export const authRoutes = new Hono<AppHono>()
@@ -50,7 +60,10 @@ export const authRoutes = new Hono<AppHono>()
     const { session, accountId } = await verifyEmail(ctx, await readJson(c, VerifyEmailRequest));
     setSessionCookie(c, session.token, session.expiresAt);
     const row = await c.env.DB.prepare(
-      'SELECT id, email, username, status, created_at AS createdAt FROM accounts WHERE id = ?',
+      `SELECT a.id, a.email, a.username, a.status, a.created_at AS createdAt,
+              st.role AS staffRole
+         FROM accounts a LEFT JOIN staff st ON st.account_id = a.id
+        WHERE a.id = ?`,
     )
       .bind(accountId)
       .first<SessionAccount>();
@@ -74,6 +87,7 @@ export const authRoutes = new Hono<AppHono>()
         username: account.username,
         status: account.status,
         createdAt: account.created_at,
+        staffRole: await staffRoleOf(c.env.DB, account.id),
       }),
     );
   })

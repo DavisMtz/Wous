@@ -92,6 +92,41 @@ describe('stepMovement', () => {
   });
 });
 
+describe('rejilla más fina que el tile (ADR-0013)', () => {
+  const fine = () => createGrid(20, 20, 4);
+
+  it('con paredes enteras se camina igual que con la rejilla de tiles', () => {
+    const coarse = open();
+    const fina = fine();
+    blockRect(coarse, 8, 0, 1, 20);
+    blockRect(fina, 8, 0, 1, 20);
+    let a: Vec = { x: 6, y: 5 };
+    let b: Vec = { x: 6, y: 5 };
+    for (let i = 0; i < 20; i++) {
+      a = stepMovement(a, { x: 1, y: 0.3 }, 150, coarse);
+      b = stepMovement(b, { x: 1, y: 0.3 }, 150, fina);
+    }
+    expect(b.x).toBeCloseTo(a.x, 6);
+    expect(b.y).toBeCloseTo(a.y, 6);
+  });
+
+  it('una pared de medio tile detiene en su borde, por ambos lados', () => {
+    const grid = fine();
+    blockRect(grid, 8.25, 0, 0.5, 20);
+    const half = DEFAULT_MOVEMENT.footprint.halfWidth;
+    let derecha: Vec = { x: 6, y: 5 };
+    for (let i = 0; i < 20; i++) derecha = stepMovement(derecha, { x: 1, y: 0 }, 150, grid);
+    expect(derecha.x).toBeCloseTo(8.25 - half, 2);
+    let izquierda: Vec = { x: 11, y: 5 };
+    for (let i = 0; i < 20; i++) izquierda = stepMovement(izquierda, { x: -1, y: 0 }, 150, grid);
+    expect(izquierda.x).toBeCloseTo(8.75 + half, 2);
+    // Donde antes todo el tile 8 estorbaba, ahora se puede estar.
+    expect(canStandAt(grid, { x: 8.1 - half, y: 5 })).toBe(true);
+    expect(isBlocked(grid, 8 * 4, 20)).toBe(false);
+    expect(isBlocked(grid, 8 * 4 + 1, 20)).toBe(true);
+  });
+});
+
 describe('facingFrom', () => {
   it('mira según el eje dominante y conserva al soltar', () => {
     expect(facingFrom({ x: 1, y: 0.2 }, 'down')).toBe('right');

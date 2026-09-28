@@ -3,6 +3,8 @@ export * from './domain/appearance.ts';
 export * from './domain/chat.ts';
 export * from './domain/identity.ts';
 export * from './domain/ids.ts';
+export * from './domain/invitation.ts';
+export * from './http/admin.ts';
 export * from './http/auth.ts';
 export * from './http/characters.ts';
 export * from './http/envelope.ts';

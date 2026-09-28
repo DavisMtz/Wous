@@ -3,6 +3,16 @@ import { defineConfig, devices } from '@playwright/test';
 const baseURL = process.env.WOUS_BASE_URL ?? 'http://localhost:5173';
 const external = Boolean(process.env.WOUS_BASE_URL);
 
+/**
+ * Navegador: el Chrome instalado en la máquina (no depende de descargar
+ * navegadores). En un contenedor sin Chrome, `WOUS_CHROMIUM` apunta a un
+ * Chromium que ya esté ahí (en la nube: /opt/pw-browsers/chromium-<versión>/chrome-linux/chrome).
+ */
+const chromium = process.env.WOUS_CHROMIUM;
+const navegador = chromium
+  ? { channel: undefined, launchOptions: { executablePath: chromium } }
+  : { channel: 'chrome' };
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -16,15 +26,14 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL,
-    // Chrome instalado en la máquina: no depende de descargar navegadores.
-    channel: 'chrome',
+    ...navegador,
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'escritorio', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
+    { name: 'escritorio', use: { ...devices['Desktop Chrome'], ...navegador } },
     {
       name: 'movil',
-      use: { ...devices['Pixel 7 landscape'], channel: 'chrome' },
+      use: { ...devices['Pixel 7 landscape'], ...navegador },
     },
   ],
   // Sin URL externa, levanta Worker + Vite locales con `pnpm dev`.

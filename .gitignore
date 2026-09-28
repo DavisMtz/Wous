@@ -16,6 +16,10 @@ secrets*.json
 *.pem
 *.key
 
+# Referencias de la Plaza: se bajan con scripts/plaza/referencias.mts (CC BY-SA, ODbL)
+docs/plaza/referencias/
+docs/plaza/osm/
+
 # Pruebas E2E
 test-results/
 playwright-report/

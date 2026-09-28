@@ -42,7 +42,8 @@ const RESERVED_USERNAMES = new Set([
 
 export function isReservedUsername(normalized: string): boolean {
   if (RESERVED_USERNAMES.has(normalized)) return true;
-  return /^(wous|admin|mod|staff)_/.test(normalized);
+  // `carga_`: las cuentas de las pruebas de carga (ADR-0012).
+  return /^(wous|admin|mod|staff|carga)_/.test(normalized);
 }
 
 /** Enmascara un correo para logs: `an***@example.com`. */

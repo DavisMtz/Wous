@@ -197,6 +197,34 @@ const LEGS_SIDE: Record<Frame, string[]> = {
 };
 LEGS_SIDE[2] = LEGS_SIDE[0];
 
+/**
+ * Piernas sentado (ADR-0013): filas 25–31 del cuadro. El resto del cuerpo es
+ * el de pie, bajado 4 px (ver `composeSittingFrame`). De frente, las rodillas
+ * vienen hacia ti; de espaldas, las tapa el respaldo; de lado, el muslo va
+ * al frente y la espinilla baja al piso.
+ */
+export const SIT_LEGS: Record<MapDirection, string[]> = {
+  down: [
+    '....UUUUuuuu....',
+    '....UUUUuuuu....',
+    '....LLL..lll....',
+    '....LLL..lll....',
+    '...SSSS..ssss...',
+    '...SSSS..ssss...',
+    E16,
+  ],
+  up: ['.....WWWWww.....', '....UUUUuuuu....', E16, E16, E16, E16, E16],
+  left: [
+    '..UUUUUUUu......',
+    '..UUUUUUuu......',
+    '..LLl...........',
+    '..LLl...........',
+    '..LLl...........',
+    '.SSSs...........',
+    E16,
+  ],
+};
+
 const HEAD_ROWS: Record<MapDirection, string[]> = {
   down: HEAD_DOWN,
   up: HEAD_UP,

@@ -831,6 +831,42 @@
   border-top: 2px dashed var(--cartulina-borde);
 }
 
+/* La caseta (ADR-0012), solo para quien la atiende: debajo de tu banda. */
+.casa__caseta {
+  width: 100%;
+  margin: calc(var(--s-2) * -1) 0 var(--s-5);
+}
+
+.casa__reglas {
+  margin-top: var(--s-4);
+  font-size: 0.95rem;
+}
+
+/* ─── Reglas de convivencia (/reglas) ─── */
+
+.reglas-pagina__lista {
+  margin-bottom: var(--s-5);
+}
+
+/* Bajo la lona amarilla, la palomita va en su pliegue hondo: si no, no se ve en el papel. */
+.reglas-pagina__lista svg {
+  color: var(--lona-hondo);
+}
+
+.reglas-pagina__seccion {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: var(--s-5);
+  text-wrap: pretty;
+}
+
+.reglas-pagina__datos {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding-left: 1.2em;
+}
+
 /* Personas que bloqueaste (casa): retrato chico, nombre y la cartulina para quitar. */
 .bloqueados__nota {
   margin-top: var(--s-2);
@@ -1091,6 +1127,11 @@
 
 .reglas[open] summary svg {
   rotate: 90deg;
+}
+
+.reglas__mas {
+  margin-top: var(--s-2);
+  font-size: 0.95rem;
 }
 
 .reglas ul {

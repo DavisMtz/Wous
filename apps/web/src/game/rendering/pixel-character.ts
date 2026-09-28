@@ -19,6 +19,7 @@ import {
   HAIR_MAPS,
   type HairStyleId,
   type MapDirection,
+  SIT_LEGS,
 } from './sprite-maps.ts';
 
 export const FRAME_W = 16;
@@ -26,6 +27,13 @@ export const FRAME_H = 32;
 export const DIRECTIONS = ['down', 'left', 'right', 'up'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 export const WALK_FRAMES: readonly Frame[] = [0, 1, 2, 3];
+/** La pose sentada: la quinta columna de la hoja (ADR-0013). */
+export const SIT_FRAME = 4;
+export type SheetFrame = Frame | typeof SIT_FRAME;
+/** Columnas de la hoja: la caminata y la pose sentada. */
+export const SHEET_COLUMNS = WALK_FRAMES.length + 1;
+/** Sentado, la cabeza baja esto (px de arte). */
+export const SIT_DROP = 4;
 
 export const TOP_STYLES = [
   'playera',
@@ -302,13 +310,53 @@ export function composeFrame(
   return grid;
 }
 
+/**
+ * Sentado (ADR-0013): la cabeza, el torso y las manos del cuadro de pie,
+ * bajados SIT_DROP px, y las piernas dobladas de SIT_LEGS con los colores de
+ * la ropa. Los pies siguen en la fila de siempre: el ancla no cambia.
+ */
+export function composeSittingFrame(
+  look: Look,
+  direction: Direction,
+  options: ComposeOptions = {},
+): Grid {
+  const dir: MapDirection = direction === 'right' ? 'left' : direction;
+  const standing = composeFrame(look, direction, 0, options);
+  const grid: Grid = Array.from({ length: FRAME_H }, () =>
+    Array.from({ length: FRAME_W }, () => null),
+  );
+  for (let y = 0; y <= 20; y++) {
+    const row = standing[y];
+    if (row) grid[y + SIT_DROP] = [...row];
+  }
+  const legs = SIT_LEGS[dir];
+  const first = 21 + SIT_DROP;
+  legs.forEach((line, i) => {
+    const y = first + i;
+    const below = legs[i + 1] ?? '';
+    const row = grid[y];
+    if (!row) return;
+    for (let x = 0; x < FRAME_W; x++) {
+      const ch = line.charAt(x);
+      if (ch === '.') continue;
+      const color = regionColor(ch, look, x, y, below, options);
+      if (color) row[x] = color;
+    }
+  });
+  return grid;
+}
+
 export function renderFrameGrid(
   look: Look,
   direction: Direction,
-  frame: Frame,
+  frame: SheetFrame,
   options: ComposeOptions = {},
 ): Grid {
-  const grid = addOutline(composeFrame(look, direction, frame, options));
+  const composed =
+    frame === SIT_FRAME
+      ? composeSittingFrame(look, direction, options)
+      : composeFrame(look, direction, frame, options);
+  const grid = addOutline(composed);
   return direction === 'right' ? grid.map((row) => [...row].reverse()) : grid;
 }
 
@@ -354,20 +402,20 @@ const sheetCache = new Map<string, HTMLCanvasElement>();
 
 /**
  * Hoja de sprites a 1×: filas = direcciones (down, left, right, up),
- * columnas = cuadros de caminata. Phaser la usa como textura; la UI dibuja
- * cuadros sueltos escalados sin suavizado.
+ * columnas = cuadros de caminata y, al final, la pose sentada. Phaser la usa
+ * como textura; la UI dibuja cuadros sueltos escalados sin suavizado.
  */
 export function spriteSheet(look: Look): HTMLCanvasElement {
   const key = lookKey(look);
   const cached = sheetCache.get(key);
   if (cached) return cached;
   const canvas = document.createElement('canvas');
-  canvas.width = FRAME_W * WALK_FRAMES.length;
+  canvas.width = FRAME_W * SHEET_COLUMNS;
   canvas.height = FRAME_H * DIRECTIONS.length;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D no disponible');
   DIRECTIONS.forEach((direction, row) => {
-    for (const frame of WALK_FRAMES) {
+    for (const frame of [...WALK_FRAMES, SIT_FRAME] as const) {
       ctx.putImageData(
         gridToImageData(renderFrameGrid(look, direction, frame)),
         frame * FRAME_W,
@@ -385,7 +433,7 @@ export function drawCharacter(
   ctx: CanvasRenderingContext2D,
   look: Look,
   direction: Direction,
-  frame: Frame,
+  frame: SheetFrame,
   dx: number,
   dy: number,
   scale: number,
@@ -411,7 +459,7 @@ const frameCache = new Map<string, HTMLCanvasElement>();
 export function frameCanvas(
   look: Look,
   direction: Direction,
-  frame: Frame,
+  frame: SheetFrame,
   options: ComposeOptions = {},
 ): HTMLCanvasElement {
   const key = `${lookKey(look)}#${direction}${frame}${options.clothesOnly ? 'c' : ''}${options.blink ? 'b' : ''}`;

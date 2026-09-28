@@ -1,0 +1,285 @@
+{
+  "nota": "Fotos de referencia del centro de Morelia (Wikimedia Commons). Solo para dibujar: no se redistribuyen en el repo. Las baja scripts/plaza/referencias.mts a docs/plaza/referencias/ (ignorada por git). La descripción completa de cada una está en investigacion.md §7.",
+  "osm": {
+    "bbox": {
+      "minlat": 19.7003,
+      "minlon": -101.1948,
+      "maxlat": 19.7042,
+      "maxlon": -101.1898
+    },
+    "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-101.1948,19.7003,-101.1898,19.7042",
+    "licencia": "© OpenStreetMap contributors, ODbL 1.0"
+  },
+  "fotos": [
+    {
+      "n": 1,
+      "grupo": "Catedral",
+      "archivo": "catedral_fachada_norte_frontal.jpg",
+      "medida": "1280×1385",
+      "commons": "https://commons.wikimedia.org/wiki/File:MoreliaCathedral170627p1.jpg",
+      "autorLicencia": "Carlos Valenzuela, CC BY-SA 4.0, 27 de junio de 2017",
+      "encuadre": "frontal casi ortogonal (panorámica corregida) de la fachada norte desde Madero, con cielo nublado. Es la mejor para las proporciones (ver §1.3 y §1.7).",
+      "archivoCommons": "MoreliaCathedral170627p1.jpg"
+    },
+    {
+      "n": 2,
+      "grupo": "Catedral",
+      "archivo": "catedral_fachada_norte_rejas_y_puertas.jpg",
+      "medida": "1280×853",
+      "commons": "https://commons.wikimedia.org/wiki/File:Catedral_de_more.jpg",
+      "autorLicencia": "TonyRaw, CC BY-SA 4.0, 30 de agosto de 2015",
+      "encuadre": "gran angular desde la banqueta de Madero con sol lateral y cielo azul con nubes. No sirve para proporciones.",
+      "archivoCommons": "Catedral_de_more.jpg"
+    },
+    {
+      "n": 3,
+      "grupo": "Catedral",
+      "archivo": "catedral_fachada_central_relieves.jpg",
+      "medida": "1280×961",
+      "commons": "https://commons.wikimedia.org/wiki/File:MoreliaCathedral19.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": "frontal del cuerpo central con luz de tarde.",
+      "archivoCommons": "MoreliaCathedral19.JPG"
+    },
+    {
+      "n": 4,
+      "grupo": "Catedral",
+      "archivo": "catedral_portada_central_relieve_y_copetes.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia_Cathedral_DSC_0450_AD.JPG",
+      "autorLicencia": "Adavyd, CC BY-SA 3.0, 14 de enero de 2012",
+      "encuadre": "de cerca, la portada central.",
+      "archivoCommons": "Morelia_Cathedral_DSC_0450_AD.JPG"
+    },
+    {
+      "n": 5,
+      "grupo": "Catedral",
+      "archivo": "catedral_torre_remate_cupulin.jpg",
+      "medida": "1280×1707",
+      "commons": "https://commons.wikimedia.org/wiki/File:Detalle_de_cupula_de_torre_de_catedral_de_Morelia.JPG",
+      "autorLicencia": "Octaviocarachure, CC BY-SA 4.0, 4 de febrero de 2010",
+      "encuadre": "la punta de una torre con cielo azul intenso.",
+      "archivoCommons": "Detalle_de_cupula_de_torre_de_catedral_de_Morelia.JPG"
+    },
+    {
+      "n": 6,
+      "grupo": "Catedral",
+      "archivo": "catedral_cupula_azulejos.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Detalle_cupula,_Catedral_Metropolitana_de_Morelia.jpg",
+      "autorLicencia": "Hugoacostac, CC BY-SA 3.0, 30 de noviembre de 2011",
+      "encuadre": "cúpula principal (izquierda) y cúpula menor (derecha, al frente) con cielo azul y sol cálido.",
+      "archivoCommons": "Detalle_cupula,_Catedral_Metropolitana_de_Morelia.jpg"
+    },
+    {
+      "n": 7,
+      "grupo": "Catedral",
+      "archivo": "catedral_costado_poniente_desde_atrio.jpg",
+      "medida": "1280×1004",
+      "commons": "https://commons.wikimedia.org/wiki/File:Parte_posterior_de_Catedral_de_Morelia.jpg",
+      "autorLicencia": "Antonio Carreón Guzmán, CC BY-SA 3.0, 2 de agosto de 2009",
+      "encuadre": "a pesar del nombre, es el costado poniente (el que da a la Plaza de Armas), visto desde el atrio poniente. Sol pleno.",
+      "archivoCommons": "Parte_posterior_de_Catedral_de_Morelia.jpg"
+    },
+    {
+      "n": 8,
+      "grupo": "Catedral",
+      "archivo": "catedral_vista_trasera_sur_desde_azotea.jpg",
+      "medida": "1280×853",
+      "commons": "https://commons.wikimedia.org/wiki/File:Vista_posterior_Catedral_de_Morelia.jpg",
+      "autorLicencia": "Javier Alejandro Lara Bautista, CC BY-SA 4.0, 14 de mayo de 2017",
+      "encuadre": "parte trasera (sur) desde una azotea, con luz difusa de tarde. Clave para la vista 3/4 con el norte arriba.",
+      "archivoCommons": "Vista_posterior_Catedral_de_Morelia.jpg"
+    },
+    {
+      "n": 9,
+      "grupo": "Catedral",
+      "archivo": "catedral_y_plaza_melchor_ocampo_estatua.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia_Cathedral_DSC_0524_AD.JPG",
+      "autorLicencia": "Adavyd, CC BY-SA 3.0, 15 de enero de 2012",
+      "encuadre": "el costado oriente completo desde la Plaza Ocampo, con cielo azul limpio.",
+      "archivoCommons": "Morelia_Cathedral_DSC_0524_AD.JPG"
+    },
+    {
+      "n": 10,
+      "grupo": "Catedral",
+      "archivo": "catedral_reja_puerta_atrio.jpg",
+      "medida": "1280×1912",
+      "commons": "https://commons.wikimedia.org/wiki/File:BackGateMoreliaCathedral.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": "portón trasero del atrio, de frente. La mejor referencia de un portón completo.",
+      "archivoCommons": "BackGateMoreliaCathedral.JPG"
+    },
+    {
+      "n": 11,
+      "grupo": "Catedral",
+      "archivo": "catedral_noche_iluminacion.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Frente_de_la_Catedral_Metropolitana_de_Morelia.jpg",
+      "autorLicencia": "HRJuarez, CC BY-SA 4.0, 24 de mayo de 2018",
+      "encuadre": "frontal nocturna desde Madero.",
+      "archivoCommons": "Frente_de_la_Catedral_Metropolitana_de_Morelia.jpg"
+    },
+    {
+      "n": 12,
+      "grupo": "Catedral",
+      "archivo": "catedral_noche_fuegos_artificiales.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Catedral_de_Morelia_festiva.jpg",
+      "autorLicencia": "AAleMA ciencias, CC BY-SA 4.0, **sábado** 10 de agosto de 2019, 21:03 (el",
+      "encuadre": null,
+      "archivoCommons": "Catedral_de_Morelia_festiva.jpg"
+    },
+    {
+      "n": 13,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_kiosco.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:KIOSKO_PLAZA_ARM_MORELIA.JPG",
+      "autorLicencia": "PFKASESOR, CC BY-SA 3.0, 21 de septiembre de 2009",
+      "encuadre": null,
+      "archivoCommons": "KIOSKO_PLAZA_ARM_MORELIA.JPG"
+    },
+    {
+      "n": 14,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_kiosco_cupula_jacarandas.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:PlazaArmasMorelia07.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": "kiosco completo con su cupulín de lámina gris plata en forma de campana con costillas y cruz. Proporción: base ≈20 %, columnas ≈45 %, techo y cupulín ≈35 %.",
+      "archivoCommons": "PlazaArmasMorelia07.JPG"
+    },
+    {
+      "n": 15,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_fuente_cuadrante.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:FountainPlazaArmasMorelia2.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": null,
+      "archivoCommons": "FountainPlazaArmasMorelia2.JPG"
+    },
+    {
+      "n": 16,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_fuente_columna_ficus_bancas_hierro.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:FountainPlazaMorelia.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": null,
+      "archivoCommons": "FountainPlazaMorelia.JPG"
+    },
+    {
+      "n": 17,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_pilastras_faroles_entrada.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:PlazaArmasMorelia04.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": "entrada de esquina.",
+      "archivoCommons": "PlazaArmasMorelia04.JPG"
+    },
+    {
+      "n": 18,
+      "grupo": "Plaza de Armas",
+      "archivo": "plaza_armas_andador_ficus_bancas_cantera.jpg",
+      "medida": "1280×841",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia,_centro_09.jpg",
+      "autorLicencia": "LBM1948, CC BY-SA 4.0, 4 de noviembre de 2013",
+      "encuadre": null,
+      "archivoCommons": "Morelia,_centro_09.jpg"
+    },
+    {
+      "n": 19,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "portal_hidalgo_hotel_casino_madero.jpg",
+      "medida": "1280×971",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia,_centro_22.jpg",
+      "autorLicencia": "LBM1948, CC BY-SA 4.0, 4 de noviembre de 2013",
+      "encuadre": "el Portal Hidalgo (lado norte de Madero) desde el otro lado de la avenida.",
+      "archivoCommons": "Morelia,_centro_22.jpg"
+    },
+    {
+      "n": 20,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "portal_cafe_mesas_bajo_arcos.jpg",
+      "medida": "1280×850",
+      "commons": "https://commons.wikimedia.org/wiki/File:2013-11_Morelia_1.jpg",
+      "autorLicencia": "LBM1948, CC BY-SA 4.0, 4 de noviembre de 2013",
+      "encuadre": null,
+      "archivoCommons": "2013-11_Morelia_1.jpg"
+    },
+    {
+      "n": 21,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "madero_poniente_virrey_de_mendoza.jpg",
+      "medida": "1280×857",
+      "commons": "https://commons.wikimedia.org/wiki/File:WestfromCathedralMorelia.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": "Madero hacia el poniente.",
+      "archivoCommons": "WestfromCathedralMorelia.JPG"
+    },
+    {
+      "n": 22,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "palacio_gobierno_fachada_madero.jpg",
+      "medida": "1280×1137",
+      "commons": "https://commons.wikimedia.org/wiki/File:PalacioGobiernoMichoacan05.JPG",
+      "autorLicencia": "AlejandroLinaresGarcia, CC BY-SA 3.0, 29 de abril de 2012",
+      "encuadre": null,
+      "archivoCommons": "PalacioGobiernoMichoacan05.JPG"
+    },
+    {
+      "n": 23,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "plaza_melchor_ocampo_explanada.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Plaza_Melchor_Ocampo_-_panoramio.jpg",
+      "autorLicencia": "ORamírezD, CC BY-SA 3.0, 16 de junio de 2011",
+      "encuadre": null,
+      "archivoCommons": "Plaza_Melchor_Ocampo_-_panoramio.jpg"
+    },
+    {
+      "n": 24,
+      "grupo": "Portales, Madero y Palacio",
+      "archivo": "hotel_los_juaninos_fachada_2006.jpg",
+      "medida": "500×375; pequeña y antigua",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia_-_hotel_los_Juaninos%29.jpg",
+      "autorLicencia": "Gabriel Rodríguez López, dominio público, 12 de mayo de 2006",
+      "encuadre": null,
+      "archivoCommons": "Morelia_-_hotel_los_Juaninos%29.jpg"
+    },
+    {
+      "n": 25,
+      "grupo": "Ambiente y vistas",
+      "archivo": "vendedor_globos_catedral.jpg",
+      "medida": "960×1707",
+      "commons": "https://commons.wikimedia.org/wiki/File:Catedral_Metropolitana_de_Morelia_con_globos.JPG",
+      "autorLicencia": "Marioli925, CC BY-SA 3.0, 31 de enero de 2009",
+      "encuadre": null,
+      "archivoCommons": "Catedral_Metropolitana_de_Morelia_con_globos.JPG"
+    },
+    {
+      "n": 26,
+      "grupo": "Ambiente y vistas",
+      "archivo": "vendedor_churros_catedral_costado_oriente.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Vendedor_de_churros_con_la_Catedral_de_Morelia_al_fondo.jpg",
+      "autorLicencia": "Luis Alvaz, CC BY-SA 4.0, 22 de septiembre de 2018",
+      "encuadre": "desde el alero de la esquina Morelos Sur y Allende, mirando al noroeste.",
+      "archivoCommons": "Vendedor_de_churros_con_la_Catedral_de_Morelia_al_fondo.jpg"
+    },
+    {
+      "n": 27,
+      "grupo": "Ambiente y vistas",
+      "archivo": "vista_alta_centro_desde_poniente.jpg",
+      "medida": "1280×960",
+      "commons": "https://commons.wikimedia.org/wiki/File:Morelia_en_las_alturas.jpg",
+      "autorLicencia": "Israelfvg, CC BY-SA 4.0, 28 de julio de 2004",
+      "encuadre": "vista alta con teleobjetivo desde el poniente.",
+      "archivoCommons": "Morelia_en_las_alturas.jpg"
+    }
+  ]
+}

@@ -21,29 +21,42 @@ async function enLinea(page: Page, sala?: string) {
   );
 }
 
-/** Camina con una tecla hasta que la posición cumpla la condición (o se atore). */
+/**
+ * Camina por un eje hasta `meta` (± `tolerancia`) a toquecitos: cada uno
+ * cubre parte de lo que falta y se vuelve a medir. Soltar una tecla tarda
+ * (sin GPU, un cuadro dura tanto que el toque más corto avanza casi un tile):
+ * mantenerla hasta pasarse deja al personaje donde sea y la ruta se atora en
+ * el primer farol. Por eso cada tramo pide la holgura que su camino permite.
+ */
 async function caminarHasta(
   page: Page,
-  key: string,
   eje: 'x' | 'y',
   meta: number,
-  timeoutMs = 12_000,
+  tolerancia: number,
 ): Promise<void> {
   await page.bringToFront();
-  await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ([e, m, hacia]) => {
-        const p = window.__wousJuego?.posicion();
-        if (!p) return false;
-        return hacia > 0 ? p[e] >= m : p[e] <= m;
-      },
-      [eje, meta, key === 'KeyD' || key === 'KeyS' ? 1 : -1] as const,
-      { timeout: timeoutMs, polling: 30 },
-    );
-  } finally {
+  let antes: number | null = null;
+  let quieto = 0;
+  for (let i = 0; i < 60; i++) {
+    const p = await page.evaluate(() => window.__wousJuego?.posicion() ?? null);
+    if (!p) throw new Error('El juego no reporta posición');
+    const falta = meta - p[eje];
+    if (Math.abs(falta) <= tolerancia) return;
+    // Cuatro toques seguidos sin avanzar: algo estorba.
+    quieto = antes !== null && Math.abs(p[eje] - antes) < 0.01 ? quieto + 1 : 0;
+    if (quieto >= 4) {
+      throw new Error(`Atorada en ${p.x.toFixed(2)},${p.y.toFixed(2)} rumbo a ${eje}=${meta}`);
+    }
+    antes = p[eje];
+    const key = eje === 'x' ? (falta > 0 ? 'KeyD' : 'KeyA') : falta > 0 ? 'KeyS' : 'KeyW';
+    // El 70 % de lo que falta a 4.2 tiles/s, sin pasar de 3 s ni bajar de 80 ms.
+    const ms = Math.max(80, Math.min(3000, ((Math.abs(falta) * 0.7) / 4.2) * 1000));
+    await page.keyboard.down(key);
+    await page.waitForTimeout(ms);
     await page.keyboard.up(key);
+    await page.waitForTimeout(60);
   }
+  throw new Error(`No llegó a ${eje}=${meta}`);
 }
 
 test('cruza al Café: la Plaza deja de verla, recargar la deja ahí y de regreso se ven', async ({
@@ -72,9 +85,14 @@ test('cruza al Café: la Plaza deja de verla, recargar la deja ahí y de regreso
     );
   await beVeAAna(true);
 
-  // Ana camina de la entrada a la puerta del Café: a la derecha y luego arriba hasta la fachada.
-  await caminarHasta(a, 'KeyD', 'x', 30.9);
-  await caminarHasta(a, 'KeyW', 'y', 3.3);
+  // Ana camina del atrio a la puerta del Café, bajo los portales de Allende:
+  // por el atrio poniente (sin reja al norte, como el de verdad) hasta el
+  // empedrado de Allende, y por él hasta el arco del Café. Cada tramo tiene
+  // holgura para un personaje que no se detiene exacto.
+  await caminarHasta(a, 'x', 49, 1.2);
+  await caminarHasta(a, 'y', 8.5, 0.6);
+  await caminarHasta(a, 'x', 72.875, 0.6);
+  await caminarHasta(a, 'y', 5.3, 0.3);
   await expect(a.locator('.pista--accion')).toContainText('Entrar al Café');
   await a.keyboard.press('KeyE');
 

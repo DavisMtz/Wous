@@ -57,16 +57,20 @@ function footprintAt(p: Vec, config: MovementConfig): Box {
   };
 }
 
-/** Tiles bloqueados que toca una caja (de izquierda a derecha, de arriba abajo). */
-function blockedTiles(grid: CollisionGrid, box: Box): { tx: number; ty: number }[] {
-  const out: { tx: number; ty: number }[] = [];
-  const x0 = Math.floor(box.minX);
-  const x1 = Math.floor(box.maxX - EPSILON);
-  const y0 = Math.floor(box.minY);
-  const y1 = Math.floor(box.maxY - EPSILON);
-  for (let ty = y0; ty <= y1; ty++) {
-    for (let tx = x0; tx <= x1; tx++) {
-      if (isBlocked(grid, tx, ty)) out.push({ tx, ty });
+/**
+ * Celdas bloqueadas que toca una caja (de izquierda a derecha, de arriba
+ * abajo), en celdas de la rejilla: `cellsPerTile` por lado de tile.
+ */
+function blockedCells(grid: CollisionGrid, box: Box): { cx: number; cy: number }[] {
+  const out: { cx: number; cy: number }[] = [];
+  const r = grid.cellsPerTile;
+  const x0 = Math.floor(box.minX * r);
+  const x1 = Math.floor(box.maxX * r - EPSILON);
+  const y0 = Math.floor(box.minY * r);
+  const y1 = Math.floor(box.maxY * r - EPSILON);
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      if (isBlocked(grid, cx, cy)) out.push({ cx, cy });
     }
   }
   return out;
@@ -74,7 +78,7 @@ function blockedTiles(grid: CollisionGrid, box: Box): { tx: number; ty: number }
 
 /** ¿La posición es válida para parar ahí (sin chocar)? */
 export function canStandAt(grid: CollisionGrid, p: Vec, config: MovementConfig = DEFAULT_MOVEMENT) {
-  return blockedTiles(grid, footprintAt(p, config)).length === 0;
+  return blockedCells(grid, footprintAt(p, config)).length === 0;
 }
 
 /**
@@ -113,16 +117,18 @@ function moveAxis(
 ): Vec {
   if (delta === 0) return p;
   const next = { ...p, [axis]: p[axis] + delta };
-  const hits = blockedTiles(grid, footprintAt(next, config));
+  const hits = blockedCells(grid, footprintAt(next, config));
   if (hits.length === 0) return next;
 
+  // El borde de la celda que choca, de vuelta en tiles.
+  const r = grid.cellsPerTile;
   const half = axis === 'x' ? config.footprint.halfWidth : config.footprint.halfHeight;
   if (delta > 0) {
-    const wall = Math.min(...hits.map((h) => (axis === 'x' ? h.tx : h.ty)));
+    const wall = Math.min(...hits.map((h) => (axis === 'x' ? h.cx : h.cy))) / r;
     return { ...p, [axis]: Math.max(p[axis], wall - half - EPSILON) };
   }
-  const wall = Math.max(...hits.map((h) => (axis === 'x' ? h.tx : h.ty)));
-  return { ...p, [axis]: Math.min(p[axis], wall + 1 + half + EPSILON) };
+  const wall = (Math.max(...hits.map((h) => (axis === 'x' ? h.cx : h.cy))) + 1) / r;
+  return { ...p, [axis]: Math.min(p[axis], wall + half + EPSILON) };
 }
 
 export function distance(a: Vec, b: Vec): number {

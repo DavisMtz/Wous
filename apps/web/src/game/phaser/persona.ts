@@ -7,6 +7,9 @@ import {
   FRAME_W,
   type Look,
   lookKey,
+  SHEET_COLUMNS,
+  SIT_DROP,
+  SIT_FRAME,
   spriteSheet,
   WALK_FRAMES,
 } from '../rendering/pixel-character.ts';
@@ -64,8 +67,8 @@ function ensureLook(scene: Phaser.Scene, look: Look): string {
   const sheetKey = `persona:${lookKey(look)}`;
   const texture = addCanvasTexture(scene, sheetKey, () => spriteSheet(look));
   DIRECTIONS.forEach((direction, row) => {
-    for (const frame of WALK_FRAMES) {
-      const index = row * WALK_FRAMES.length + frame;
+    for (const frame of [...WALK_FRAMES, SIT_FRAME]) {
+      const index = row * SHEET_COLUMNS + frame;
       if (!texture.has(String(index))) {
         texture.add(index, 0, frame * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
       }
@@ -76,7 +79,7 @@ function ensureLook(scene: Phaser.Scene, look: Look): string {
         key,
         frames: WALK_FRAMES.map((frame) => ({
           key: sheetKey,
-          frame: row * WALK_FRAMES.length + frame,
+          frame: row * SHEET_COLUMNS + frame,
         })),
         frameRate: 9,
         repeat: -1,
@@ -149,6 +152,9 @@ function paintFriendChip(): HTMLCanvasElement {
   return canvas;
 }
 
+/** Sentado (ADR-0013): cuánto se levanta el dibujo para quedar sobre el asiento. */
+export type Postura = { lift: number } | null;
+
 type Globo = { image: Phaser.GameObjects.Image; key: string; born: number; until: number };
 type Gesto = {
   image: Phaser.GameObjects.Image;
@@ -185,6 +191,8 @@ export class Persona {
   private hop: { since: number; count: number } | null = null;
   private zoom = 1;
   private at = { px: 0, py: 0 };
+  /** Sentado: cuánto sube el dibujo (px de arte). null = de pie. */
+  private sentado: Postura = null;
   /** Cuánto sube el globo para no taparse con otro (lo decide la escena). */
   private globoLift = 0;
   private globoNatural: GloboRect | null = null;
@@ -220,23 +228,43 @@ export class Persona {
   }
 
   private idleFrame(): number {
-    return DIRECTIONS.indexOf(this.facing) * WALK_FRAMES.length;
+    return DIRECTIONS.indexOf(this.facing) * SHEET_COLUMNS;
   }
 
-  /** Posición en tiles (pies), mirando y si camina. */
-  draw(x: number, y: number, facing: Facing, moving: boolean, animate: boolean): void {
+  /**
+   * Posición en tiles (pies), mirando, si camina y, sentado, cuánto sube el
+   * dibujo. Sentado no se anima: la pose es un solo cuadro.
+   */
+  draw(
+    x: number,
+    y: number,
+    facing: Facing,
+    moving: boolean,
+    animate: boolean,
+    postura: Postura = null,
+  ): void {
     const px = Math.round(x * TILE);
     const py = Math.round(y * TILE);
     this.at = { px, py };
     this.facing = facing;
-    this.sprite.setPosition(px, py).setDepth(y * TILE);
-    this.shadow.setPosition(px, py);
-    if (moving && animate) {
+    this.sentado = postura;
+    const lift = postura?.lift ?? 0;
+    this.sprite.setPosition(px, py - lift).setDepth(y * TILE);
+    this.shadow.setPosition(px, py).setVisible(postura === null || lift < 6);
+    if (postura) {
+      this.sprite.anims.stop();
+      this.sprite.setFrame(DIRECTIONS.indexOf(facing) * SHEET_COLUMNS + SIT_FRAME);
+    } else if (moving && animate) {
       this.sprite.anims.play(`caminar:${this.sheetKey}:${facing}`, true);
     } else {
       this.sprite.anims.stop();
       this.sprite.setFrame(this.idleFrame());
     }
+  }
+
+  /** Cuánto más abajo queda la coronilla que de pie (sentado baja la cabeza y sube el dibujo). */
+  private get bajaCabeza(): number {
+    return this.sentado ? SIT_DROP - this.sentado.lift : 0;
   }
 
   /**
@@ -248,9 +276,9 @@ export class Persona {
     const { px } = this.at;
     const lift = animate ? this.hopLift(now) : 0;
     const py = this.at.py - lift;
-    this.sprite.setY(py);
+    this.sprite.setY(py - (this.sentado?.lift ?? 0));
 
-    let top = py - FRAME_H - 2;
+    let top = py - FRAME_H - 2 + this.bajaCabeza;
     if (this.tag) {
       this.tag.setPosition(px, top);
       if (this.chip) {
@@ -457,7 +485,7 @@ export class Persona {
     return (
       worldX >= px - FRAME_W / 2 - pad &&
       worldX <= px + FRAME_W / 2 + pad &&
-      worldY >= py - FRAME_H - pad &&
+      worldY >= py - FRAME_H + this.bajaCabeza - pad &&
       worldY <= py + pad
     );
   }

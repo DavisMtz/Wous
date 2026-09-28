@@ -9,8 +9,9 @@ describe('game-core y world-data dentro del Worker', () => {
     expect(validateWorld()).toEqual([]);
     const grid = collisionGrid(PLAZA);
     let p: Vec = spawnOf(PLAZA, 'entrada');
+    // Hacia arriba desde el atrio: se detiene en la escalinata de la Catedral.
     for (let i = 0; i < 80; i++) p = stepMovement(p, normalizeInput(0, -1), 100, grid);
-    expect(p.y).toBeGreaterThan(17.5);
-    expect(p.y).toBeLessThan(18.5);
+    expect(p.y).toBeGreaterThan(36.1);
+    expect(p.y).toBeLessThan(36.3);
   });
 });

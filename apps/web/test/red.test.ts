@@ -349,6 +349,63 @@ describe('estado de la sala', () => {
     expect(room.render(vuelto, 1500, grid)?.away).toBe(false);
   });
 
+  it('sentarse es un salto, no un deslizamiento, y el asiento queda ocupado', () => {
+    const room = new RoomState();
+    room.apply(snapshot(5000), 1000);
+    const estado = (
+      t: number,
+      x: number,
+      y: number,
+      seat?: string,
+      away?: boolean,
+    ): ServerMessage => ({
+      v: 1,
+      type: 'PLAYER_STATE',
+      payload: {
+        states: [
+          {
+            id: ID_B,
+            x,
+            y,
+            facing: 'down',
+            moveX: 0,
+            moveY: 0,
+            seq: 1,
+            t,
+            ...(seat ? { seat } : {}),
+            ...(away ? { away } : {}),
+          },
+        ],
+        serverTime: t,
+      },
+    });
+    const remoto = () => {
+      const r = room.remotes.get(ID_B);
+      if (!r) throw new Error('sin remoto');
+      return r;
+    };
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(false);
+    room.apply(estado(5100, 16.5, 21.55), 1100); // de pie, frente a la banca
+    room.apply(estado(5200, 16.5, 21.05, 'cubo-ocampo-2'), 1200); // sentado
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(true);
+    expect(room.seatTaken('cubo-ocampo-3')).toBe(false);
+    // A medio camino entre las dos muestras no se dibuja a medio sentarse.
+    const antes = room.render(remoto(), 1240, grid);
+    expect(antes).toMatchObject({ y: 21.55, seat: null, moving: false });
+    const despues = room.render(remoto(), 1260, grid);
+    expect(despues).toMatchObject({ y: 21.05, seat: 'cubo-ocampo-2', moving: false });
+    // Otro estado en el mismo asiento (se le cayó la conexión): sigue sentado todo el tramo.
+    room.apply(estado(5300, 16.5, 21.05, 'cubo-ocampo-2', true), 1300);
+    expect(room.render(remoto(), 1350, grid)).toMatchObject({
+      seat: 'cubo-ocampo-2',
+      moving: false,
+      away: true,
+    });
+    // Se levanta: el asiento se libera.
+    room.apply(estado(5400, 16.5, 21.55), 1400);
+    expect(room.seatTaken('cubo-ocampo-2')).toBe(false);
+  });
+
   it('quien se va desaparece', () => {
     const room = new RoomState();
     room.apply(snapshot(5000), 1000);

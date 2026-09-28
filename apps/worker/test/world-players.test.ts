@@ -113,7 +113,7 @@ describe('attachment', () => {
     expect(new TextEncoder().encode(JSON.stringify(att)).length).toBeLessThan(1024);
   });
 
-  it('sigue cabiendo con todo lo del chat, los gestos y la moderación poblado (Fase 7)', () => {
+  it('sigue cabiendo con todo lo del chat, los gestos, la moderación y el asiento poblado', () => {
     const t = 1_790_000_000_000;
     const att = attachment({
       name: 'Ñandú Pérez Ruíz Ávila',
@@ -130,6 +130,8 @@ describe('attachment', () => {
       sw: Array.from({ length: SOCIAL.actionsPerMinute }, (_, i) => t + i),
       strikes: NETWORK.maxStrikes,
       kw: t,
+      st: 'banca-plaza-de-armas-12-derecha',
+      sa: t,
     });
     expect(new TextEncoder().encode(JSON.stringify(att)).length).toBeLessThan(1400);
   });

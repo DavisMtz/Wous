@@ -1,30 +1,40 @@
-import type { GroundKind, MapDef } from '@wous/world-data';
+import {
+  BLOCKING_GROUND,
+  type GroundKind,
+  insideShape,
+  type MapDef,
+  shapeBounds,
+} from '@wous/world-data';
 import { WOOD } from '../rendering/palette.ts';
 import { lucesEnElPiso, mosaico, muro, paintInterior, repello } from './interior.ts';
 import { objectShadow } from './objects.ts';
-import { hash, type Painter, painter, pick, sign, signWidth } from './paint.ts';
+import { hash, type Painter, painter, pick } from './paint.ts';
 import {
   ASFALTO,
+  AZOTEA,
   BANQUETA,
-  CAL,
   CANTERA,
-  FACHADAS,
-  FOSFO,
+  EMPEDRADO,
+  ENLOSADO,
+  EXPLANADA,
+  HIERRO,
   hundido,
   JACARANDA,
   LADRILLO,
-  METAL,
+  LOSA,
   PASTO,
-  PLUMON,
   SETO,
   TILE,
 } from './world-palette.ts';
 
 /**
  * El suelo del mapa en un solo canvas (ancho × alto en tiles, 16 px cada
- * uno). Primero el material pixel por pixel; luego el detalle de las fachadas;
- * al final las sombras de los objetos, horneadas: son estáticas y así quedan
- * siempre debajo de las personas.
+ * uno). Primero se decide el material de cada pixel —el del tile y, encima,
+ * las formas del mapa (andadores en diagonal, el anillo del kiosko, los
+ * jardines), que solo cambian el dibujo—; luego se pinta cada pixel con su
+ * material mirando a sus vecinos (las guarniciones salen de ahí); al final
+ * los interiores y las sombras de los objetos, horneadas: son estáticas y así
+ * quedan siempre debajo de las personas.
  */
 export function paintGround(map: MapDef): HTMLCanvasElement {
   const w = map.width * TILE;
@@ -35,6 +45,9 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
     tx < 0 || ty < 0 || tx >= map.width || ty >= map.height
       ? null
       : (map.ground[ty * map.width + tx] ?? null);
+  const mat = materialBuffer(map, w, h);
+  const matAt = (gx: number, gy: number): Material | null =>
+    gx < 0 || gy < 0 || gx >= w || gy >= h ? null : (MATERIALS[mat[gy * w + gx] ?? 0] ?? null);
   const petals = map.objects
     .filter((o) => o.kind === 'jacaranda')
     .map((o) => ({ x: (o.x + 0.5) * TILE, y: (o.y + 0.9) * TILE }));
@@ -46,11 +59,21 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
     for (let gx = 0; gx < w; gx++) {
       const tx = Math.floor(gx / TILE);
       const ty = Math.floor(gy / TILE);
-      const kind = kindAt(tx, ty);
-      const ctx: Px = { gx, gy, lx: gx % TILE, ly: gy % TILE, tx, ty, kindAt, backRows };
-      let color = kind ? MATERIAL[kind](ctx) : CANTERA.base;
+      const material = matAt(gx, gy) ?? 'enlosado';
+      const ctx: Px = {
+        gx,
+        gy,
+        lx: gx % TILE,
+        ly: gy % TILE,
+        tx,
+        ty,
+        kindAt,
+        matAt,
+        backRows,
+      };
+      let color = PAINTERS[material](ctx);
       // Pétalos de jacaranda caídos cerca de cada árbol (en piso, no en seto).
-      if (kind === 'adoquin' || kind === 'pasto' || kind === 'ladrillo') {
+      if (material === 'enlosado' || material === 'explanada' || material === 'losa') {
         color = petal(gx, gy, petals) ?? color;
       }
       put(image.data, (gy * w + gx) * 4, color);
@@ -58,10 +81,73 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
   }
   p.ctx.putImageData(image, 0, 0);
 
-  paintFacades(p, map, kindAt);
+  paintFences(p, matAt, w, h);
   paintInterior(p, map, kindAt);
   paintShadows(p, map, kindAt, backRows);
   return p.canvas;
+}
+
+// ─── Materiales por pixel ──────────────────────────────────────────────────
+
+type Material = GroundKind | 'cebra' | 'jardin';
+const MATERIALS: readonly Material[] = [
+  'fachada',
+  'azotea',
+  'banqueta',
+  'enlosado',
+  'explanada',
+  'losa',
+  'empedrado',
+  'portal',
+  'ladrillo',
+  'pasto',
+  'seto',
+  'calle',
+  'duela',
+  'mosaico',
+  'pared',
+  'cebra',
+  'jardin',
+];
+const INDEX = new Map(MATERIALS.map((m, i) => [m, i]));
+
+/**
+ * El material de cada pixel: el de su tile y, encima, las formas en orden.
+ * Una forma solo cae donde el tile se pisa (la cebra, solo en la calle): el
+ * dibujo nunca contradice a la colisión.
+ */
+function materialBuffer(map: MapDef, w: number, h: number): Uint8Array {
+  const mat = new Uint8Array(w * h);
+  for (let ty = 0; ty < map.height; ty++) {
+    for (let tx = 0; tx < map.width; tx++) {
+      const kind = map.ground[ty * map.width + tx] ?? 'enlosado';
+      const index = INDEX.get(kind) ?? 0;
+      for (let ly = 0; ly < TILE; ly++) {
+        mat.fill(index, (ty * TILE + ly) * w + tx * TILE, (ty * TILE + ly) * w + tx * TILE + TILE);
+      }
+    }
+  }
+  const calle = INDEX.get('calle');
+  for (const shape of map.paint) {
+    const index = INDEX.get(shape.kind) ?? 0;
+    const street = shape.kind === 'cebra';
+    const [x0, y0, x1, y1] = shapeBounds(shape);
+    const gx0 = Math.max(0, Math.floor(x0 * TILE));
+    const gy0 = Math.max(0, Math.floor(y0 * TILE));
+    const gx1 = Math.min(w, Math.ceil(x1 * TILE));
+    const gy1 = Math.min(h, Math.ceil(y1 * TILE));
+    for (let gy = gy0; gy < gy1; gy++) {
+      for (let gx = gx0; gx < gx1; gx++) {
+        const tile = map.ground[Math.floor(gy / TILE) * map.width + Math.floor(gx / TILE)];
+        const current = mat[gy * w + gx];
+        if (street ? current !== calle : tile === undefined || BLOCKING_GROUND.has(tile)) {
+          continue;
+        }
+        if (insideShape(shape, (gx + 0.5) / TILE, (gy + 0.5) / TILE)) mat[gy * w + gx] = index;
+      }
+    }
+  }
+  return mat;
 }
 
 type Px = {
@@ -72,38 +158,101 @@ type Px = {
   tx: number;
   ty: number;
   kindAt: (tx: number, ty: number) => GroundKind | null;
+  matAt: (gx: number, gy: number) => Material | null;
   /** Filas de pared del fondo (interiores): se pintan de frente, no como tapa de muro. */
   backRows: number;
 };
 
-const MATERIAL: Record<GroundKind, (px: Px) => string> = {
-  adoquin: cantera,
+const PAINTERS: Record<Material, (px: Px) => string> = {
+  enlosado: enlosado,
+  explanada: explanada,
+  losa: losa,
+  jardin: jardin,
   ladrillo: ladrillo,
   pasto: pasto,
   banqueta: banqueta,
+  empedrado: empedrado,
+  portal: portal,
   calle: calle,
+  cebra: cebra,
   seto: seto,
-  fachada: (px) => pared(px, '#f2e6cf'),
+  azotea: azotea,
+  fachada: (px) => aplanado(px, '#efe1c8'),
   duela: duela,
   mosaico: ({ gx, gy, lx, ly, tx, ty, kindAt }) => mosaico(gx, gy, lx, ly, tx, ty, kindAt),
   pared: ({ gx, gy, lx, ly, tx, ty, kindAt, backRows }) =>
     ty < backRows ? repello(gx, gy) : muro(lx, ly, tx, ty, kindAt),
 };
 
-/** Losas de cantera de 8×8 con junta; cada losa con su tono y su desgaste. */
-function cantera({ gx, gy }: Px): string {
-  const sx = Math.floor(gx / 8);
-  const sy = Math.floor(gy / 8);
-  if (gx % 8 === 7 || gy % 8 === 7) return CANTERA.joint;
-  const slab = hash(sx, sy, 11);
-  const tint = slab < 0.55 ? CANTERA.base : slab < 0.82 ? CANTERA.light : CANTERA.shade;
-  // Grieta diagonal en una de cada ~25 losas.
-  if (slab > 0.96 && (gx % 8) - (gy % 8) === 1) return CANTERA.joint;
+/**
+ * Los andadores de la Plaza de Armas: losas rectangulares gris rosado en
+ * hiladas corridas (a soga), de 1 × ½ tile, con la junta fina y el desgaste
+ * de mucha gente.
+ */
+function enlosado({ gx, gy }: Px): string {
+  const row = Math.floor(gy / 8);
+  const shift = (row % 2) * 8;
+  const col = Math.floor((gx + shift) / 16);
+  const lx = (gx + shift) % 16;
+  const ly = gy % 8;
+  if (ly === 7 || lx === 15) return ENLOSADO.joint;
+  const slab = hash(col, row, 13);
+  let tint = slab < 0.55 ? ENLOSADO.base : slab < 0.84 ? ENLOSADO.light : ENLOSADO.shade;
+  if (hash(Math.floor(gx / 6), Math.floor(gy / 5), 14) > 0.94) tint = ENLOSADO.shade;
+  if (ly === 0 && lx < 14 && slab < 0.84) return ENLOSADO.lighter;
   const speck = hash(gx, gy, 12);
-  if (speck < 0.035) return CANTERA.shade;
-  if (speck > 0.975) return CANTERA.lighter;
-  // Canto de luz arriba a la izquierda: se lee como losa, no como ruido.
-  if (gy % 8 === 0 && gx % 8 < 6 && slab < 0.82) return CANTERA.lighter;
+  if (speck < 0.03) return ENLOSADO.shade;
+  if (speck > 0.985) return ENLOSADO.lighter;
+  return tint;
+}
+
+/**
+ * La explanada de la Melchor Ocampo: losas grises de un tile y, cada seis
+ * tiles, una banda de piedra oscura; juntas forman la retícula de cuadros
+ * grandes que se ve desde las torres.
+ */
+function explanada({ gx, gy }: Px): string {
+  const bx = (gx + 16) % 96;
+  const by = (gy + 16) % 96;
+  if (bx < 4 || by < 4) {
+    const edge = bx === 0 || by === 0;
+    return edge ? EXPLANADA.band : hash(gx, gy, 16) < 0.2 ? EXPLANADA.bandLight : EXPLANADA.band;
+  }
+  const lx = gx % 16;
+  const ly = gy % 16;
+  if (lx === 15 || ly === 15) return EXPLANADA.joint;
+  const slab = hash(Math.floor(gx / 16), Math.floor(gy / 16), 15);
+  let tint = slab < 0.5 ? EXPLANADA.base : slab < 0.82 ? EXPLANADA.light : EXPLANADA.shade;
+  if (hash(Math.floor(gx / 7), Math.floor(gy / 6), 17) > 0.95) tint = EXPLANADA.shade;
+  if (ly === 0 && lx < 14) return EXPLANADA.lighter;
+  const speck = hash(gx, gy, 18);
+  if (speck < 0.03) return EXPLANADA.shade;
+  if (speck > 0.985) return EXPLANADA.lighter;
+  return tint;
+}
+
+/**
+ * Losas grandes de cantera del atrio y de las plazas: piezas de 2×1 tiles a
+ * hueso, en hiladas corridas, con la junta apenas marcada (se lee como piso,
+ * no como muro), vetas suaves y el desgaste de siglos.
+ */
+function losa({ gx, gy }: Px): string {
+  const row = Math.floor(gy / 16);
+  const shift = (row % 2) * 16;
+  const col = Math.floor((gx + shift) / 32);
+  const lx = (gx + shift) % 32;
+  const ly = gy % 16;
+  if (ly === 15 || lx === 31) return LOSA.joint;
+  const slab = hash(col, row, 17);
+  let tint = slab < 0.6 ? LOSA.base : slab < 0.85 ? LOSA.light : LOSA.shade;
+  // Veta: una línea suave que cruza algunas losas en diagonal.
+  if (slab > 0.9 && (lx + ly * 3 + Math.floor(slab * 9)) % 19 === 0) tint = LOSA.vein;
+  // Desgaste: manchas grandes y suaves donde más se pisa.
+  if (hash(Math.floor(gx / 5), Math.floor(gy / 4), 19) > 0.93) tint = LOSA.shade;
+  if (ly === 0 && lx < 30) return slab < 0.85 ? LOSA.lighter : LOSA.light;
+  const speck = hash(gx, gy, 18);
+  if (speck < 0.025) return LOSA.shade;
+  if (speck > 0.99) return LOSA.lighter;
   return tint;
 }
 
@@ -126,16 +275,24 @@ function ladrillo({ gx, gy }: Px): string {
   return brick < 0.22 ? LADRILLO.shade : brick > 0.86 ? LADRILLO.light : LADRILLO.base;
 }
 
-/** Jardín con guarnición de cantera donde termina el pasto. */
-function pasto({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
-  const edge = (dx: number, dy: number) => kindAt(tx + dx, ty + dy) !== 'pasto';
-  if (edge(0, 1) && ly >= 14) return ly === 15 ? CANTERA.shade : CANTERA.light;
-  if (edge(0, -1) && ly === 0) return CANTERA.light;
-  if (edge(-1, 0) && lx === 0) return CANTERA.light;
-  if (edge(1, 0) && lx === 15) return CANTERA.shade;
+/**
+ * Jardín con guarnición de cantera donde termina el pasto, por pixel: así
+ * sigue igual de bien la orilla de un andador en diagonal o de una glorieta.
+ */
+function pasto({ gx, gy, matAt }: Px): string {
+  const grass = (dx: number, dy: number) => matAt(gx + dx, gy + dy) === 'pasto';
+  // Guarnición: dos pixeles al frente (abajo), uno arriba y a los lados.
+  if (!grass(0, 1)) return CANTERA.shade;
+  if (!grass(0, 2)) return CANTERA.light;
+  if (!grass(0, -1) || !grass(-1, 0)) return CANTERA.light;
+  if (!grass(1, 0)) return CANTERA.shade;
   // Sombra de la guarnición sobre el pasto.
-  if ((edge(0, -1) && ly === 1) || (edge(-1, 0) && lx === 1)) return PASTO.deep;
+  if (!grass(0, -2) || !grass(-2, 0)) return PASTO.deep;
+  return pastoTexture(gx, gy);
+}
 
+/** El pasto por dentro: matas, florecitas y manchas de tono. */
+function pastoTexture(gx: number, gy: number): string {
   const r = hash(gx, gy, 31);
   if (r > 0.9965) return pick(['#fff6e8', '#ffd84a', '#ff8cc0'], gx, gy, 32);
   // Matas: un pixel de luz con su sombra debajo.
@@ -148,12 +305,64 @@ function pasto({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
   return clump < 0.26 ? PASTO.shade : clump > 0.8 ? PASTO.light : PASTO.base;
 }
 
-/** Banqueta de concreto con juntas por tile y guarnición hacia la calle. */
+/**
+ * Jardín cercado (ADR-0013): el mismo pasto, sin guarnición (la reja baja se
+ * pinta encima, en `paintFences`) y con un poco más de sombra en la orilla.
+ */
+function jardin(px: Px): string {
+  const { gx, gy, matAt } = px;
+  const inside = (dx: number, dy: number) => matAt(gx + dx, gy + dy) === 'jardin';
+  if (!inside(0, 1) || !inside(0, -1) || !inside(1, 0) || !inside(-1, 0)) return PASTO.deep;
+  if (!inside(0, -2) || !inside(-2, 0)) return PASTO.shade;
+  return pastoTexture(gx, gy);
+}
+
+/**
+ * La reja baja de los jardines, de hierro verde: se para en la orilla y sube
+ * 6 px, con barrotes cada 3 px y el pasamanos con su luz. Horneada en el
+ * suelo: quien pasa enfrente la tapa, como debe ser.
+ */
+function paintFences(
+  p: Painter,
+  matAt: (gx: number, gy: number) => Material | null,
+  w: number,
+  h: number,
+): void {
+  const HEIGHT = 6;
+  for (let gy = 0; gy < h; gy++) {
+    for (let gx = 0; gx < w; gx++) {
+      if (matAt(gx, gy) !== 'jardin') continue;
+      const edge =
+        matAt(gx, gy + 1) !== 'jardin' ||
+        matAt(gx, gy - 1) !== 'jardin' ||
+        matAt(gx + 1, gy) !== 'jardin' ||
+        matAt(gx - 1, gy) !== 'jardin';
+      if (!edge) continue;
+      p.px(gx, gy, HIERRO.shade);
+      p.px(gx, gy - HEIGHT, HIERRO.light);
+      p.px(gx, gy - HEIGHT + 1, HIERRO.base);
+      if ((gx + gy) % 3 === 0) {
+        for (let k = 1; k < HEIGHT - 1; k++) p.px(gx, gy - k, HIERRO.base);
+        // La punta de lanza de cada barrote.
+        p.px(gx, gy - HEIGHT - 1, HIERRO.base);
+      }
+    }
+  }
+}
+
+/** Banqueta de concreto con juntas por tile y guarnición hacia la calle o el empedrado. */
 function banqueta({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
-  if (kindAt(tx, ty + 1) === 'calle') {
+  const street = (dx: number, dy: number) => {
+    const k = kindAt(tx + dx, ty + dy);
+    return k === 'calle' || k === 'empedrado';
+  };
+  if (street(0, 1)) {
     if (ly === 12) return BANQUETA.light;
     if (ly >= 13) return ly === 15 ? BANQUETA.curbDark : BANQUETA.curb;
   }
+  if (street(0, -1) && ly === 0) return BANQUETA.curb;
+  if (street(-1, 0) && lx <= 1) return lx === 0 ? BANQUETA.curbDark : BANQUETA.curb;
+  if (street(1, 0) && lx >= 14) return lx === 15 ? BANQUETA.curbDark : BANQUETA.curb;
   if (lx === 15 || ly === 15) return BANQUETA.joint;
   const speck = hash(gx, gy, 41);
   if (speck < 0.04) return BANQUETA.shade;
@@ -161,14 +370,96 @@ function banqueta({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
   return hash(tx, ty, 42) < 0.3 ? BANQUETA.light : BANQUETA.base;
 }
 
-/** Asfalto con su raya amarilla discontinua. */
-function calle({ gx, gy, ly }: Px): string {
-  if (ly === 0) return ASFALTO.shade;
-  if (ly === 9 && gx % 24 < 12) return ASFALTO.line;
+/**
+ * Empedrado de Allende: piedras boleadas de río, cada una con su tono y su
+ * brillo arriba, y la junta oscura entre ellas (celdas de 5 px con azar).
+ */
+function empedrado({ gx, gy }: Px): string {
+  const cell = 5;
+  const cx = Math.floor(gx / cell);
+  const cy = Math.floor(gy / cell);
+  let d1 = Number.POSITIVE_INFINITY;
+  let d2 = Number.POSITIVE_INFINITY;
+  let best = { x: 0, y: 0, id: 0 };
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const kx = cx + ox;
+      const ky = cy + oy;
+      const px = kx * cell + 1 + hash(kx, ky, 51) * (cell - 2);
+      const py = ky * cell + 1 + hash(kx, ky, 52) * (cell - 2);
+      const d = Math.hypot(gx + 0.5 - px, gy + 0.5 - py);
+      if (d < d1) {
+        d2 = d1;
+        d1 = d;
+        best = { x: px, y: py, id: kx * 73856093 + ky * 19349663 };
+      } else if (d < d2) {
+        d2 = d;
+      }
+    }
+  }
+  if (d2 - d1 < 0.9) return EMPEDRADO.joint;
+  const stone = pick(EMPEDRADO.stones, best.id, 0, 53);
+  if (gy + 0.5 < best.y - 0.8 && gx + 0.5 < best.x + 0.6) return hundido(stone, -0.18);
+  if (gy + 0.5 > best.y + 1.2) return hundido(stone, 0.16);
+  return stone;
+}
+
+/**
+ * Bajo los portales: la misma losa, en la sombra de los arcos. Más oscuro
+ * junto al muro del fondo (la hilera de arriba del andador).
+ */
+function portal(px: Px): string {
+  const base = losa(px);
+  const back = px.kindAt(px.tx, px.ty - 1) === 'fachada';
+  return hundido(base, back ? 0.3 : 0.18);
+}
+
+/**
+ * Asfalto. En una avenida acostada (Madero) la raya amarilla va al centro de
+ * la franja; en una parada (Morelos, Abasolo), en vertical.
+ */
+function calle({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
+  const isCalle = (dx: number, dy: number) => kindAt(tx + dx, ty + dy) === 'calle';
+  const vertical = isCalle(0, -1) && isCalle(0, 1) && !(isCalle(-1, 0) && isCalle(1, 0));
+  if (vertical) {
+    if (!isCalle(-1, 0) && lx === 0) return ASFALTO.shade;
+    if (isCalle(1, 0) && !isCalle(-1, 0) && lx === 15 && gy % 24 < 12) return ASFALTO.line;
+  } else {
+    if (!isCalle(0, -1) && ly === 0) return ASFALTO.shade;
+    const top = !isCalle(0, -1);
+    const bottom = !isCalle(0, 1);
+    // Franja de tres tiles: la raya doble va en el de en medio, con sus boyas
+    // amarillas en relieve cada tanto (luz arriba, sombra abajo).
+    if (!top && !bottom && ly >= 6 && ly <= 10 && gx % 40 >= 18 && gx % 40 <= 20) {
+      if (ly === 6) return '#fff0a6';
+      if (ly === 10) return '#9a7b1e';
+      return gx % 40 === 20 ? '#c9a22c' : ASFALTO.line;
+    }
+    if (!top && !bottom && (ly === 7 || ly === 9)) return ASFALTO.line;
+    if (top && isCalle(0, 1) && !isCalle(0, 2) && ly === 15 && gx % 24 < 12) {
+      return ASFALTO.line;
+    }
+  }
   const speck = hash(gx, gy, 51);
   if (speck < 0.08) return ASFALTO.shade;
   if (speck > 0.93) return ASFALTO.light;
   return ASFALTO.base;
+}
+
+/**
+ * Paso peatonal: franjas blancas gastadas sobre el asfalto. Como en la calle
+ * de verdad, cada franja corre a lo largo del tráfico y se cruza pisándolas
+ * una tras otra: en Madero (acostada) las franjas van acostadas.
+ */
+function cebra(px: Px): string {
+  const { gx, gy, tx, ty, kindAt } = px;
+  const isCalle = (dx: number, dy: number) => kindAt(tx + dx, ty + dy) === 'calle';
+  const vertical = isCalle(0, -1) && isCalle(0, 1) && !(isCalle(-1, 0) && isCalle(1, 0));
+  const stripe = (vertical ? gx : gy) % 8 < 4;
+  if (!stripe) return calle(px);
+  const worn = hash(gx, gy, 57);
+  if (worn < 0.08) return ASFALTO.light;
+  return worn > 0.9 ? '#d9d3cc' : '#f1ece6';
 }
 
 /** Seto recortado: matas de 2×2 y su cara frontal más oscura al final. */
@@ -191,6 +482,34 @@ function seto({ gx, gy, ly, tx, ty, kindAt }: Px): string {
         : SETO.base;
 }
 
+/**
+ * Azoteas de Morelia vistas desde arriba: impermeabilizante rojo en cada
+ * casa, pretiles claros entre una y otra, tinacos negros. Las casas son
+ * bloques de 3×4 tiles; el azar es por casa, no por pixel.
+ */
+function azotea({ gx, gy, lx, ly, tx, ty }: Px): string {
+  const bx = Math.floor(tx / 3);
+  const by = Math.floor(ty / 4);
+  const tone = pick(AZOTEA.roofs, bx, by, 72);
+  // Pretil entre casas: arriba y a la izquierda de cada bloque.
+  if ((tx % 3 === 0 && lx <= 1) || (ty % 4 === 0 && ly <= 1)) {
+    return lx === 0 || ly === 0 ? AZOTEA.parapetShade : AZOTEA.parapet;
+  }
+  // Tinaco: un círculo negro con su brillo, en una de cada dos casas.
+  const tank = hash(bx, by, 73);
+  if (tank < 0.5 && tx % 3 === 1 + (Math.floor(tank * 4) % 2) && ty % 4 === 1) {
+    const d = Math.hypot(lx + 0.5 - 8, ly + 0.5 - 8);
+    if (d < 4.6) return d < 1.8 && lx < 8 && ly < 8 ? AZOTEA.tankLight : AZOTEA.tank;
+    if (d < 5.6 && ly > 7) return AZOTEA.tankShadow;
+  }
+  const speck = hash(gx, gy, 74);
+  if (speck < 0.05) return hundido(tone, 0.12);
+  if (speck > 0.97) return hundido(tone, -0.12);
+  // Parches de impermeabilizante nuevo.
+  if (hash(Math.floor(gx / 7), Math.floor(gy / 5), 75) > 0.9) return hundido(tone, -0.08);
+  return tone;
+}
+
 function duela({ gx, gy }: Px): string {
   const row = Math.floor(gy / 4);
   const offset = (row % 2) * 12;
@@ -198,8 +517,8 @@ function duela({ gx, gy }: Px): string {
   return hash(Math.floor((gx + offset) / 24), row, 71) < 0.4 ? WOOD.shadow : WOOD.base;
 }
 
-/** Aplanado de pared (la fachada lleva además su pintura en paintFacades). */
-function pared({ gx, gy }: Px, base: string): string {
+/** Aplanado de muro: lo que queda de una fachada que ningún objeto tapa. */
+function aplanado({ gx, gy }: Px, base: string): string {
   const speck = hash(gx, gy, 81);
   if (speck < 0.05) return hundido(base, 0.12);
   return base;
@@ -232,170 +551,25 @@ function parse(hex: string): number {
   return n;
 }
 
-// ─── Fachadas del barrio ───────────────────────────────────────────────────
-
-/** Anchos de los edificios (tiles). El Café ocupa el de x 28–33. */
-const EDIFICIOS = [5, 6, 5, 6, 6, 6, 6];
-const COLOR_EDIFICIO = [0, 2, 1, 3, 4, 6, 5];
-const COMERCIOS: (string | null)[] = [
-  'ABARROTES',
-  null,
-  'PAPELERIA',
-  'TORTILLAS',
-  null,
-  null,
-  'FRUTAS',
-];
-
-function paintFacades(
-  p: Painter,
-  map: MapDef,
-  kindAt: (tx: number, ty: number) => GroundKind | null,
-): void {
-  if (kindAt(0, 0) !== 'fachada') return;
-  const rows = countRows(map, kindAt);
-  const fh = rows * TILE;
-  let startTile = 0;
-  EDIFICIOS.forEach((tiles, i) => {
-    const x = startTile * TILE;
-    const bw = tiles * TILE;
-    startTile += tiles;
-    if (x >= map.width * TILE) return;
-    const color = FACHADAS[(COLOR_EDIFICIO[i] ?? i) % FACHADAS.length] ?? FACHADAS[0];
-    paintBuilding(p, x, bw, fh, color, COMERCIOS[i] ?? null, i);
-  });
-}
-
-function countRows(map: MapDef, kindAt: (tx: number, ty: number) => GroundKind | null): number {
-  let rows = 0;
-  while (rows < map.height && kindAt(0, rows) === 'fachada') rows++;
-  return rows;
-}
-
-function paintBuilding(
-  p: Painter,
-  x: number,
-  bw: number,
-  fh: number,
-  color: { base: string; shadow: string; light: string },
-  comercio: string | null,
-  seed: number,
-): void {
-  // Muro pintado con su textura de aplanado.
-  p.rect(x, 0, bw, fh, color.base);
-  for (let yy = 4; yy < fh - 4; yy++) {
-    for (let xx = x; xx < x + bw; xx++) {
-      const r = hash(xx, yy, 100 + seed);
-      if (r < 0.04) p.px(xx, yy, color.shadow);
-      else if (r > 0.975) p.px(xx, yy, color.light);
-    }
-  }
-  // Cornisa de cal y la sombra que deja.
-  p.rect(x, 0, bw, 1, CAL.deep);
-  p.rect(x, 1, bw, 2, CAL.base);
-  p.rect(x, 3, bw, 1, hundido(color.base, 0.3));
-  // Pilastras: canto de luz a la izquierda, sombra a la derecha.
-  p.rect(x, 4, 1, fh - 8, color.light);
-  p.rect(x + bw - 1, 4, 1, fh - 8, color.shadow);
-  // Zócalo.
-  p.rect(x, fh - 4, bw, 4, hundido(color.base, 0.42));
-  p.rect(x, fh - 4, bw, 1, hundido(color.base, 0.2));
-
-  // Planta alta: ventanas con balcón de herrería.
-  const windows = Math.max(1, Math.floor((bw - 8) / 22));
-  const gap = (bw - windows * 12) / (windows + 1);
-  for (let i = 0; i < windows; i++) {
-    const wx = Math.round(x + gap + i * (12 + gap));
-    ventana(p, wx, 7, seed * 7 + i);
-  }
-
-  // Planta baja: cortina metálica con rótulo, o puerta de casa.
-  if (comercio) {
-    const cw = Math.min(bw - 12, 56);
-    const cx = Math.round(x + (bw - cw) / 2);
-    cortina(p, cx, 29, cw, fh - 33);
-    const label = comercio;
-    const lw = signWidth(label) + 6;
-    const lx = Math.round(x + (bw - lw) / 2);
-    const board = FOSFO[seed % FOSFO.length] ?? FOSFO[0];
-    p.rect(lx, 21, lw, 8, board);
-    p.rect(lx, 28, lw, 1, hundido(board, 0.3));
-    sign(p, label, lx + 3, 22, PLUMON);
-  } else {
-    puerta(p, Math.round(x + bw / 2 - 6), 26, color, seed);
-  }
-}
-
-function ventana(p: Painter, x: number, y: number, seed: number): void {
-  p.rect(x - 1, y - 1, 14, 15, CAL.base);
-  p.rect(x, y, 12, 12, '#3b2c4a');
-  p.rect(x + 1, y + 1, 10, 5, '#4d3d60');
-  p.px(x + 2, y + 2, '#8f84b8');
-  p.px(x + 3, y + 1, '#8f84b8');
-  p.rect(x + 5, y, 2, 12, CAL.shade);
-  // Balcón: barandal de herrería negra con macetas.
-  p.rect(x - 2, y + 12, 16, 1, '#2a2530');
-  for (let i = 0; i < 16; i += 2) p.rect(x - 2 + i, y + 13, 1, 3, '#2a2530');
-  p.rect(x - 2, y + 16, 16, 1, '#2a2530');
-  if (hash(seed, 3, 7) < 0.6) {
-    p.rect(x + 1, y + 10, 4, 2, '#b8532e');
-    p.px(x + 2, y + 9, '#ff4f9a');
-    p.px(x + 3, y + 8, '#ff4f9a');
-    p.px(x + 4, y + 9, '#35c77a');
-  }
-}
-
-function cortina(p: Painter, x: number, y: number, w: number, h: number): void {
-  p.rect(x - 1, y - 1, w + 2, 1, METAL.shade);
-  for (let yy = 0; yy < h; yy++) {
-    const c = yy % 3 === 0 ? METAL.light : yy % 3 === 1 ? METAL.base : METAL.shade;
-    p.rect(x, y + yy, w, 1, c);
-  }
-  p.rect(x + Math.floor(w / 2) - 3, y + h - 3, 6, 1, METAL.shade);
-}
-
-function puerta(
-  p: Painter,
-  x: number,
-  y: number,
-  color: { base: string; shadow: string; light: string },
-  seed: number,
-): void {
-  p.rect(x - 2, y - 2, 16, 20, CAL.base);
-  p.rect(x, y, 12, 18, hundido(color.base, 0.5));
-  p.rect(x + 1, y + 1, 4, 16, hundido(color.base, 0.38));
-  p.rect(x + 7, y + 1, 4, 16, hundido(color.base, 0.38));
-  p.px(x + 6, y + 9, '#f0cf45');
-  // Maceta junto a la puerta.
-  const mx = x + 15;
-  p.rect(mx, y + 12, 5, 4, '#b8532e');
-  p.rect(mx, y + 12, 5, 1, '#d4704a');
-  p.rect(mx + 1, y + 8, 3, 4, seed % 2 ? '#3f9d68' : '#56a04a');
-  p.px(mx + 2, y + 7, seed % 2 ? '#ff4f9a' : '#ffd23f');
-}
-
 // ─── Sombras horneadas ────────────────────────────────────────────────────
 
 function paintShadows(
-  p: Painter,
+  p: ReturnType<typeof painter>,
   map: MapDef,
   kindAt: (tx: number, ty: number) => GroundKind | null,
   backRows: number,
 ): void {
-  const rows = Math.max(countRows(map, kindAt), backRows);
-  if (rows > 0) {
-    // La sombra de las fachadas (o de la pared del fondo) sobre el piso.
-    const y = rows * TILE;
+  if (backRows > 0) {
+    // La sombra de la pared del fondo sobre el piso.
+    const y = backRows * TILE;
     for (let i = 0; i < 5; i++) {
       p.rect(0, y + i, map.width * TILE, 1, `rgb(43 18 56 / ${0.24 - i * 0.045})`);
     }
-  }
-  if (backRows > 0) {
     // Interior: los muros de los lados también dan sombra, y por la puerta entra el día.
     const h = map.height * TILE;
     for (let i = 0; i < 4; i++) {
       const a = (0.18 - i * 0.04).toFixed(3);
-      p.rect(TILE + i, rows * TILE, 1, h - (rows + 1) * TILE, `rgb(43 18 56 / ${a})`);
+      p.rect(TILE + i, backRows * TILE, 1, h - (backRows + 1) * TILE, `rgb(43 18 56 / ${a})`);
     }
     const door = map.portals[0];
     if (door) {
@@ -409,6 +583,19 @@ function paintShadows(
     }
     for (const o of map.objects) {
       if (o.kind === 'focos') lucesEnElPiso(p, o.x * TILE, o.y * TILE, o.w * TILE);
+    }
+  } else {
+    // Afuera: la sombra de cada fachada sobre lo que tiene enfrente (el sol está alto, al sur).
+    for (let ty = 1; ty < map.height; ty++) {
+      for (let tx = 0; tx < map.width; tx++) {
+        const above = kindAt(tx, ty - 1);
+        const here = kindAt(tx, ty);
+        if ((above === 'fachada' || above === 'azotea') && here !== above && here !== 'azotea') {
+          for (let i = 0; i < 5; i++) {
+            p.rect(tx * TILE, ty * TILE + i, TILE, 1, `rgb(43 18 56 / ${0.24 - i * 0.045})`);
+          }
+        }
+      }
     }
   }
   for (const o of map.objects) objectShadow(p, o);

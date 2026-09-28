@@ -14,10 +14,13 @@ export type AccountRow = {
   terms_accepted_at: number;
   created_at: number;
   updated_at: number;
+  /** Fin de la suspensión (epoch ms); null con SUSPENDED = indefinida (ADR-0012). */
+  suspended_until: number | null;
 };
 
 const COLUMNS = `id, email, email_normalized, username, username_normalized, password_hash, status,
-  email_verified_at, email_deliverability, terms_version, terms_accepted_at, created_at, updated_at`;
+  email_verified_at, email_deliverability, terms_version, terms_accepted_at, created_at, updated_at,
+  suspended_until`;
 
 export function findAccountByEmail(db: D1Database, emailNormalized: string) {
   return db
@@ -37,10 +40,26 @@ export function findAccountById(db: D1Database, id: string) {
   return db.prepare(`SELECT ${COLUMNS} FROM accounts WHERE id = ?`).bind(id).first<AccountRow>();
 }
 
+/** ¿El nombre ya es de alguien, o quedó apartado (ver `holdUsernameStatement`)? */
 export async function usernameExists(db: D1Database, usernameNormalized: string) {
   const row = await db
-    .prepare('SELECT 1 AS x FROM accounts WHERE username_normalized = ?')
+    .prepare(
+      `SELECT 1 AS x FROM accounts WHERE username_normalized = ?1
+       UNION ALL SELECT 1 FROM username_holds WHERE username_normalized = ?1
+       LIMIT 1`,
+    )
     .bind(usernameNormalized)
     .first();
   return row !== null;
+}
+
+/**
+ * Aparta un nombre sin crear cuenta (ADR-0012): registrarse con un correo que
+ * ya existía no puede dejar el nombre libre, o el nombre diría si el correo
+ * estaba registrado.
+ */
+export function holdUsernameStatement(db: D1Database, usernameNormalized: string, now: number) {
+  return db
+    .prepare('INSERT OR IGNORE INTO username_holds (username_normalized, created_at) VALUES (?, ?)')
+    .bind(usernameNormalized, now);
 }
