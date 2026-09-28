@@ -125,7 +125,7 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
 
 // ─── Materiales por pixel ──────────────────────────────────────────────────
 
-type Material = GroundKind | 'cebra' | 'jardin' | 'jardinera';
+type Material = GroundKind | 'cebra' | 'jardin' | 'jardinera' | 'luminaria';
 const MATERIALS: readonly Material[] = [
   'fachada',
   'azotea',
@@ -145,6 +145,7 @@ const MATERIALS: readonly Material[] = [
   'cebra',
   'jardin',
   'jardinera',
+  'luminaria',
 ];
 const INDEX = new Map(MATERIALS.map((m, i) => [m, i]));
 
@@ -206,6 +207,7 @@ const PAINTERS: Record<Material, (px: Px) => string> = {
   losa: losa,
   jardin: (px) => jardin(px, 'jardin'),
   jardinera: (px) => jardin(px, 'jardinera'),
+  luminaria: luminaria,
   ladrillo: ladrillo,
   pasto: pasto,
   banqueta: banqueta,
@@ -293,6 +295,24 @@ function losa({ gx, gy }: Px): string {
   if (speck > 0.99) return LOSA.lighter;
   return tint;
 }
+
+/**
+ * Luminaria empotrada en el piso: vidrio esmerilado con un reflejo, en su
+ * marco de metal oscuro (donde el vecino ya no es luminaria).
+ */
+function luminaria({ gx, gy, matAt }: Px): string {
+  const vidrio = (dx: number, dy: number) => matAt(gx + dx, gy + dy) === 'luminaria';
+  if (!vidrio(0, 1) || !vidrio(1, 0)) return LUMINARIA.marcoSombra;
+  if (!vidrio(0, -1) || !vidrio(-1, 0)) return LUMINARIA.marco;
+  return hash(gx, gy, 51) < 0.2 ? LUMINARIA.luz : LUMINARIA.vidrio;
+}
+
+const LUMINARIA = {
+  vidrio: '#cdd8da',
+  luz: '#eef5f6',
+  marco: '#8d9396',
+  marcoSombra: '#5d6366',
+};
 
 /** Ladrillo en petatillo: bloques de 8×8 que alternan acostado y parado. */
 function ladrillo({ gx, gy }: Px): string {

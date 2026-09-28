@@ -179,6 +179,82 @@ export function losaLiberales(wTiles: number, hTiles: number): Art {
   return { canvas: p.canvas, ox: 0, oy: 0 };
 }
 
+/**
+ * Una de las esculturas de los mártires junto al muro poniente de la Catedral:
+ * figura estilizada de cantera, encapuchada, con las manos juntas y los
+ * pliegues en planos, de perfil hacia la Plaza de Armas, sobre un dado bajo
+ * y en su corralito de reja negra (el muro cierra el lado de la izquierda).
+ */
+export function martir(wTiles: number, hTiles: number, id: string): Art {
+  const W = Math.round(wTiles * TILE);
+  const H = Math.round(hTiles * TILE);
+  const A = 34;
+  const p = painter(W, H + A);
+  const seed = semilla(id);
+  const reja = HERRERIA.base;
+  // Tramo de reja de lado a lado sobre la línea de suelo `g`: postes con remate y dos travesaños.
+  const tramo = (g: number, x0: number, x1: number) => {
+    p.rect(x0, g + A - 9, x1 - x0 + 1, 1, reja);
+    p.rect(x0, g + A - 4, x1 - x0 + 1, 1, reja);
+    for (let x = x0; x <= x1; x += 4) {
+      p.rect(x, g + A - 10, 1, 10, reja);
+      p.px(x, g + A - 11, HERRERIA.light);
+    }
+  };
+  tramo(2, 1, W - 3);
+
+  // El dado de cantera.
+  const cx = 11;
+  const pie = 13 + A - 4;
+  p.rect(cx - 5, pie - 5, 11, 5, C.lighter);
+  p.rect(cx - 5, pie, 11, 4, C.shade);
+  p.rect(cx - 5, pie + 3, 11, 1, C.deep);
+
+  // La figura, de perfil mirando a la derecha: capucha, manos juntas, manto en planos.
+  const inclina = seed % 2;
+  const manos = 11 + (seed % 3);
+  const alto = 27;
+  for (let i = 0; i < alto; i++) {
+    const y = pie - 5 - alto + i;
+    let izq: number;
+    let der: number;
+    if (i < 9) {
+      // La capucha, redonda arriba y caída hacia enfrente.
+      const r = [2, 3, 4, 4, 4, 4, 4, 4, 5][i] ?? 4;
+      izq = -r;
+      der = Math.min(3, r - 1) + (i > 2 ? inclina : 0);
+    } else {
+      izq = -5 - Math.floor((i - 9) / 9);
+      der = i >= manos && i < manos + 4 ? 5 : 3 + Math.floor((i - 9) / 12);
+    }
+    p.rect(cx + izq, y, der - izq + 1, 1, C.base);
+    p.px(cx + izq, y, C.light);
+    p.px(cx + izq + 1, y, C.light);
+    p.px(cx + der, y, C.shade);
+    // El hueco de la capucha, en sombra.
+    if (i >= 3 && i <= 6) p.rect(cx + 1 + inclina, y, 2, 1, C.deep);
+  }
+  // Pliegues en planos: dos diagonales del hombro al ruedo y la sombra del lado de enfrente.
+  for (let i = 0; i < 17; i++) {
+    const y = pie - 5 - alto + 10 + i;
+    p.px(cx - 3 + Math.floor(i / 6), y, C.deep);
+    if (i > 5) p.px(cx + 1 + Math.floor((i - 6) / 5), y, C.shade);
+    p.px(cx + 3, y, C.shade);
+  }
+  // Las manos juntas, con luz arriba.
+  p.rect(cx + 3, pie - 5 - alto + manos, 2, 3, C.light);
+  p.px(cx + 4, pie - 5 - alto + manos, C.lighter);
+
+  // La reja de enfrente y la del costado, sobre la figura.
+  tramo(H - 2, 1, W - 3);
+  for (let g = 2; g <= H - 2; g++) {
+    p.px(W - 3, g + A - 9, reja);
+    p.px(W - 3, g + A - 4, reja);
+  }
+  for (let g = 2; g <= H - 2; g += 4) p.rect(W - 3, g + A - 10, 1, 10, reja);
+  return { canvas: p.canvas, ox: 0, oy: -A };
+}
+
 /** El asta bandera, altísima y delgada, gris verdosa, con la bandera al viento. */
 export function asta(): Art {
   const W = 52;
@@ -596,4 +672,148 @@ export function churros(id: string): Art {
   p.rect(Math.round((W - sw) / 2) - 2, ty + 9, sw + 4, 7, '#ffd23f');
   sign(p, texto, Math.round((W - sw) / 2), ty + 10, '#3a2230');
   return { canvas: p.canvas, ox: -2, oy: -(H - TILE) };
+}
+
+/**
+ * El carrito de gazpacho moreliano (investigacion.md §2.9): vitrina con los
+ * vasos de fruta picada —mango, piña, jícama, pepino— con queso y chile, la
+ * charola de limones y su rótulo. Se ponen detrás de la Catedral y hacia San
+ * Agustín.
+ */
+export function gazpacho(id: string): Art {
+  const W = 34;
+  const H = 40;
+  const p = painter(W, H);
+  const seed = semilla(id);
+  const pie = H - 2;
+  // Las ruedas y el cajón.
+  p.ellipse(7, pie - 2, 3, 3, HERRERIA.base);
+  p.ellipse(27, pie - 2, 3, 3, HERRERIA.base);
+  p.px(7, pie - 2, '#9aa3aa');
+  p.px(27, pie - 2, '#9aa3aa');
+  p.rect(2, pie - 14, 30, 10, '#e9edf0');
+  p.rect(2, pie - 14, 30, 1, '#ffffff');
+  p.rect(2, pie - 5, 30, 1, '#b8c0c7');
+  p.rect(2, pie - 11, 30, 3, '#2f6fb0');
+  // La vitrina con los vasos: fruta de colores, el blanco del queso y el rojo del chile.
+  const vy = pie - 26;
+  p.rect(3, vy, 28, 12, '#cfe3ea');
+  p.rect(3, vy, 28, 1, '#f4fbfd');
+  p.rect(3, vy, 1, 12, '#9fb8c2');
+  p.rect(30, vy, 1, 12, '#9fb8c2');
+  const FRUTA = ['#f4a21e', '#f7d64a', '#eef0e6', '#8fc45a', '#f06a3a'];
+  for (let i = 0; i < 6; i++) {
+    const x = 5 + i * 4;
+    p.rect(x, vy + 4, 3, 7, '#f3f6f7');
+    for (let y = vy + 5; y < vy + 10; y++) p.px(x + (y % 2), y, pick(FRUTA, i, y, seed));
+    p.px(x + 1, vy + 4, '#d7262e');
+  }
+  // Los limones en su charola, arriba.
+  p.rect(6, vy - 3, 12, 3, '#9aa3aa');
+  for (let i = 0; i < 4; i++) p.px(7 + i * 3, vy - 4, '#8cc63f');
+  // El rótulo.
+  const texto = 'GAZPACHO';
+  const sw = signWidth(texto);
+  p.rect(Math.round((W - sw) / 2) - 1, pie - 12, sw + 2, 7, '#ffffff');
+  sign(p, texto, Math.round((W - sw) / 2), pie - 11, '#d7262e');
+  return { canvas: p.canvas, ox: -1, oy: -(H - TILE) };
+}
+
+/**
+ * El carrito-bicicleta de elotes y esquites, con su sombrilla roja
+ * (investigacion.md §2.9): la olla humeante, las mazorcas y los botes de
+ * mayonesa, queso y chile.
+ */
+export function elotes(id: string): Art {
+  const W = 40;
+  const H = 62;
+  const p = painter(W, H);
+  const seed = semilla(id);
+  const pie = H - 2;
+  // La bicicleta: rueda de enfrente, manubrio y las dos ruedas del cajón.
+  p.ellipse(34, pie - 4, 4, 4, HERRERIA.base);
+  p.px(34, pie - 4, '#9aa3aa');
+  p.rect(30, pie - 14, 1, 10, HERRERIA.base);
+  p.rect(28, pie - 15, 5, 1, HERRERIA.light);
+  p.ellipse(8, pie - 3, 3, 3, HERRERIA.base);
+  p.ellipse(22, pie - 3, 3, 3, HERRERIA.base);
+  // El cajón de lámina.
+  p.rect(3, pie - 16, 26, 11, '#d9dde0');
+  p.rect(3, pie - 16, 26, 1, '#f2f5f7');
+  p.rect(3, pie - 6, 26, 1, '#9aa3aa');
+  p.rect(3, pie - 13, 26, 4, '#f2c230');
+  const texto = 'ELOTES';
+  sign(p, texto, 16 - Math.round(signWidth(texto) / 2), pie - 13, '#b3261e');
+  // La olla con su tapa, el vapor y las mazorcas.
+  p.rect(6, pie - 23, 10, 7, '#aeb6bd');
+  p.rect(6, pie - 23, 10, 1, '#dfe4e8');
+  p.rect(5, pie - 24, 12, 1, '#8a939a');
+  for (let i = 0; i < 3; i++) {
+    const x = 8 + i * 3 + Math.floor(hash(i, 1, seed) * 2);
+    p.px(x, pie - 27 - i, 'rgb(255 255 255 / 0.7)');
+    p.px(x + 1, pie - 30 - i, 'rgb(255 255 255 / 0.45)');
+  }
+  for (let i = 0; i < 3; i++) {
+    p.rect(19 + i * 3, pie - 21, 2, 5, '#f2d25a');
+    p.px(19 + i * 3, pie - 22, '#8cae3c');
+  }
+  // Los botes: mayonesa, queso y chile.
+  p.rect(18, pie - 19, 2, 3, '#f7f3e3');
+  p.rect(21, pie - 19, 2, 3, '#f3efe6');
+  p.rect(24, pie - 19, 2, 3, '#d7262e');
+  // La sombrilla roja en su palo.
+  const ux = 19;
+  p.rect(ux, pie - 50, 1, 34, '#6b6f73');
+  const cy = pie - 48;
+  for (let y = -9; y <= 0; y++) {
+    const half = Math.round(18 * Math.sqrt(1 - (y * y) / 81));
+    p.rect(ux - half, cy + y, half * 2 + 1, 1, y < -6 ? '#e04a3c' : '#c8322a');
+  }
+  // Los gajos de la sombrilla y su orilla.
+  for (const dx of [-12, -6, 0, 6, 12]) p.px(ux + dx, cy - 1, '#9e2019');
+  p.rect(ux - 18, cy + 1, 37, 1, '#9e2019');
+  return { canvas: p.canvas, ox: -4, oy: -(H - TILE) };
+}
+
+/**
+ * El puesto del bolero: la silla alta de madera con asiento de hule sobre su
+ * tarima, los estribos para los zapatos, la caja de grasas y el banquito de
+ * quien bolea, bajo una sombrilla verde.
+ */
+export function bolero(id: string): Art {
+  const W = 30;
+  const H = 54;
+  const p = painter(W, H);
+  const seed = semilla(id);
+  const pie = H - 2;
+  const MADERA = { base: '#7a4a2c', light: '#9a6440', shade: '#553220' };
+  // La tarima.
+  p.rect(3, pie - 5, 22, 5, MADERA.shade);
+  p.rect(3, pie - 6, 22, 2, MADERA.light);
+  // La silla alta: patas, asiento de hule rojo y respaldo.
+  p.rect(8, pie - 18, 2, 12, MADERA.base);
+  p.rect(18, pie - 18, 2, 12, MADERA.base);
+  p.rect(7, pie - 20, 14, 3, '#b3261e');
+  p.rect(7, pie - 20, 14, 1, '#d8473a');
+  p.rect(7, pie - 31, 14, 11, MADERA.base);
+  p.rect(7, pie - 31, 14, 1, MADERA.light);
+  p.rect(9, pie - 29, 10, 7, '#b3261e');
+  // Los estribos de metal, al frente.
+  p.rect(10, pie - 11, 3, 1, '#c3cbd2');
+  p.rect(15, pie - 11, 3, 1, '#c3cbd2');
+  // La caja de grasas y el banquito.
+  p.rect(22, pie - 10, 6, 5, MADERA.light);
+  p.rect(22, pie - 10, 6, 1, '#c9965e');
+  p.px(23, pie - 11, pick(['#1d1a1a', '#6b3a1e', '#1d1a1a'], seed, 1));
+  p.px(25, pie - 11, '#6b3a1e');
+  p.rect(0, pie - 7, 4, 2, MADERA.base);
+  // La sombrilla verde en su palo.
+  p.rect(14, pie - 46, 1, 15, '#6b6f73');
+  const cy = pie - 44;
+  for (let y = -6; y <= 0; y++) {
+    const half = Math.round(14 * Math.sqrt(1 - (y * y) / 36));
+    p.rect(14 - half, cy + y, half * 2 + 1, 1, y < -3 ? '#3f9a5b' : '#2d7a45');
+  }
+  p.rect(0, cy + 1, 29, 1, '#1f5a31');
+  return { canvas: p.canvas, ox: 0, oy: -(H - TILE) };
 }

@@ -160,6 +160,8 @@ export type ShapeKind =
   | 'losa'
   | 'ladrillo'
   | 'empedrado'
+  /** Luminaria empotrada en el piso: tira de vidrio esmerilado con marco (junto a las fuentes). */
+  | 'luminaria'
   | 'cebra';
 
 /** Formas que además de dibujarse estorban: los jardines con su reja baja. */

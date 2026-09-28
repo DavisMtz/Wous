@@ -202,6 +202,7 @@ function cubo(id: string, x: number, y: number): MapObject {
  * espaldas (arriba), la tapa el respaldo; de lado, sobre el asiento.
  */
 function lugaresDe(o: MapObject): Seat[] {
+  if (o.variant?.startsWith('curva:')) return lugaresDeCurva(o);
   if (o.variant === 'cubo') {
     return [
       {
@@ -528,6 +529,29 @@ const armasFuentes = FUENTES.map((f, i) =>
 );
 
 /**
+ * Las luminarias empotradas alrededor de cada fuente de taza (foto
+ * `plaza_armas_fuente_cuadrante.jpg`): diez tiras de vidrio en el piso de la
+ * glorieta, puestas como rayos a medio metro del borde.
+ */
+const LUMINARIAS_POR_FUENTE = 10;
+const luminarias: GroundShape[] = FUENTES.flatMap((f) =>
+  Array.from({ length: LUMINARIAS_POR_FUENTE }, (_, k): GroundShape => {
+    const a = ((k + 0.5) / LUMINARIAS_POR_FUENTE) * Math.PI * 2;
+    const [ux, uy] = [Math.cos(a), Math.sin(a)];
+    const [desde, hasta, medio] = [FUENTE_R + 0.4, FUENTE_R + 1.1, 0.1];
+    return {
+      kind: 'luminaria',
+      polygon: [
+        [f.x + ux * desde - uy * medio, f.y + uy * desde + ux * medio],
+        [f.x + ux * hasta - uy * medio, f.y + uy * hasta + ux * medio],
+        [f.x + ux * hasta + uy * medio, f.y + uy * hasta - ux * medio],
+        [f.x + ux * desde + uy * medio, f.y + uy * desde - ux * medio],
+      ],
+    };
+  }),
+);
+
+/**
  * Los árboles de la Plaza de Armas, del OSM: laureles de la India podados en
  * bloque por las orillas (dentro de la reja y en los arriates de afuera) y,
  * dentro de los cuadrantes, árboles altos de copa suelta.
@@ -543,7 +567,9 @@ const ARMAS_LAURELES: readonly (readonly [number, number])[] = [
   ...hilera(32, 81, 11).map((y) => [194.3, y] as const),
 ];
 const ARMAS_ALTOS: readonly (readonly [number, number, Especie])[] = [
-  [155.2, 46.6, 'fresno'],
+  // Los dos fresnos de junto a las fuentes de arriba van ≈5 tiles más abajo que en el OSM: con su
+  // copa de 7 tiles de alto tapaban la fuente entera.
+  [152.8, 51.2, 'fresno'],
   [156.2, 53, 'liquidambar'],
   [158.2, 66.9, 'jacaranda'],
   [158.9, 72, 'fresno'],
@@ -555,7 +581,7 @@ const ARMAS_ALTOS: readonly (readonly [number, number, Especie])[] = [
   [173.3, 72.9, 'fresno'],
   [177.3, 53.1, 'liquidambar'],
   [178.1, 67.5, 'jacaranda'],
-  [180.8, 46.6, 'fresno'],
+  [183.2, 51.2, 'fresno'],
   [182.8, 70, 'liquidambar'],
   [174.6, 41.5, 'fresno'],
   [161.5, 80.2, 'jacaranda'],
@@ -731,6 +757,22 @@ const vendimia: MapObject[] = [
     solid: [{ x: 0.2, y: 0.45, w: 0.6, h: 0.5 }],
   },
   { id: 'carrito-churros', kind: 'puesto', x: 28.5, y: 64.5, w: 2, h: 1, variant: 'churros' },
+  // El gazpacho se vende «detrás de la Catedral» (sobre Allende) y hacia San Agustín.
+  { id: 'carrito-gazpacho-1', kind: 'puesto', x: 57, y: 16.6, w: 2, h: 1, variant: 'gazpacho' },
+  { id: 'carrito-gazpacho-2', kind: 'puesto', x: 132.6, y: 11.5, w: 2, h: 1, variant: 'gazpacho' },
+  // Elotes con su sombrilla roja, en la esquina de la Plaza de Armas junto al andador Juárez.
+  { id: 'carrito-elotes', kind: 'puesto', x: 142.2, y: 26.2, w: 2, h: 1, variant: 'elotes' },
+  // Un bolero entre las bancas del andador Juárez.
+  {
+    id: 'bolero',
+    kind: 'puesto',
+    x: HILERA_ANDADOR_X - 2,
+    y: 38.4,
+    w: 1,
+    h: 1,
+    variant: 'bolero',
+    solid: [{ x: 0.1, y: 0.3, w: 0.8, h: 0.7 }],
+  },
 ];
 
 // ─── El atrio y la Catedral ───────────────────────────────────────────────
@@ -760,6 +802,24 @@ const CATEDRAL: MapObject = {
     { x: 1, y: 43.5, w: 3, h: 10 },
   ],
 };
+
+/**
+ * Las esculturas de los mártires (investigacion.md §2.8): dos figuras
+ * estilizadas de cantera, encapuchadas y con las manos juntas, adosadas al
+ * muro poniente de las naves (del lado de la Plaza de Armas), entre el
+ * crucero y la torre, cada una en su corralito de reja negra.
+ */
+const MURO_PONIENTE_NAVES = CATEDRAL_HUELLA.x + 37;
+const martires: MapObject[] = [57.2, 62.4].map((y, i) => ({
+  id: `martir-${i + 1}`,
+  kind: 'estatua',
+  x: MURO_PONIENTE_NAVES,
+  y,
+  w: 1.5,
+  h: 1.3,
+  variant: 'martir',
+  solid: [{ x: 0, y: 0.1, w: 1.45, h: 1.2 }],
+}));
 
 /**
  * La reja del atrio: barrotes de hierro sobre un murete de cantera. Tramos
@@ -1196,6 +1256,18 @@ const signs: Sign[] = [
     ],
   },
   {
+    id: 'placa-martires',
+    x: MURO_PONIENTE_NAVES + 1.9,
+    y: 60.6,
+    reach: 1.8,
+    label: 'Ver las esculturas',
+    title: 'Los mártires',
+    body: [
+      'Estas dos figuras de cantera, encapuchadas y con las manos juntas, recuerdan a los fusilados en la Plaza de Armas, que por ellos se llama también Plaza de los Mártires.',
+      'Entre ellos, el padre Mariano Matamoros, brazo derecho de Morelos, en 1814. Por él se llaman el portal y el teatro del otro lado de la plaza, sobre Abasolo.',
+    ],
+  },
+  {
     id: 'placa-armas',
     x: KIOSKO.x,
     y: KIOSKO.y + KIOSKO_R + 1.3,
@@ -1254,9 +1326,120 @@ const armasFaroles: MapObject[] = [
   farol('farol-armas-4', KIOSKO.x + 5.2, KIOSKO.y + 6.8),
 ];
 
+/**
+ * El anillo de bancas curvas de cantera alrededor del kiosko, con el
+ * respaldo calado de óculos ovales (investigacion.md §2.2): una en cada tramo
+ * entre andadores, en la orilla del andador circular, de espaldas al jardín y
+ * mirando al kiosko. La curva la dibuja el arte a partir de su `variant`:
+ * `curva:desde:hasta:radio:cx:cy` (grados; radio y centro en tiles, desde la
+ * esquina del objeto).
+ */
+const BANCA_KIOSKO_R = 7.6;
+/** Medio grueso de la banca (asiento y respaldo), en tiles. */
+const BANCA_CURVA_MEDIO = 0.35;
+/** Aire entre la punta de una banca y la orilla de un andador, en tiles. */
+const AIRE_ANDADOR = 0.3;
+/** Lo más que abarca una banca (grados): en los tramos anchos no llega a los andadores. */
+const BANCA_CURVA_MAX = 26;
+/** Desde 2.9 tiles de largo caben tres lugares; si no, dos. */
+const BANCA_CURVA_TRES = 2.9;
+
+const grados = (rad: number) => (rad * 180) / Math.PI;
+const radianes = (g: number) => (g * Math.PI) / 180;
+
+/** Los andadores que llegan al anillo: su ángulo desde el kiosko y su medio ancho, en grados. */
+const andadoresDelAnillo = [
+  ...[0, 90, 180, 270].map((a) => ({ a, medio: grados(Math.asin(EJE / BANCA_KIOSKO_R)) })),
+  ...ESQUINAS.map(([x, y]) => ({
+    a: (grados(Math.atan2(y - KIOSKO.y, x - KIOSKO.x)) + 360) % 360,
+    medio: grados(Math.asin(DIAGONAL / 2 / BANCA_KIOSKO_R)),
+  })),
+].sort((p, q) => p.a - q.a);
+
+/** Una banca curva del anillo, de `desde` a `hasta` grados (0 a la derecha, 90 abajo). */
+function bancaCurva(id: string, desde: number, hasta: number): MapObject {
+  const r = BANCA_KIOSKO_R;
+  // Lo sólido: círculos a lo largo de la curva; los de las puntas, metidos para no pasarse de ella.
+  const metido = grados(BANCA_CURVA_MEDIO / r);
+  const n = Math.max(2, Math.ceil((radianes(hasta - desde) * r) / 0.45));
+  const centros = Array.from({ length: n + 1 }, (_, i) => {
+    const a = radianes(desde + metido + ((hasta - desde - 2 * metido) * i) / n);
+    return { x: KIOSKO.x + r * Math.cos(a), y: KIOSKO.y + r * Math.sin(a) };
+  });
+  // La huella: la curva con su grueso y sus puntas, redondeada al pixel de arte (1/16 de tile).
+  const margen = BANCA_CURVA_MEDIO + 0.15;
+  const x = Math.floor(Math.min(...centros.map((c) => c.x - margen)) * 16) / 16;
+  const y = Math.floor(Math.min(...centros.map((c) => c.y - margen)) * 16) / 16;
+  const w = Math.ceil(Math.max(...centros.map((c) => c.x + margen)) * 16) / 16 - x;
+  const h = Math.ceil(Math.max(...centros.map((c) => c.y + margen)) * 16) / 16 - y;
+  const cx = KIOSKO.x - x;
+  const cy = KIOSKO.y - y;
+  return {
+    id,
+    kind: 'banca',
+    x,
+    y,
+    w,
+    h,
+    variant: `curva:${desde.toFixed(2)}:${hasta.toFixed(2)}:${r}:${cx.toFixed(4)}:${cy.toFixed(4)}`,
+    solid: centros.map((c) => ({ circle: { x: c.x - x, y: c.y - y, r: BANCA_CURVA_MEDIO } })),
+  };
+}
+
+/**
+ * Los lugares de una banca curva, repartidos a lo largo de ella cada 0.95
+ * tiles. Cada quien mira al kiosko (hacia donde más se acerca de los cuatro
+ * rumbos) y se levanta hacia él, sobre el andador.
+ */
+function lugaresDeCurva(o: MapObject): Seat[] {
+  const [, desde = 0, hasta = 0, r = BANCA_KIOSKO_R, cx = 0, cy = 0] = (o.variant ?? '')
+    .split(':')
+    .map(Number);
+  const n = radianes(hasta - desde) * r >= BANCA_CURVA_TRES ? 3 : 2;
+  const medio = (desde + hasta) / 2;
+  return Array.from({ length: n }, (_, i) => {
+    const a = radianes(medio + grados(((i - (n - 1) / 2) * 0.95) / r));
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    const facing: Facing =
+      Math.abs(ux) > Math.abs(uy) ? (ux > 0 ? 'left' : 'right') : uy > 0 ? 'up' : 'down';
+    // De frente, los pies quedan delante del asiento; de lado o de espaldas, sobre él.
+    const pie = facing === 'down' ? r - BANCA_CURVA_MEDIO - 0.07 : r - 0.1;
+    return {
+      id: `${o.id}-${i + 1}`,
+      x: o.x + cx + pie * ux,
+      y: o.y + cy + pie * uy,
+      facing,
+      exit: { x: o.x + cx + (r - 1) * ux, y: o.y + cy + (r - 1) * uy },
+      object: o.id,
+      ...(facing === 'down' ? {} : { lift: 2 }),
+    };
+  });
+}
+
+const bancasDelKiosko: MapObject[] = andadoresDelAnillo.map((andador, i) => {
+  const siguiente = andadoresDelAnillo[(i + 1) % andadoresDelAnillo.length] ?? andador;
+  const aire = grados(AIRE_ANDADOR / BANCA_KIOSKO_R);
+  let desde = andador.a + andador.medio + aire;
+  let hasta = (siguiente.a < andador.a ? siguiente.a + 360 : siguiente.a) - siguiente.medio - aire;
+  const sobra = hasta - desde - BANCA_CURVA_MAX;
+  if (sobra > 0) {
+    desde += sobra / 2;
+    hasta -= sobra / 2;
+  }
+  return bancaCurva(`banca-kiosko-${i + 1}`, desde, hasta);
+});
+
 // ─── El mapa ──────────────────────────────────────────────────────────────
 
-const bancas = [...bancasDeEje, ...bancasDeOrilla, ...juarezBancas, ...ocampoCubos, ...atrioCubos];
+const bancas = [
+  ...bancasDeEje,
+  ...bancasDeOrilla,
+  ...bancasDelKiosko,
+  ...juarezBancas,
+  ...ocampoCubos,
+  ...atrioCubos,
+];
 const fuentesConBorde = [...armasFuentes, fuenteJuarez];
 
 export const PLAZA: MapDef = {
@@ -1292,6 +1475,7 @@ export const PLAZA: MapDef = {
     monumentoOcampo,
     fuentesDanzantes,
     estatuaJuarez,
+    ...martires,
     placaUnesco,
     losaLiberales,
     astaBandera,
@@ -1352,6 +1536,7 @@ export const PLAZA: MapDef = {
   cameraZones,
   paint: [
     ...armasSuelo,
+    ...luminarias,
     ...bancasDeEje.map(nicho),
     ...juarezSuelo,
     // Pasos de cebra en Madero (OSM).

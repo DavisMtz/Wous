@@ -3,7 +3,10 @@ import { casa, cerrada, comercios, mesaDePortal, portal } from './allende.ts';
 import { catedral } from './catedral.ts';
 import { barra, maceta, mesa, tapete, vitroleros } from './interior.ts';
 import {
+  arcoDeBanca,
   banca,
+  bancaCurva,
+  enBancaCurva,
   estatua,
   farol,
   fresno,
@@ -20,13 +23,17 @@ import {
 import { hash, type Painter, painter } from './paint.ts';
 import {
   asta,
+  bolero,
   chorros,
   churros,
+  elotes,
   farolDeCampanas,
   fuenteDeColumna,
+  gazpacho,
   globos,
   jardinera,
   losaLiberales,
+  martir,
   monumentoOcampo,
   pilastra,
 } from './plazas.ts';
@@ -86,6 +93,7 @@ export function paintObject(o: MapObject): ObjectArt | null {
       // A ras de piso: quien pasa por en medio va encima.
       return { ...chorros(o.w, o.h), depth: o.y * TILE, occluder: false };
     case 'estatua':
+      if (o.variant === 'martir') return at(martir(o.w, o.h, o.id));
       return at(estatua(), true);
     case 'placa':
       if (o.variant === 'losa') {
@@ -97,6 +105,18 @@ export function paintObject(o: MapObject): ObjectArt | null {
     case 'pilastra':
       return at(pilastra(o.variant), true);
     case 'banca': {
+      if (o.variant?.startsWith('curva:')) {
+        const g = arcoDeBanca(o.variant);
+        const medio = ((g.desde + g.hasta) / 2) * (Math.PI / 180);
+        const ux = Math.cos(medio);
+        const uy = Math.sin(medio);
+        const art = bancaCurva(o.variant, o.w, o.h);
+        // De lado, como las de canto: la banca va al fondo. Arriba del kiosko (de frente) manda la
+        // orilla del asiento; abajo (de espaldas), la del respaldo, que tapa a quien se sienta.
+        if (Math.abs(ux) > Math.abs(uy)) return { ...art, depth: o.y * TILE + 2, occluder: false };
+        const orilla = g.r + (uy < 0 ? -0.35 : 0.35);
+        return { ...art, depth: (o.y + g.cy + orilla * uy) * TILE, occluder: false };
+      }
       const art = banca(o.variant);
       // De canto, quien se sienta queda encima del asiento: la banca va al fondo.
       const deCanto = o.variant === 'izquierda' || o.variant === 'derecha';
@@ -112,7 +132,18 @@ export function paintObject(o: MapObject): ObjectArt | null {
       if (o.variant === 'globos') return at(posteDeGlobos());
       return at(o.variant === 'campanas' ? farolDeCampanas() : farol());
     case 'puesto':
-      return at(o.variant === 'globos' ? globos(o.id) : churros(o.id), o.variant === 'globos');
+      switch (o.variant) {
+        case 'globos':
+          return at(globos(o.id), true);
+        case 'gazpacho':
+          return at(gazpacho(o.id));
+        case 'elotes':
+          return at(elotes(o.id), true);
+        case 'bolero':
+          return at(bolero(o.id), true);
+        default:
+          return at(churros(o.id));
+      }
     case 'jardinera':
       return at(jardinera(o.variant, o.w, o.h, o.id), o.variant === 'naranjo');
     case 'mesa':
@@ -293,10 +324,19 @@ export function objectShadow(p: Painter, o: MapObject): void {
       p.rect(x + 12, y + 12, 40, 1, SOMBRA_SUAVE);
       break;
     case 'estatua':
-      p.ellipse(x + w / 2 + 3, y + h - 2, w / 2 + 2, 4, SOMBRA);
+      if (o.variant === 'martir') p.ellipse(x + 14, y + 14, 7, 3, SOMBRA);
+      else p.ellipse(x + w / 2 + 3, y + h - 2, w / 2 + 2, 4, SOMBRA);
       break;
     case 'banca':
-      if (o.variant === 'izquierda' || o.variant === 'derecha') {
+      if (o.variant?.startsWith('curva:')) {
+        // La curva entera, corrida hacia abajo a la derecha.
+        const g = arcoDeBanca(o.variant);
+        for (let yy = 0; yy < h; yy++) {
+          for (let xx = 0; xx < w; xx++) {
+            if (enBancaCurva(g, xx, yy)) p.px(x + xx + 3, y + yy + 2, SOMBRA_SUAVE);
+          }
+        }
+      } else if (o.variant === 'izquierda' || o.variant === 'derecha') {
         p.rect(x + 3, y + 2, w - 4, h, SOMBRA_SUAVE);
       } else {
         p.rect(x + 2, y + h - 2, w - 2, 3, SOMBRA_SUAVE);

@@ -1,5 +1,6 @@
 import { mix, WOOD } from '../rendering/palette.ts';
 import { hash, type Painter, painter } from './paint.ts';
+import { relieve } from './relieve.ts';
 import {
   AGUA,
   BRONCE,
@@ -751,6 +752,102 @@ function bancaDeLado(derecha: boolean): Art {
   p.rect(sx + 1, pie, 3, 3, C.deep);
   p.rect(sx + 6, pie, 3, 3, C.deep);
   return { canvas: p.canvas, ox: 0, oy: -14 };
+}
+
+/** La curva de una banca del kiosko, de su `variant`: `curva:desde:hasta:radio:cx:cy`. */
+export type ArcoDeBanca = { desde: number; hasta: number; r: number; cx: number; cy: number };
+
+export function arcoDeBanca(variant: string): ArcoDeBanca {
+  const [, desde = 0, hasta = 0, r = 0, cx = 0, cy = 0] = variant.split(':').map(Number);
+  return { desde, hasta, r, cx, cy };
+}
+
+/** Medio grueso de la banca curva en pixeles (0.35 tiles, como en los datos). */
+const CURVA_MEDIO = 0.35 * TILE;
+
+/**
+ * ¿El pixel de suelo (x, y), desde la esquina de la banca, cae en ella? Si
+ * cae: cuánto se lleva recorrido de la curva (`s`), su largo y qué tan afuera
+ * queda (`d`, negativo hacia el kiosko), todo en pixeles.
+ */
+export function enBancaCurva(
+  g: ArcoDeBanca,
+  x: number,
+  y: number,
+): { s: number; largo: number; d: number } | null {
+  const dx = x + 0.5 - g.cx * TILE;
+  const dy = y + 0.5 - g.cy * TILE;
+  const R = g.r * TILE;
+  const d = Math.hypot(dx, dy) - R;
+  if (Math.abs(d) > CURVA_MEDIO) return null;
+  let a = (Math.atan2(dy, dx) * 180) / Math.PI;
+  if (a < g.desde - 180) a += 360;
+  if (a < g.desde || a > g.hasta) return null;
+  const aPx = (grados: number) => ((grados * Math.PI) / 180) * R;
+  return { s: aPx(a - g.desde), largo: aPx(g.hasta - g.desde), d };
+}
+
+/**
+ * Banca curva de cantera del anillo del kiosko: asiento macizo con la losa
+ * volada un pixel y, en la orilla de afuera, el respaldo calado de óculos
+ * ovales. Se pinta en relieve sobre su curva, así la misma pieza se ve de
+ * frente (arriba del kiosko), de espaldas (abajo) o de lado.
+ */
+export function bancaCurva(variant: string, wTiles: number, hTiles: number): Art {
+  const g = arcoDeBanca(variant);
+  const W = Math.round(wTiles * TILE);
+  const H = Math.round(hTiles * TILE);
+  const ALZADO = 22;
+  const ASIENTO = 9;
+  const LOSA = 3;
+  const RESPALDO = 20;
+  const GRUESO = 3;
+  const OCULO = { paso: 12, medio: 3, desde: ASIENTO + 3, hasta: RESPALDO - 2 };
+  // Las caras paradas que se ven son las que dan hacia abajo de la pantalla, con la normal de
+  // la curva (afuera o adentro). Con el sol a la izquierda, la que ve a la izquierda sale clara
+  // y la que ve a la derecha, oscura: un tono por banca, del ángulo de en medio.
+  const medio = ((g.desde + g.hasta) / 2) * (Math.PI / 180);
+  const nx = Math.sin(medio) < 0 ? -Math.cos(medio) : Math.cos(medio);
+  const nivel = nx < -0.35 ? 0 : nx > 0.35 ? 2 : 1;
+  const p = painter(W, H + ALZADO);
+  relieve(
+    p,
+    W,
+    H,
+    ALZADO,
+    (x, y) => {
+      const b = enBancaCurva(g, x, y);
+      if (!b) return null;
+      // La losa del asiento vuela sobre su base del lado del kiosko.
+      const pie = b.d < -CURVA_MEDIO + 1.2 ? ASIENTO - LOSA : 0;
+      if (b.d <= CURVA_MEDIO - GRUESO) return [[pie, ASIENTO]];
+      // El respaldo, con sus óculos repartidos a lo largo y lejos de las puntas.
+      const n = Math.max(0, Math.floor((b.largo - 8) / OCULO.paso));
+      const u = b.s - (b.largo - n * OCULO.paso) / 2;
+      const t = (u % OCULO.paso) - OCULO.paso / 2;
+      if (n === 0 || u < 0 || u >= n * OCULO.paso || Math.abs(t) >= OCULO.medio) {
+        return [[pie, RESPALDO]];
+      }
+      // Óvalo parado: más bajo hacia sus orillas.
+      const c = (OCULO.desde + OCULO.hasta) / 2;
+      const alto = ((OCULO.hasta - OCULO.desde) / 2) * Math.sqrt(1 - (t / OCULO.medio) ** 2);
+      return [
+        [pie, Math.round(c - alto)],
+        [Math.round(c + alto), RESPALDO],
+      ];
+    },
+    (x, y, z, cara) => {
+      if (cara === 'tapa') {
+        if (z >= RESPALDO - 1) return C.lighter;
+        // Las juntas de la losa del asiento, cada 16 px de curva.
+        const b = enBancaCurva(g, x, y);
+        return b && z === ASIENTO - 1 && Math.round(b.s) % 16 === 8 ? C.joint : C.light;
+      }
+      const tonos = z >= ASIENTO ? [C.light, C.base, C.shade] : [C.base, C.shade, C.deep];
+      return tonos[nivel] ?? C.base;
+    },
+  );
+  return { canvas: p.canvas, ox: 0, oy: -ALZADO };
 }
 
 /** Cubo de cantera del atrio (sirve de asiento). */

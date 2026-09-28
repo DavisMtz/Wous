@@ -337,6 +337,51 @@ describe('asientos y letreros', () => {
     expect(placa?.type === 'sign' && placa.sign.id).toBe('placa-armas');
   });
 
+  it('alrededor del kiosko, un anillo de bancas curvas: cada lugar mira al kiosko y se levanta hacia él', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const curvas = PLAZA.objects.filter((o) => o.variant?.startsWith('curva:'));
+    expect(curvas).toHaveLength(8);
+    const lugares = PLAZA.seats.filter((s) => s.id.startsWith('banca-kiosko-'));
+    expect(lugares.length).toBeGreaterThanOrEqual(16);
+    const rumbo = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] } as const;
+    for (const s of lugares) {
+      // La salida queda más cerca del kiosko que el asiento, sobre el andador circular.
+      expect(Math.hypot(s.exit.x - KIOSKO.x, s.exit.y - KIOSKO.y)).toBeLessThan(
+        Math.hypot(s.x - KIOSKO.x, s.y - KIOSKO.y),
+      );
+      expect(bloqueado(grid, s.exit.x, s.exit.y)).toBe(false);
+      // Mira hacia el kiosko: su rumbo apunta del lado del centro.
+      const [dx, dy] = rumbo[s.facing];
+      expect(dx * (KIOSKO.x - s.x) + dy * (KIOSKO.y - s.y)).toBeGreaterThan(0);
+    }
+    // La banca estorba; entre dos bancas, el andador llega al anillo.
+    const primera = lugares[0];
+    if (!primera) throw new Error('Sin bancas en el anillo');
+    expect(bloqueado(grid, primera.x, primera.y)).toBe(true);
+    expect(bloqueado(grid, KIOSKO.x, KIOSKO.y + 7.6)).toBe(false);
+    expect(bloqueado(grid, KIOSKO.x + 7.6, KIOSKO.y)).toBe(false);
+  });
+
+  it('junto al muro poniente de la Catedral, los mártires en su corralito y su placa', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const martir = objeto(PLAZA, 'martir-1');
+    expect(bloqueado(grid, martir.x + 0.7, martir.y + 0.6)).toBe(true);
+    const placa = nearestInteraction(PLAZA, { x: martir.x + 2.3, y: 60.4 }, 1.3);
+    expect(placa?.type === 'sign' && placa.sign.id).toBe('placa-martires');
+    expect(placa?.type === 'sign' && placa.sign.body.join(' ')).toMatch(/Matamoros/);
+  });
+
+  it('las luminarias alrededor de las fuentes de taza se pisan', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const luminarias = PLAZA.paint.filter((f) => f.kind === 'luminaria');
+    expect(luminarias).toHaveLength(40);
+    for (const f of luminarias) {
+      if (!('polygon' in f)) throw new Error('Una luminaria es un polígono');
+      const [x, y] = f.polygon.reduce(([ax, ay], [px, py]) => [ax + px / 4, ay + py / 4], [0, 0]);
+      expect(bloqueado(grid, x, y)).toBe(false);
+    }
+  });
+
   it('en el Café, cada mesa tiene sus dos sillas', () => {
     expect(CAFE.seats).toHaveLength(8);
     const silla = seatOf(CAFE, 'mesa-3-izquierda');

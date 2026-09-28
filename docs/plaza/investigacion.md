@@ -475,6 +475,11 @@ Fotos: `plaza_armas_pilastras_faroles_entrada.jpg` y `plaza_armas_andador_ficus_
   manos juntas y pliegues geométricos. Están **adosadas al muro de la catedral del lado de la plaza**,
   cada una en un corralito de reja negra. Recuerdan a los fusilados en la plaza (descripción en
   Commons, 2012).
+- **Por qué «de los Mártires»** (consultado en 2026-09): ahí se fusiló a insurgentes de la guerra de
+  Independencia, como el coronel José Guadalupe Salto y el cura Miguel Gómez (1812–1813) y el padre
+  **Mariano Matamoros**, «brazo derecho de Morelos», en 1814; por él se llaman el portal y el teatro
+  Matamoros ([VisitPátzcuaro][vp]). La Mediateca del INAH guarda una foto titulada «Plaza de armas de
+  Morelia, sitio donde fue fusilado Don Mariano Matamoros» ([INAH][inahmat]).
 
 ### 2.9 Gente, vendedores y ambiente
 
@@ -1088,6 +1093,7 @@ son de Google Maps; solo las consulté.
   - [Flickr quokant, historia de la plaza][qk1]
   - [Flickr quokant, kiosco de 1887](https://www.flickr.com/photos/quokant/4383779824)
   - [VisitPátzcuaro][vp]
+  - [Mediateca del INAH, foto del sitio del fusilamiento de Matamoros][inahmat]
   - [MiMorelia, bancas 2026][bancas]
   - [El Clima, plazas y portales](https://www.elclima.com.mx/plazas_y_portales_en_morelia.htm)
   - [Descubre Michoacán][dm]
@@ -1150,6 +1156,7 @@ son de Google Maps; solo las consulté.
 [mhplazas]: https://www.michoacanhistorico.com/plazas-y-jardines-del-centro-historico-de-morelia-parte-i/
 [qk1]: https://www.flickr.com/photos/quokant/4383780280
 [vp]: https://villapatzcuaro.com/visitpatzcuaro/en/item/plaza-de-armas-de-morelia/
+[inahmat]: https://mediateca.inah.gob.mx/repositorio/islandora/object/fotografia:363235
 [bancas]: https://mimorelia.com/noticias/morelia/avanza-de-manera-gradual-la-restauraci%C3%B3n-de-bancas-en-plaza-de-armas
 [dm]: https://descubremichoacan.com/actividades-en-morelia/que-hacer-morelia-fin-de-semana/
 [implan]: https://implanmorelia.org/site/wp-content/uploads/2023/01/FI_775.pdf
