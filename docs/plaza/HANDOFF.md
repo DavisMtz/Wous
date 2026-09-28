@@ -43,8 +43,10 @@ Y al ver el resultado:
 
 1. ~~**Agrandar el mapa**~~ **hecho** (§6): se le mostró una maqueta con capturas a 1.5×, 2×,
    2.5× y 3× y eligió **2×** (1.4 m por tile, ADR-0014).
-2. **Detallar el entorno al máximo**, fiel al centro real (§7).
-3. **Nutrirlo de interacción y feedback** (§8).
+2. **Detallar el entorno al máximo**, fiel al centro real (§7): **hecho un pase grande** en la
+   sesión v3; lo que falta está en §7.
+3. **Nutrirlo de interacción y feedback** (§8): **hecho en buena parte** (agua viva, palomas,
+   pregones, campanadas, noche y Luces de Catedral); lo que sigue está en §8.
 4. **Pendiente, no ahora:** entrar a la Catedral (será otro mapa con su portal, como el Café). Su
    puerta hoy es una placa que dice «pronto se podrá entrar».
 
@@ -65,7 +67,9 @@ desplegar lo tuyo.**
 - **Producción tiene registro solo por invitación.** Las invitaciones se crean en la caseta
   (`/caseta`), y el rol de la caseta solo lo da el script
   `node scripts/moderacion/moderar.mts <entorno> dar-caseta @usuario --motivo "…"` (nunca la web).
-- `pnpm test` en verde: worker 184, contratos 38, world-data 23, game-core 14, web 38. E2E de la
+- En esa rama también: el pase de detalle (§7) y la interacción y el ambiente (§8), en commits
+  aparte.
+- `pnpm test` en verde: worker 184, contratos 38, world-data 26, game-core 14, web 49. E2E de la
   Plaza, portales y multijugador en verde con la v3 (ver §3 para correrlos en la nube).
 
 ---
@@ -102,12 +106,15 @@ node scripts/plaza/referencias.mts
 | `node scripts/plaza/validar.mts` | `validateWorld` + tamaño, objetos, asientos y tiempo de la rejilla, en segundos |
 | `node scripts/plaza/osm.mts --escala 1.4 --svg plano.svg --json elementos.json --con-mapa` | El OSM real en tiles a la escala que pidas, con rejilla; `--con-mapa` encima la Plaza de hoy escalada |
 | `node scripts/plaza/pasillos.mts y:96:80.6:20.5 x:20.5:96:145.875` | Holgura de cada tramo de una ruta a pie (cuánto puede ir corrido el E2E sin chocar) |
+| `node e2e/scripts/pieza.mjs morelia bancaCurva '[…]' banca.png 8` | Una pieza del arte sola y ampliada (corre el código del juego en la página de desarrollo) |
+| `node e2e/scripts/cuadros.mjs "<url sin ?quieto>" prefijo 4 150` | Capturas seguidas, para revisar lo que se mueve (agua, palomas, campanadas, fuegos) |
 | `node scripts/plaza/referencias.mts` | Baja las 27 fotos y el extracto de OSM |
 | `node e2e/scripts/captura.mjs "<url>" salida.png 1400 900` | Captura del juego (usa `WOUS_CHROMIUM` si existe) |
 
 **El banco de la Plaza** (solo desarrollo, sin sesión ni servidor):
 `http://localhost:5173/dev-plaza.html?quieto&en=x,y&zoom=N` pone a la persona en cualquier punto
-(tiles) con zoom fijo; `zoom=1` y una ventana de 3328×1568 muestran el mapa entero. `?spawn=desde-cafe`,
+(tiles) con zoom fijo; `zoom=1` y una ventana de 3328×1568 muestran el mapa entero; `?hora=HH:MM`
+(y `?sabado`) fija la hora de Morelia del ambiente. `?spawn=desde-cafe`,
 `?mapa=cafe`. Ahí también se sienta uno y se leen las placas sin servidor. El juego expone
 `window.__wousJuego` (posición, sala, remotos…) solo en desarrollo.
 
@@ -192,8 +199,10 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
 - `game/world-art/` — **todo el arte es código** (ADR-0007): canvas a 1×, ruido determinista.
   - `paint.ts` (pincel, `hash`, letreros de 3×5), `world-palette.ts` (paletas; varias salen de la
     investigación), `ground.ts` (materiales por pixel y por región, calles con carriles según su
-    tramo, guarniciones, rejas de jardines y de la jardinera, sombras horneadas), `objects.ts`
-    (despacho por `kind`/`variant`, profundidad, sombras).
+    tramo, guarniciones, rejas de jardines y de la jardinera, luminarias, sombras horneadas),
+    `objects.ts` (despacho por `kind`/`variant`, cuadros de animación, profundidad, sombras),
+    `relieve.ts` (pinta en 3/4 algo descrito por columnas de voxeles: la banca curva), `fauna.ts`
+    (las palomas). Cada pieza puede declarar sus faroles (`Art.luces`) para la noche.
   - `catedral.ts` (canvas 640×896 para la huella de 40×56), `allende.ts` (los portales, los
     comercios y el Café, las mesas bajo los arcos, las casas de Allende, la Cerrada de San
     Agustín), `morelia.ts` (reja y portones, kiosko, fuentes de taza, estatua de Juárez, placa,
@@ -267,9 +276,12 @@ Madero (calle) 91–98.
 | Losa de los Liberales | (11, 36.4), se pisa; placa en (11.9, 38) |
 | Asta bandera | (26.5, 53) |
 | Mesas de café (Portal Allende) | 6 mesas bajo los arcos, dos sillas cada una; el arco del Café queda libre |
+| Bancas curvas del kiosko | 8, en la orilla del anillo (r 7.6), una por tramo entre andadores; 20 lugares |
+| Esculturas de los mártires | contra el muro poniente de las naves (x 83), y 57.2 y 62.4; placa en (84.9, 60.6) |
+| Vendedores | globero (23, 45), churros (28.5, 64.5), gazpacho (57, 16.6) y (132.6, 11.5), elotes (142.2, 26.2), bolero (138.3, 38.4) |
 | Encuadre de la Catedral | x 41–115.5, y 67–91, sube 12 tiles |
 
-Números: 282 objetos, 156 asientos, 6 placas, 1 puerta. Rejilla de 832×392 celdas (≈10 ms).
+Números: 296 objetos, 176 asientos, 7 placas, 1 puerta. Rejilla de 832×392 celdas (≈10 ms).
 
 **Ruta a pie de la entrada al Café** (la de `portales.spec.ts`; direcciones de pantalla): a la
 derecha hasta x 96 por el atrio, hacia arriba por el atrio poniente (sin reja al sur, como el real)
@@ -338,84 +350,93 @@ exageradas respecto al piso (como hoy): en 3/4 cenital se lee mejor.
 
 ## 7. Tarea 2 · Detallar el entorno
 
-Qué ya está (v2 + pase de fidelidad) y qué falta, según `investigacion.md`.
-
-**Ya está:** Catedral con torres, relojes, cúpula de azulejo en rombos, bóvedas rojas, puerta
-mayor con reja; reja del atrio con portones de copete y jarrones; atrio de cantera clara; Plaza de
-Armas con kiosko octagonal (base gris con tableros y puertita, columnas torsas y barandal negros,
-techo de lámina con crestería, plafón miel), jardinera cercada, cuatro fuentes de taza de cantera
-gris, jardines con reja baja verde, ejes y diagonales, laureles podados en bloque (lima, tronco
-encalado), fresnos, pilastras-farol en las entradas y en fila por la orilla; andador Juárez con sus
-hileras de laureles, bancas, estatua, fuente de columna y placa de la UNESCO; Melchor Ocampo con
-explanada gris y retícula, monumento a Ocampo, fuentes danzantes, bancas-cubo y macetones junto a
-la reja, jardineras con bugambilias y naranjos, postes de faroles de campana, asta con la bandera,
-jacarandas, globero, carrito de churros y la losa de los Liberales; portales de Allende (aplanado
-crema, arcos de cantera, balcones negros) con comercios y el Café; casas de dos pisos; Madero con
-doble raya amarilla, boyas y cebras.
+**Ya está (v2, el pase de fidelidad y el de la v3):** Catedral con torres (la oriente con los
+cuerpos altos salmón), relojes, campanarios, cúpula de azulejo en rombos, bóvedas rojas, ábside,
+el anexo blanco de marcos rojos con su cupulita y la puerta mayor; las **esculturas de los
+mártires** junto al muro poniente, en su corralito, con su placa; reja del atrio con ocho portones
+de copete y jarrones y sus faroles de brazo; atrio de cantera clara. Plaza de Armas: kiosko
+octagonal con su cúpula y su jardinera de reja negra, el **anillo de bancas curvas con respaldo
+calado de óculos**, cuatro fuentes de taza con sus **luminarias empotradas**, jardines con reja
+verde, ejes y diagonales, laureles podados en bloque, fresnos, liquidámbares, jacarandas,
+pilastras-farol. Plaza Juárez: estatua, bancas de hierro verde botella, fuente de columna, placa de
+la UNESCO. Melchor Ocampo: explanada con su retícula, monumento, fuentes danzantes, bancas-cubo,
+macetones, jardineras con bugambilias y naranjos, faroles de campana, asta. Allende: casas de dos
+pisos, el Portal Aldama, la Cerrada de San Agustín con el templo al fondo y el Portal Allende con
+faroles colgantes bajo los letreros, comercios, el Café y **mesas de café bajo los arcos**. Madero
+con postes negros de doble brazo y globos, doble raya amarilla, boyas y cebras. Vendedores: globero,
+churros, **gazpacho** detrás de la Catedral y hacia San Agustín, **elotes** con sombrilla roja y un
+**bolero**.
 
 **Falta o se puede mejorar (con la sección de `investigacion.md` que lo describe):**
 
-- **Catedral (§1):** la torre oriente con los cuerpos altos **salmón** (hoy iguales); portadas
-  laterales (Guadalupe al oriente, San José al poniente) con relieves; muros de las naves con
-  óculos, ventanas enrejadas y faroles de pared; el anexo blanco con marcos rojos junto a la torre
-  oriente y su cupulita; las **esculturas de los mártires** adosadas al muro del lado de la Plaza
-  de Armas, cada una en su corralito de reja; faroles de brazo en los pilares de los portones
-  (4 al frente); escalones del atrio.
-- **Plaza de Armas (§2):** el **anillo de bancas curvas con respaldo calado de óculos** alrededor
-  del kiosko; **bancas de hierro fundido verde botella** bajo los laureles del andador; la reja de
-  la jardinera del kiosko es **negra** (hoy sale verde, como la de los jardines); luminarias
-  empotradas junto a las fuentes; liquidámbar entre los árboles; cenefas de flores por temporada.
-- **Portales (§3):** faroles hexagonales colgantes (se quitaron porque tapaban los letreros: hay
-  que acomodarlos); las **mesas de café bajo los arcos** (mesas de madera clara y sillas); nombres
-  reales como referencia (el OSM trae Café Michelena, la Churrería, una nevería, farmacias; ver
-  `--json`). El Portal Allende es el tramo de Abasolo a Hidalgo; al oriente sigue el Aldama.
-- **Madero (§5.2):** los postes son **negros, altos, de doble brazo con faroles de globo blanco**
-  (hoy son de tres linternas); guarniciones amarillas.
-- **Melchor Ocampo (§4):** el hotel Los Juaninos y las casas del lado de Morelos (hoy solo
-  azoteas); los faroles altos de doble brazo con globos.
-- **Ambiente (§2.9, §6):** palomas; boleros; elotes con sombrilla roja; gazpacho detrás de la
-  Catedral; la Danza de los Viejitos los sábados; el tranvía turístico.
+- **Catedral (§1):** las portadas laterales (Guadalupe, San José) apenas se verían en la vista
+  cenital; los escalones del atrio (4 en la puerta trasera); palomas en las cornisas.
+- **Plaza de Armas (§2):** cenefas de flores por temporada (cempasúchil en noviembre, nochebuenas
+  en diciembre): el suelo se podría pintar según el mes del servidor.
+- **Portales (§3):** nombres reales como referencia (hoy son giros genéricos; el OSM trae Café
+  Michelena, la Churrería, una nevería, farmacias: `osm.mts --json`).
+- **Madero (§5.2):** las guarniciones amarillas (verificar); del otro lado de Madero (Palacio de
+  Gobierno, portales Hidalgo y Galeana) no se ve nada: la cámara mira al sur.
+- **Melchor Ocampo (§4):** el Hotel Los Juaninos y su terraza quedan fuera del mapa (a la izquierda
+  solo hay azoteas).
+- **Ambiente (§2.9, §6):** la Danza de los Viejitos los sábados, el tranvía turístico, los
+  organilleros.
 - **Lo que no se pudo confirmar (§9 de la investigación):** de qué lado sube la escalera del
   kiosko (hoy no se dibuja), si Madero tiene camellón físico en 2026, si los toldos siguen
-  iguales, el color actual del Portal Allende, si las letras «MORELIA» son permanentes. No
-  inventes: si algo no se confirma, no se dibuja o se dice en la placa.
+  iguales, el color actual del Portal Allende, si las letras «MORELIA» son permanentes, las horas
+  exactas de las fuentes danzantes. No inventes: si algo no se confirma, no se dibuja, se dice en
+  la placa o queda anotado como supuesto.
 
 ---
 
 ## 8. Tarea 3 · Interacción y feedback
 
-Hoy se puede: caminar con colisión fina, **sentarse** en 74 lugares (y en las 8 sillas del Café),
-**leer 6 placas**, entrar al Café. En táctil, la acción es la estrella del HUD; con teclado, «E».
+Hoy se puede: caminar con colisión fina; **sentarse en 176 lugares** (bancas, cubos, la orilla de
+las fuentes de frente y de lado, las bancas curvas del kiosko, las sillas de las mesas del Portal
+Allende) y en las 8 sillas del Café; **leer 7 placas**; entrar al Café. En táctil, la acción es la
+estrella del HUD; con teclado, «E».
+
+**El ambiente** (`apps/web/src/game/ambiente/`, `phaser/ambiente.ts` y `phaser/noche.ts`) es del
+cliente. Lo que depende de la hora sale del reloj del servidor (`RoomState.serverNow`) pasado a la
+hora de Morelia (UTC−6, sin horario de verano), así que todos lo ven a la vez; lo demás (palomas,
+pregones) cada quien lo ve a su modo. Con movimiento reducido (`quiet`) nada se mueve.
+
+- **La marca:** una flechita flota sobre lo que harías con «E» (`dondeSeMarca` en la escena).
+- **Agua viva:** las fuentes tienen cuadros (`cuadrosDe`, `paintObject(o, cuadro)`); las fuentes
+  danzantes bailan en dos turnos de ≈3 h (`TURNOS_DANZANTES`: 10–13 y 17–20; la nota de MiMorelia
+  no da las horas: **es un supuesto**) y quien las cruza prendidas salpica.
+- **Palomas** (`PARVADAS`): picotean, dan saltitos y vuelan si alguien se acerca; regresan al rato.
+- **Pregones** (`PREGONES`): los vendedores te ofrecen lo suyo al pasar, sin compras.
+- **Campanadas:** a cada hora, un toque por hora; la campana grande se mece en su vano
+  (`campanasDeCatedral`, `campanaSola`) y salen ondas.
+- **Día y noche** (`solDeMorelia`, `nocheDe`): velo de noche con una hora de crepúsculo; halos en
+  las luces que declara cada pieza de arte (`Art.luces`); luminarias del piso; la Catedral
+  iluminada (focos dorados, portada azul).
+- **Luces de Catedral** (`lucesDeCatedral`): los sábados, a oscuras a las 20:58 y fuegos de 21:00 a
+  21:07 mientras la iluminación vuelve.
+- En el banco: `?hora=HH:MM` y `?sabado` fijan la hora del ambiente; `e2e/scripts/cuadros.mjs` saca
+  capturas seguidas (sin `?quieto`, para ver lo que se mueve) y `e2e/scripts/pieza.mjs` pinta una
+  pieza sola y ampliada.
 
 Reglas para lo nuevo: si otros lo ven, pasa por la sala (contrato en `@wous/contracts`, validación
-en ambos lados, límite de ritmo, prueba de integración). Si es solo ambiente (palomas, agua,
-campanas), puede ser del cliente, determinista por la hora del servidor. **Nada de economía** (el
-plan la deja para después del MVP: comprar churros no), ni NPCs con IA (§29), ni cosas «ya que
-estamos» (§29). No hay sistema de audio: agregarlo pide ADR (assets en R2, silencio por defecto,
-políticas de autoplay, botón de mute).
+en ambos lados, límite de ritmo, prueba de integración). Si es solo ambiente, puede ser del
+cliente, determinista por la hora del servidor. **Nada de economía** (el plan la deja para después
+del MVP: comprar churros no), ni NPCs con IA (§29), ni cosas «ya que estamos» (§29). No hay sistema
+de audio: agregarlo pide ADR (assets en R2, silencio por defecto, políticas de autoplay, botón de
+silencio).
 
-**Ideas, de más a menos valor:**
+**Lo que sigue, de más a menos valor:**
 
-1. **Mesas del café bajo los portales**, con sus sillas como asientos (como las del Café). Es de
-   lo más característico del lugar.
-2. **Más lugares para sentarse:** toda la orilla de las fuentes (no solo el frente), los escalones
-   del atrio, las bancas curvas del kiosko, los bordes de las jardineras.
-3. **Agua viva:** las fuentes animadas (el borbotón, la copa que rebosa) y las **fuentes
-   danzantes** que se prenden y apagan (en la realidad, dos turnos de ~3 h); pisar los chorros
-   salpica. Hoy todo es estático.
-4. **Palomas** en el piso y las cornisas, que vuelan al acercarte (solo cliente).
-5. **Feedback de interacción:** resaltar lo que está al alcance (contorno o flechita sobre la
-   banca/placa), pose de sentarse con una transición corta, polvito o salpicadura al caminar por
-   cada material.
-6. **Día y noche con la hora de Morelia** (la del servidor): faroles que se encienden, la Catedral
-   iluminada.
-7. **Eventos del calendario:** campanadas cada hora (visual si no hay audio), **«Luces de
-   Catedral» los sábados a las 21:00** (se apaga todo, luces y fuegos artificiales), adornos de
-   temporada (septiembre: banderas; noviembre: catrinas y cempasúchil; diciembre: nochebuenas).
-8. **Vendedores con pregón** en burbuja («¡Churros calientitos!») al acercarte (sin comprar).
-9. **El kiosko como escenario:** poder subir (necesita saber de qué lado está la escalera y un
+1. **Más lugares para sentarse:** los escalones del atrio, los bordes de las jardineras de la
+   Melchor Ocampo.
+2. **Adornos de temporada** por la fecha del servidor (septiembre: banderas; noviembre: catrinas y
+   cempasúchil; diciembre: nochebuenas).
+3. **Audio** (campanas, pregones, fuegos, agua): pide ADR.
+4. **Pose de sentarse con transición corta** y polvito o salpicadura al caminar por cada material.
+5. **La Danza de los Viejitos** los sábados por la noche (figuras animadas del cliente, sin IA).
+6. **El kiosko como escenario:** poder subir (necesita saber de qué lado está la escalera y un
    segundo nivel de piso: ADR).
-10. **Cruzar Madero por las cebras** (hoy la calle bloquea): pide diseño (¿coches?).
+7. **Cruzar Madero por las cebras** (hoy la calle bloquea): pide diseño (¿coches?).
 
 ---
 
@@ -500,7 +521,14 @@ Todo con fuentes en `docs/plaza/investigacion.md`. Lo esencial:
 
 ## 13. Pendientes y deuda conocida
 
-- Todo es estático: agua, chorros, bandera, árboles.
+- La bandera y los árboles siguen quietos (el agua, las palomas y la noche ya se mueven).
+- El horario de las fuentes danzantes (10–13 y 17–20) es un supuesto: la fuente solo dice «dos
+  turnos de ≈3 h, mañana y tarde».
+- Las campanadas y los fuegos se ven solo si la cámara alcanza las torres: frente a la fachada, con
+  zoom 3, quedan arriba de la pantalla (se ven desde los costados del atrio o con zoom 2). Los
+  fuegos revientan frente a las torres, no encima, para que se vean desde el atrio.
+- La noche es un velo a pantalla completa con luces aditivas: en render por software (CI, sin GPU)
+  baja ≈15 % los cuadros; en un teléfono con GPU no se nota.
 - Del otro lado de Madero (Palacio de Gobierno, portales Hidalgo y Galeana) y de Abasolo (Portal
   Matamoros) no se ve nada: la cámara mira al sur y esos frentes dan la espalda.
 - La Catedral no se abre: la sala interior será otro mapa con su portal (como el Café).
@@ -511,22 +539,20 @@ Todo con fuentes en `docs/plaza/investigacion.md`. Lo esencial:
 
 ## 14. Prompt para el chat nuevo
 
-Pégalo tal cual (ajusta la rama si el PR #1 ya se fusionó):
+Pégalo tal cual (ajusta la rama si el PR #2 ya se fusionó):
 
 ```text
 Vas a continuar la Plaza de Wous: el centro histórico de Morelia (la Catedral con la Plaza de Armas
-y la Plaza Melchor Ocampo). Repo DavisMtz/Wous; si el PR #1 ya está fusionado, trabaja desde main
-en una rama nueva; si no, desde la rama claude/woz-workers-analysis-my1k8g.
+y la Plaza Melchor Ocampo). Repo DavisMtz/Wous; si el PR #2 ya está fusionado, trabaja desde main
+en una rama nueva; si no, desde la rama claude/plaza-wous-morelia-1j16v9.
 
 Lee primero docs/plaza/HANDOFF.md completo (ahí está todo: lo que pedí, cómo está hecho, la
-investigación, las referencias y el plan), después CLAUDE.md, las secciones del plan que ahí se
-indican y los ADR 0007 y 0013.
+investigación, las referencias y lo que falta), después CLAUDE.md, las secciones del plan que ahí se
+indican y los ADR 0007, 0013 y 0014.
 
-Lo que quiero, en orden:
-1. Que el mapa sea más grande, más realista respecto al personaje. Propón la escala con capturas
-   antes de rehacer todo (el documento recomienda empezar en 2×).
-2. Detallar el entorno al máximo, fiel al lugar real, con las referencias del documento.
-3. Llenarlo de interacción y feedback.
+La Plaza ya está al doble de grande (v3), con un pase de detalle y con interacción y ambiente
+(agua viva, palomas, pregones, campanadas, la noche y las Luces de Catedral). Sigue con lo que el
+documento lista como pendiente en §7 y §8, empezando por lo de más valor, fiel al lugar real.
 Entrar a la Catedral queda para después.
 
 Enséñame avances con capturas. Antes de desplegar a producción, pregúntame.

@@ -21,7 +21,8 @@ cambies la arquitectura en silencio (§38).
 
 La Plaza es el centro de Morelia (ADR-0013): Catedral, Plaza de Armas, Melchor Ocampo y el Café
 bajo los portales de Allende, con asientos y placas. Desde la v3 va a 1.4 m por tile (208 × 98) y su
-suelo se pinta en trozos de 512 px (ADR-0014). **Para seguir con ella (agrandar el mapa,
+suelo se pinta en trozos de 512 px (ADR-0014). Su ambiente (agua, palomas, pregones, campanadas, la
+noche y las Luces de Catedral) es del cliente y sale de la hora del servidor: `docs/plaza/HANDOFF.md` §8. **Para seguir con ella (agrandar el mapa,
 detallar, interacción): `docs/plaza/HANDOFF.md`** — pedido, arquitectura, investigación,
 referencias y plan.
 
@@ -117,7 +118,8 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   recibe CELDAS (tile × 4), no tiles. `validateWorld` exige que desde la entrada se llegue a pie a
   cada puerta, asiento y placa: una reja sin portón rompe la prueba. Sentarse es `SIT`/`STAND` y
   lo decide la sala. `dev-plaza.html?quieto&en=x,y&zoom=N` abre cualquier punto (`zoom=1`, el mapa
-  entero); lo que no se ve en un plano sale de la investigación (fotos, IMPLAN), no de memoria.
+  entero; `&hora=HH:MM&sabado`, la hora del ambiente); lo que no se ve en un plano sale de la
+  investigación (fotos, IMPLAN), no de memoria.
 - E2E en un contenedor sin Chrome: `WOUS_CHROMIUM=/opt/pw-browsers/chromium-<versión>/chrome-linux/chrome`
   (la config lo usa en lugar del canal `chrome`). Capturas: `node e2e/scripts/captura.mjs "<url>" out.png`.
 - Caminar en E2E: soltar una tecla tarda (sin GPU y con la sala corrigiendo, el toque más corto
