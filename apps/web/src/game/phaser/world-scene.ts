@@ -31,13 +31,13 @@ import { InputSampler } from '../network/input-sampler.ts';
 import type { RoomError, RoomState } from '../network/room-state.ts';
 import { lookFromAppearance } from '../rendering/appearance.ts';
 import type { Look } from '../rendering/pixel-character.ts';
-import { paintGround } from '../world-art/ground.ts';
 import { foco, focoXs, haloDeFoco } from '../world-art/interior.ts';
 import { FLAG_W, flagColor, paintObject, papelPicadoFlag } from '../world-art/objects.ts';
 import { painter } from '../world-art/paint.ts';
 import { TILE } from '../world-art/world-palette.ts';
 import { globoMs, paintGlobo } from './globo.ts';
 import { addCanvasTexture, type GloboRect, NAME_FONT, Persona, type Postura } from './persona.ts';
+import { SueloPorTrozos } from './suelo.ts';
 
 /** La red de la sala, vista desde la escena: leer el estado y mandar intención. */
 export type SceneNetwork = {
@@ -88,6 +88,8 @@ const CROSSING_TIMEOUT_MS = 6000;
 const EMOTE_MARGIN_MS = 150;
 /** Margen para tocar a alguien con el dedo, en pixeles de arte. */
 const TOUCH_PAD = 4;
+/** Tiempo por cuadro (ms) para ir pintando los trozos del suelo que aún no se ven. */
+const SUELO_MS = 4;
 
 /** Lo que se le dice a quien la puerta no dejó pasar. */
 const PORTAL_REFUSED: Partial<Record<WsErrorCode, string>> = {
@@ -133,6 +135,7 @@ export class WorldScene extends Phaser.Scene {
   private map: MapDef;
   private spawnName: string | undefined;
   private grid!: CollisionGrid;
+  private suelo!: SueloPorTrozos;
   private position!: Vec;
   private facing: Facing = 'down';
   private self!: Persona;
@@ -200,8 +203,7 @@ export class WorldScene extends Phaser.Scene {
     this.position = inicio ? { ...inicio } : { x: spawn.x, y: spawn.y };
     this.facing = spawn.facing;
 
-    addCanvasTexture(this, `suelo:${map.id}:${map.version}`, () => paintGround(map));
-    this.add.image(0, 0, `suelo:${map.id}:${map.version}`).setOrigin(0, 0).setDepth(-10);
+    this.suelo = new SueloPorTrozos(this, map);
     for (const object of map.objects) {
       if (object.kind === 'papel-picado') this.papelPicado(object);
       else if (object.kind === 'focos') this.focos(object);
@@ -216,6 +218,8 @@ export class WorldScene extends Phaser.Scene {
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layoutCamera, this);
     this.layoutCamera();
+    // El primer cuadro ya trae el suelo que se ve; lo demás se pinta de a poco.
+    this.suelo.pintarVisibles(this.vista());
     if (!this.o.quiet) {
       this.time.addEvent({ delay: 110, loop: true, callback: this.swayFlags, callbackScope: this });
     }
@@ -351,6 +355,9 @@ export class WorldScene extends Phaser.Scene {
 
     this.updateOccluders();
     this.followCamera(delta, this.o.quiet);
+    const vista = this.vista();
+    this.suelo.pintarVisibles(vista);
+    this.suelo.pintarPendientes(vista, SUELO_MS);
   }
 
   // ─── Lo de junto: puertas, asientos y placas ────────────────────────────
@@ -803,6 +810,14 @@ export class WorldScene extends Phaser.Scene {
     this.self.setZoom(zoom);
     for (const { persona } of this.remotes.values()) persona.setZoom(zoom);
     this.followCamera(0, true);
+  }
+
+  /** Lo que ve la cámara ahora, en pixeles del mundo. */
+  private vista(): Phaser.Geom.Rectangle {
+    const cam = this.cameras.main;
+    const w = cam.width / cam.zoom;
+    const h = cam.height / cam.zoom;
+    return new Phaser.Geom.Rectangle(this.camCenter.x - w / 2, this.camCenter.y - h / 2, w, h);
   }
 
   private followCamera(delta: number, snap: boolean): void {

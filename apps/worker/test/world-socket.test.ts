@@ -2,6 +2,7 @@ import { runInDurableObject } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { MOVEMENT, NETWORK } from '@wous/config';
 import { WS_CLOSE, WS_PING_TEXT } from '@wous/contracts';
+import { PLAZA, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
 import type { RoomDO } from '../src/durable-objects/RoomDO.ts';
 import { call } from './helpers.ts';
@@ -105,17 +106,17 @@ describe('la sala en tiempo real', () => {
 
   it('las paredes del mapa detienen al servidor', async () => {
     // Bajo el portal, frente a la puerta del Café: arriba está el muro de los
-    // comercios (el andador cubierto son las filas 5–6).
+    // comercios (el andador cubierto son las filas 15–17).
     const { socket } = await joinRoomDirectly('colision', { spawn: 'desde-cafe' });
     const snap = await socket.next('ROOM_SNAPSHOT');
-    expect(snap.payload.players[0]?.y).toBeCloseTo(5.75, 3);
+    expect(snap.payload.players[0]?.y).toBeCloseTo(spawnOf(PLAZA, 'desde-cafe').y, 3);
     const seq = await hold(socket, 1, 0, -1, 900);
     const estado = await socket.next('PLAYER_STATE', (m) =>
       m.payload.states.some((s) => s.seq === seq),
     );
     const y = estado.payload.states[0]?.y ?? 0;
-    expect(y).toBeGreaterThanOrEqual(5 + MOVEMENT.footprint.halfHeight - 0.01);
-    expect(y).toBeLessThan(5.4);
+    expect(y).toBeGreaterThanOrEqual(15 + MOVEMENT.footprint.halfHeight - 0.01);
+    expect(y).toBeLessThan(15.4);
     socket.close();
   });
 

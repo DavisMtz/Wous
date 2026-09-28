@@ -42,13 +42,14 @@ function semilla(id: string): number {
 
 /**
  * Melchor Ocampo de bronce oscuro, de pie sobre un dado de piedra oscura con
- * su placa, al fondo de una pileta baja (a la rodilla) de piedra gris oscura.
- * El agua apenas cubre el fondo y brota en chorritos.
+ * su placa, al centro de una pileta baja (a la rodilla) de piedra gris oscura.
+ * El agua apenas cubre el fondo y brota en chorritos alrededor del dado.
  */
 export function monumentoOcampo(wTiles: number, hTiles: number): Art {
-  const W = wTiles * TILE;
-  const extra = 62;
-  const H = hTiles * TILE + extra;
+  const W = Math.round(wTiles * TILE);
+  const fondoTotal = Math.round(hTiles * TILE);
+  const extra = 36;
+  const H = fondoTotal + extra;
   const p = painter(W, H);
   const top = extra + 3;
   const frente = 9;
@@ -56,39 +57,43 @@ export function monumentoOcampo(wTiles: number, hTiles: number): Art {
   // Cara del frente (a la rodilla) y la tapa del borde.
   p.rect(0, top + fondo, W, frente, O.shade);
   p.rect(0, top + fondo, W, 1, O.light);
-  for (let x = 12; x < W; x += 16) p.rect(x, top + fondo + 1, 1, frente - 1, O.deep);
+  for (let x = 14; x < W; x += 18) p.rect(x, top + fondo + 1, 1, frente - 1, O.deep);
   p.rect(0, H - 1, W, 1, O.deep);
   p.rect(0, top, W, fondo, O.light);
   p.rect(0, top, W, 1, O.lighter);
-  // El agua, bajita y oscura sobre la piedra, con sus chorritos.
-  p.rect(3, top + 3, W - 6, fondo - 6, '#34505c');
-  p.rect(4, top + 4, W - 8, fondo - 8, '#44697a');
-  for (let i = 0; i < 12; i++) {
-    const gx = 7 + ((i * 13) % (W - 14));
-    const gy = top + 7 + ((i * 7) % Math.max(1, fondo - 14));
+  // El agua, bajita y oscura sobre la piedra.
+  p.rect(4, top + 4, W - 8, fondo - 8, '#34505c');
+  p.rect(5, top + 5, W - 10, fondo - 10, '#44697a');
+  for (let i = 0; i < 18; i++) {
+    const gx = 8 + ((i * 17) % (W - 16));
+    const gy = top + 8 + ((i * 11) % Math.max(1, fondo - 16));
     p.rect(gx, gy, 2, 1, '#6d97a8');
   }
-  for (const x of [10, W - 11]) {
-    p.rect(x, top + fondo - 14, 1, 6, AGUA.foam);
-    p.px(x - 1, top + fondo - 12, AGUA.light);
-    p.px(x + 1, top + fondo - 11, AGUA.light);
-    p.ellipse(x, top + fondo - 8, 3, 1, AGUA.light);
-  }
-  // El dado: piedra oscura con su placa de bronce, al fondo de la pileta.
+  // El dado al centro, de piedra oscura, con su placa de bronce.
   const cx = Math.round(W / 2);
-  const dadoPie = top + 16;
-  const dadoAlto = 22;
-  p.rect(cx - 10, dadoPie - 4, 20, 6, O.shade);
-  p.rect(cx - 8, dadoPie - dadoAlto, 16, dadoAlto, O.base);
-  p.rect(cx - 8, dadoPie - dadoAlto, 2, dadoAlto, O.lighter);
-  p.rect(cx + 6, dadoPie - dadoAlto, 2, dadoAlto, O.deep);
-  p.rect(cx - 10, dadoPie - dadoAlto - 3, 20, 3, O.light);
-  p.rect(cx - 10, dadoPie - dadoAlto - 3, 20, 1, O.lighter);
-  p.rect(cx - 5, dadoPie - 15, 10, 7, BRONCE.light);
-  p.rect(cx - 5, dadoPie - 15, 10, 1, '#b7ad7a');
-  for (const y of [dadoPie - 13, dadoPie - 11]) p.rect(cx - 3, y, 6, 1, BRONCE.shade);
+  const dadoPie = top + Math.round(fondo * 0.62);
+  const dadoAlto = 24;
+  p.ellipse(cx, dadoPie + 1, 14, 4, '#2f4a55');
+  p.rect(cx - 11, dadoPie - 4, 22, 6, O.shade);
+  p.rect(cx - 9, dadoPie - dadoAlto, 18, dadoAlto, O.base);
+  p.rect(cx - 9, dadoPie - dadoAlto, 2, dadoAlto, O.lighter);
+  p.rect(cx + 7, dadoPie - dadoAlto, 2, dadoAlto, O.deep);
+  p.rect(cx - 11, dadoPie - dadoAlto - 3, 22, 3, O.light);
+  p.rect(cx - 11, dadoPie - dadoAlto - 3, 22, 1, O.lighter);
+  p.rect(cx - 5, dadoPie - 16, 10, 7, BRONCE.light);
+  p.rect(cx - 5, dadoPie - 16, 10, 1, '#b7ad7a');
+  for (const y of [dadoPie - 14, dadoPie - 12]) p.rect(cx - 3, y, 6, 1, BRONCE.shade);
+  // Chorritos alrededor del dado.
+  for (const dx of [-20, 20]) {
+    const x = cx + dx;
+    const y = dadoPie + 4;
+    p.rect(x, y - 7, 1, 7, AGUA.foam);
+    p.px(x - 1, y - 5, AGUA.light);
+    p.px(x + 1, y - 4, AGUA.light);
+    p.ellipse(x, y, 3, 1, AGUA.light);
+  }
   // Ocampo: levita larga, el brazo al frente con un papel.
-  ocampo(p, cx, dadoPie - dadoAlto - 3, 34);
+  ocampo(p, cx, dadoPie - dadoAlto - 3, 38);
   return { canvas: p.canvas, ox: 0, oy: -extra };
 }
 

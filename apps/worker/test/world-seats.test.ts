@@ -151,7 +151,7 @@ describe('asientos (ADR-0013)', () => {
     expect(snap.payload.players.find((p) => p.id === id)).toMatchObject({ x: 49, y: 30 });
 
     // Como si viniera del mapa anterior: su lugar cae dentro de la Catedral.
-    await llevar(segunda.stub, id, 34, 20);
+    await llevar(segunda.stub, id, 66, 50);
     await cae(segunda.stub);
     const tercera = await joinRoomDirectly('guardado-viejo', { characterId: id, epoch: 2 });
     const otra = await tercera.socket.next('ROOM_SNAPSHOT');

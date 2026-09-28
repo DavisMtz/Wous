@@ -235,21 +235,21 @@ test('en una banca se sienta con E, caminar la levanta y las placas se leen (ban
   const accion = page.locator('.pista--accion');
 
   // Frente a una banca de la Plaza de Armas, del lado de Madero.
-  await page.goto('/dev-plaza.html?quieto&en=76,43.2');
+  await page.goto('/dev-plaza.html?quieto&en=151.5,88.25');
   await page.waitForFunction(() => window.__wousJuego?.posicion() != null);
   await expect(accion).toContainText('Sentarse');
   await page.keyboard.press('KeyE');
   await page.waitForFunction(
-    () => Math.abs((window.__wousJuego?.posicion()?.y ?? 0) - 42.65) < 0.01,
+    () => Math.abs((window.__wousJuego?.posicion()?.y ?? 0) - 87.7) < 0.01,
   );
   await expect(accion).toContainText('Levantarse');
   // Caminar levanta a quien está sentado; la banca se vuelve a ofrecer.
   await mantener(page, 'KeyS', 250);
-  expect((await posicion(page)).y).toBeGreaterThan(43.1);
+  expect((await posicion(page)).y).toBeGreaterThan(88.15);
   await expect(accion).toContainText('Sentarse');
 
   // La placa de la UNESCO se lee con E y se cierra con Esc.
-  await page.goto('/dev-plaza.html?quieto&en=66.1,44.4');
+  await page.goto('/dev-plaza.html?quieto&en=137.1,88');
   await page.waitForFunction(() => window.__wousJuego?.posicion() != null);
   await expect(accion).toContainText('Leer la placa');
   await page.keyboard.press('KeyE');
@@ -259,7 +259,7 @@ test('en una banca se sienta con E, caminar la levanta y las placas se leen (ban
   await expect(placa).toBeHidden();
 
   // La Catedral todavía no se abre: su puerta lo dice.
-  await page.goto('/dev-plaza.html?quieto&en=34,36.3');
+  await page.goto('/dev-plaza.html?quieto&en=66.5,78.3');
   await page.waitForFunction(() => window.__wousJuego?.posicion() != null);
   await expect(accion).toContainText('Ver la Catedral');
   await page.keyboard.press('KeyE');

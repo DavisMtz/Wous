@@ -1,4 +1,5 @@
 import type { Facing } from '@wous/game-core';
+import { insideShape } from '../shapes.ts';
 import type {
   CameraZone,
   GroundShape,
@@ -11,48 +12,134 @@ import type {
 import { groundBuilder } from './builder.ts';
 
 /**
- * La Plaza: el centro histórico de Morelia (ADR-0013), trazado sobre
- * OpenStreetMap y la foto de satélite. La vista mira al sur desde Avenida
- * Madero: la fachada de la Catedral da de frente, la Plaza de Armas queda a la
- * derecha (poniente) y la Plaza Melchor Ocampo a la izquierda (oriente).
+ * La Plaza: el centro histórico de Morelia (ADR-0013) a 1.4 m por tile
+ * (ADR-0014), trazada sobre OpenStreetMap (`node scripts/plaza/osm.mts
+ * --escala 1.4`) y la investigación de `docs/plaza/investigacion.md`. La vista
+ * mira al sur desde Avenida Madero: la fachada de la Catedral da de frente, la
+ * Plaza de Armas queda a la derecha (poniente) y la Melchor Ocampo a la
+ * izquierda (oriente).
  *
- * De izquierda a derecha: Av. Morelos · Plaza Melchor Ocampo (sus dos fuentes,
- * la estatua y el Árbol de los Liberales) · el atrio enrejado · la Catedral ·
- * el atrio poniente · la Plaza Juárez con su andador · la Plaza de Armas (el
- * kiosko al centro, ocho andadores en estrella, cuatro fuentes y los jardines
- * cercados) · Abasolo. Arriba, la calle Allende con los portales y el Café;
- * abajo, Madero.
+ * De izquierda a derecha: Av. Morelos · Plaza Melchor Ocampo (la estatua en su
+ * pileta, las fuentes danzantes, la losa de los Liberales) · el atrio enrejado
+ * con la Catedral · el atrio poniente · la Plaza Juárez con su andador · la
+ * Plaza de Armas (el kiosko, ocho andadores en estrella, cuatro fuentes, los
+ * jardines cercados) · Abasolo. Arriba, la calle Allende: casas de dos pisos
+ * hasta García Obeso, el Portal Aldama, la Cerrada de San Agustín y el Portal
+ * Allende con el Café y sus mesas bajo los arcos. Abajo, Madero.
  *
- * Versión 2: la primera de Morelia (la 1 era una plaza de barrio inventada).
+ * Versión 3: el doble de grande que la v2 (ADR-0014).
  */
 
-const W = 104;
-const H = 49;
+const W = 208;
+const H = 98;
 
-// ─── Suelo ────────────────────────────────────────────────────────────────
+// ─── Trazo (tiles; del OSM a 1.4 m por tile) ──────────────────────────────
+
+/** Pie de las casas de Allende sin portal (de Morelos a García Obeso). */
+const CASAS_Y = 15;
+/** Alto del frente de una casa de dos pisos (tiles de arte). */
+const CASA_ALTO = 8;
+/** Línea de los pilares de los portales Aldama y Allende. */
+const PILARES_Y = 18;
+/** Fondo del portal: de los pilares al muro de los comercios (≈4.2 m). */
+const PORTAL_FONDO = 3;
+/** Alto del frente de los portales, del pie de los pilares al pretil. */
+const PORTAL_ALTO = 9;
+/** Separación entre pilares (un arco cada 4.2 m). */
+const ARCO = 3;
+/** La banqueta norte de Allende va de 20 a 21; de ahí para abajo, las plazas. */
+const ALLENDE_NORTE = 20;
+const PLAZAS_Y = 21;
+/** Banqueta de Madero (88–91) y la avenida (91–98). */
+const MADERO_BANQUETA = 88;
+const MADERO_Y = 91;
+
+/** De izquierda (oriente) a derecha (poniente). */
+const MORELOS = { x: 2, w: 5 };
+const OCAMPO_X = 9;
+const GARCIA_OBESO = { x: 67, w: 6 };
+/** Los portales terminan en un pilar: 19 arcos el Aldama y 21 el Allende. */
+const ALDAMA = { x: 73, w: 19 * 3 + 0.75 };
+const CERRADA = { x: 131, w: 10 };
+const PORTAL_ALLENDE = { x: 141, w: 21 * 3 + 0.75 };
+const ABASOLO = { x: 199, w: 6 };
+
+/** El atrio: la reja oriente en x 41, la poniente en 115.5 (desde y 42.5), la norte sobre Madero. */
+const REJA_ORIENTE_X = 41;
+const REJA_PONIENTE_X = 115.5;
+const REJA_PONIENTE_DESDE = 42.5;
+/** Donde se para la reja de Madero (su pie en 87.5). */
+const REJA_NORTE_Y = 86.5;
+
+/** La Catedral: fachada en y 77, torres de 10 tiles (oriente 50–60, poniente 73–83). */
+const CATEDRAL_HUELLA = { x: 46, y: 21, w: 40, h: 56 };
+const FACHADA_Y = CATEDRAL_HUELLA.y + CATEDRAL_HUELLA.h;
+const PUERTA_MAYOR_X = 66.5;
 
 const ground = groundBuilder(W, H, 'enlosado')
-  // Orillas: azoteas y las calles de los lados; Madero abajo.
-  .fill(0, 0, 2, H, 'azotea')
-  .fill(2, 0, 2, H, 'calle') // Av. Morelos
-  .fill(102, 0, 2, H, 'azotea')
-  .fill(100, 0, 2, H, 'calle') // Abasolo
-  // Allende: las fachadas de enfrente, sus portales, la banqueta y el empedrado.
-  .fill(4, 0, 96, 7, 'fachada')
-  .fill(56, 5, 43, 2, 'portal')
-  .fill(4, 7, 96, 1, 'banqueta')
-  .fill(4, 8, 96, 2, 'empedrado')
-  .fill(4, 10, 96, 1, 'banqueta')
-  // Banquetas de Morelos y de Abasolo.
-  .fill(4, 11, 1, 34, 'banqueta')
-  .fill(99, 11, 1, 34, 'banqueta')
+  // Orillas: azoteas de detrás de Morelos y de Abasolo, y las dos calles.
+  .fill(0, 0, MORELOS.x, H, 'azotea')
+  .fill(MORELOS.x, 0, MORELOS.w, H, 'calle')
+  .fill(ABASOLO.x + ABASOLO.w, 0, W - ABASOLO.x - ABASOLO.w, H, 'azotea')
+  .fill(ABASOLO.x, PLAZAS_Y, ABASOLO.w, H - PLAZAS_Y, 'calle')
+  // Allende, de Morelos a García Obeso: casas, su banqueta, el empedrado y la banqueta norte.
+  .fill(7, 0, GARCIA_OBESO.x - 7, CASAS_Y - CASA_ALTO, 'azotea')
+  .fill(7, CASAS_Y - CASA_ALTO, GARCIA_OBESO.x - 7, CASA_ALTO, 'fachada')
+  .fill(7, CASAS_Y, GARCIA_OBESO.x - 7, 1, 'banqueta')
+  .fill(7, CASAS_Y + 1, ABASOLO.x + ABASOLO.w - 7, ALLENDE_NORTE - CASAS_Y - 1, 'empedrado')
+  // García Obeso sube hacia el sur entre las casas.
+  .fill(GARCIA_OBESO.x, 0, GARCIA_OBESO.w, CASAS_Y + 1, 'calle')
+  // Los portales: azoteas, el frente (detrás del arte) y el andador cubierto.
+  .fill(ALDAMA.x, 0, ABASOLO.x + ABASOLO.w - ALDAMA.x, PILARES_Y - PORTAL_ALTO, 'azotea')
+  .fill(
+    ALDAMA.x,
+    PILARES_Y - PORTAL_ALTO,
+    ABASOLO.x + ABASOLO.w - ALDAMA.x,
+    PORTAL_ALTO - PORTAL_FONDO,
+    'fachada',
+  )
+  .fill(ALDAMA.x, PILARES_Y - PORTAL_FONDO, CERRADA.x - ALDAMA.x, PORTAL_FONDO, 'portal')
+  .fill(
+    PORTAL_ALLENDE.x,
+    PILARES_Y - PORTAL_FONDO,
+    ABASOLO.x + ABASOLO.w - PORTAL_ALLENDE.x,
+    PORTAL_FONDO,
+    'portal',
+  )
+  // La Cerrada de San Agustín: callejón peatonal hacia el sur, entre los dos portales.
+  .fill(CERRADA.x, 0, CERRADA.w, 10, 'fachada')
+  .fill(CERRADA.x, 10, CERRADA.w, PILARES_Y - 10, 'losa')
+  // Entre los portales y la esquina de Abasolo el empedrado sigue hasta la calle.
+  .fill(
+    ALDAMA.x,
+    PILARES_Y,
+    ABASOLO.x + ABASOLO.w - ALDAMA.x,
+    ALLENDE_NORTE - PILARES_Y,
+    'empedrado',
+  )
+  .fill(7, ALLENDE_NORTE, ABASOLO.x + ABASOLO.w - 7, 1, 'banqueta')
+  // Banquetas de Morelos y de Abasolo frente a las plazas.
+  .fill(MORELOS.x + MORELOS.w, CASAS_Y, 2, MADERO_Y - CASAS_Y, 'banqueta')
+  .fill(ABASOLO.x - 2, PLAZAS_Y, 2, MADERO_Y - PLAZAS_Y, 'banqueta')
   // Plaza Melchor Ocampo: explanada de losas grises con su retícula oscura.
-  .fill(5, 11, 17, 34, 'explanada')
-  // El atrio: losas de cantera clara.
-  .fill(22, 11, 34, 31, 'losa')
-  // Madero: banqueta y avenida.
-  .fill(4, 45, 96, 1, 'banqueta')
-  .fill(0, 46, W, 3, 'calle')
+  .fill(OCAMPO_X, PLAZAS_Y, REJA_ORIENTE_X - OCAMPO_X, MADERO_BANQUETA - PLAZAS_Y, 'explanada')
+  // El atrio: losas de cantera clara, de Allende a la reja de Madero.
+  .fill(
+    REJA_ORIENTE_X,
+    PLAZAS_Y,
+    REJA_PONIENTE_X - REJA_ORIENTE_X + 1,
+    REJA_NORTE_Y + 1 - PLAZAS_Y,
+    'losa',
+  )
+  // Madero: banqueta ancha y la avenida.
+  .fill(
+    MORELOS.x + MORELOS.w,
+    MADERO_BANQUETA,
+    ABASOLO.x - MORELOS.x - MORELOS.w,
+    MADERO_Y - MADERO_BANQUETA,
+    'banqueta',
+  )
+  .fill(0, MADERO_Y, W, H - MADERO_Y, 'calle')
   .build();
 
 // ─── Asientos ─────────────────────────────────────────────────────────────
@@ -67,11 +154,18 @@ const MIRA: Record<Orientacion, Facing> = {
 };
 
 /**
- * Banca de cantera con respaldo, como las de la Plaza de Armas: dos lugares.
- * Acostada (mira arriba o abajo) mide 2×1; parada (mira a un lado), 1×2. Lo
- * sólido es el asiento, sin la orilla de enfrente.
+ * Banca de cantera con respaldo y brazos de voluta, como las de la Plaza de
+ * Armas: dos lugares. Acostada (mira arriba o abajo) mide 2×1; parada (mira a
+ * un lado), 1×2. Lo sólido es el asiento, sin la orilla de enfrente. La de
+ * hierro (`hierro`) es la verde botella del andador: misma huella.
  */
-function banca(id: string, x: number, y: number, mira: Orientacion): MapObject {
+function banca(
+  id: string,
+  x: number,
+  y: number,
+  mira: Orientacion,
+  material: 'cantera' | 'hierro' = 'cantera',
+): MapObject {
   const acostada = mira === 'abajo' || mira === 'arriba';
   const solid: SolidPart[] = acostada
     ? [{ x: 0, y: mira === 'abajo' ? 0.25 : 0, w: 2, h: 0.75 }]
@@ -83,12 +177,12 @@ function banca(id: string, x: number, y: number, mira: Orientacion): MapObject {
     y,
     w: acostada ? 2 : 1,
     h: acostada ? 1 : 2,
-    variant: mira,
+    variant: material === 'hierro' ? `hierro-${mira}` : mira,
     solid,
   };
 }
 
-/** Cubo de cantera del atrio: un lugar, mirando hacia abajo. */
+/** Cubo de cantera clara (bancas-cubo de la Melchor Ocampo y del atrio): un lugar. */
 function cubo(id: string, x: number, y: number): MapObject {
   return {
     id,
@@ -121,7 +215,7 @@ function lugaresDe(o: MapObject): Seat[] {
       },
     ];
   }
-  const mira = (o.variant ?? 'abajo') as Orientacion;
+  const mira = (o.variant ?? 'abajo').replace('hierro-', '') as Orientacion;
   const facing = MIRA[mira];
   const lugares = [0, 1];
   switch (mira) {
@@ -168,11 +262,10 @@ function lugaresDe(o: MapObject): Seat[] {
 }
 
 /**
- * Fuente de taza (Plaza de Armas): pileta redonda de cantera con su pedestal
- * y la taza al centro. Lo sólido es la pileta; en su borde de enfrente se
- * sienta la gente (dos lugares).
+ * Fuente de pileta redonda (las de taza de la Plaza de Armas, la de columna
+ * del andador). Lo sólido es la pileta; en su borde se sienta la gente.
  */
-function fuente(id: string, cx: number, cy: number, variant: string, r = 1.4): MapObject {
+function fuente(id: string, cx: number, cy: number, variant: string, r: number): MapObject {
   return {
     id,
     kind: 'fuente',
@@ -185,56 +278,102 @@ function fuente(id: string, cx: number, cy: number, variant: string, r = 1.4): M
   };
 }
 
-function bordeDeFuente(f: MapObject, lift = 3, lugares: readonly number[] = [-0.55, 0.55]): Seat[] {
-  const cx = f.x + f.w / 2;
-  const y = f.y + f.h + 0.08;
-  return lugares.map((dx, i) => ({
+/**
+ * Los lugares en el borde de una fuente redonda: tres al frente (mirando
+ * hacia abajo) y uno en cada costado (mirando hacia afuera).
+ */
+function bordeDeFuente(f: MapObject, lift = 3): Seat[] {
+  const r = f.w / 2;
+  const cx = f.x + r;
+  const cy = f.y + r;
+  const frente = f.y + f.h + 0.08;
+  const lugares: Seat[] = [-0.9, 0, 0.9].map((dx, i) => ({
     id: `${f.id}-borde-${i + 1}`,
     x: cx + dx,
-    y,
+    y: frente - (Math.abs(dx) > 0 ? 0.1 : 0),
     facing: 'down' as const,
-    exit: { x: cx + dx, y: y + 0.55 },
+    exit: { x: cx + dx, y: frente + 0.55 },
     object: f.id,
     lift,
   }));
+  lugares.push(
+    {
+      id: `${f.id}-borde-izquierda`,
+      x: f.x + 0.15,
+      y: cy + 0.35,
+      facing: 'left',
+      exit: { x: f.x - 0.55, y: cy + 0.35 },
+      object: f.id,
+      lift,
+    },
+    {
+      id: `${f.id}-borde-derecha`,
+      x: f.x + f.w - 0.15,
+      y: cy + 0.35,
+      facing: 'right',
+      exit: { x: f.x + f.w + 0.55, y: cy + 0.35 },
+      object: f.id,
+      lift,
+    },
+  );
+  return lugares;
 }
 
-function arbol(
-  id: string,
-  x: number,
-  y: number,
-  variant: 'laurel' | 'fresno' | 'liberales' = 'laurel',
-): MapObject {
-  // Solo estorba el tronco (el follaje se cruza por debajo y se transparenta).
+type Especie = 'laurel' | 'fresno' | 'liquidambar' | 'jacaranda' | 'naranjo';
+
+/**
+ * Un árbol con los pies en `x`, `y` (el centro de su tronco). Solo estorba el
+ * tronco: la copa se cruza por debajo y se transparenta.
+ */
+function arbol(id: string, x: number, y: number, especie: Especie = 'laurel'): MapObject {
+  if (especie === 'jacaranda') {
+    return {
+      id,
+      kind: 'jacaranda',
+      x: x - 0.5,
+      y: y - 0.75,
+      w: 1,
+      h: 1,
+      solid: [{ x: 0.3, y: 0.55, w: 0.4, h: 0.4 }],
+    };
+  }
   return {
     id,
     kind: 'arbol',
-    x,
-    y,
+    x: x - 0.5,
+    y: y - 0.75,
     w: 1,
     h: 1,
-    variant,
+    variant: especie,
     solid: [{ x: 0.3, y: 0.55, w: 0.4, h: 0.4 }],
   };
 }
 
-/** Poste de hierro con sus faroles: de tres brazos, o de dos campanas (los de la Melchor Ocampo). */
-function farol(id: string, x: number, y: number, variant?: 'campanas'): MapObject {
+/**
+ * Poste de hierro con sus faroles: de tres brazos (`linternas`), de dos
+ * campanas (Melchor Ocampo) o el alto de doble brazo con globos blancos (Madero).
+ */
+function farol(
+  id: string,
+  x: number,
+  y: number,
+  variant: 'linternas' | 'campanas' | 'globos' = 'linternas',
+): MapObject {
   return {
     id,
     kind: 'farol',
-    x,
-    y,
+    x: x - 0.5,
+    y: y - 0.75,
     w: 1,
     h: 1,
-    ...(variant ? { variant } : {}),
+    ...(variant === 'linternas' ? {} : { variant }),
     solid: [{ x: 0.3, y: 0.6, w: 0.4, h: 0.35 }],
   };
 }
 
 /**
  * Pilastra de cantera (≈4.5 m) con su farol negro de brazo: van en pares en
- * las entradas de las esquinas de la Plaza de Armas y en fila por su orilla.
+ * las entradas de las esquinas de la Plaza de Armas y en fila por el andador.
  * `x`, `y` es el centro de su base; `brazo` dice hacia dónde sale el farol.
  */
 function pilastra(id: string, x: number, y: number, brazo: 'izquierda' | 'derecha'): MapObject {
@@ -250,33 +389,45 @@ function pilastra(id: string, x: number, y: number, brazo: 'izquierda' | 'derech
   };
 }
 
-function jacaranda(id: string, x: number, y: number): MapObject {
-  return { id, kind: 'jacaranda', x, y, w: 1, h: 1, solid: [{ x: 0.3, y: 0.55, w: 0.4, h: 0.4 }] };
+/** El nicho de una banca: losa un poco más grande que ella, abierta en el jardín. */
+function nicho(o: MapObject): GroundShape {
+  return { kind: 'losa', rect: { x: o.x - 0.3, y: o.y - 0.3, w: o.w + 0.6, h: o.h + 0.6 } };
+}
+
+/** Una hilera: `n` puntos repartidos de `a` a `b` (incluidos). */
+function hilera(a: number, b: number, n: number): number[] {
+  if (n <= 1) return [a];
+  return Array.from({ length: n }, (_, i) => a + ((b - a) * i) / (n - 1));
 }
 
 // ─── Plaza de Armas ───────────────────────────────────────────────────────
 
 /** El kiosko: centro de la estrella de andadores (un poco al norte del centro, como el real). */
-const KIOSKO = { x: 83.5, y: 30.5 };
-/** Centro de la base octagonal de cantera del kiosko (su huella en el piso) y su radio. */
-const KIOSKO_BASE = { y: KIOSKO.y + 0.1, r: 2.55 };
-/** Radio del anillo de losa alrededor del kiosko. */
-const ANILLO = 6.2;
-/** Medio ancho de los ejes (andadores norte–sur y oriente–poniente). */
-const EJE = 1.1;
-/** Los jardines cercados, dentro del andador perimetral. */
-const JARDIN = { x: 71.5, y: 14.5, w: 24, h: 27 };
+const KIOSKO = { x: 168, y: 61 };
+/** Radio de la base octagonal de cantera (≈10 m de ancho). */
+const KIOSKO_R = 3.5;
+/** La jardinera cercada alrededor del kiosko y el andador circular. */
+const JARDINERA_KIOSKO_R = 5;
+const ANILLO_R = 8.2;
+/** Medio ancho de los ejes y ancho de las diagonales. */
+const EJE = 1.25;
+const DIAGONAL = 2.2;
+/** El cuadro de los jardines cercados, dentro del andador de alrededor. */
+const JARDIN = { x: 145.5, y: 29, w: 45, h: 57.5 };
 const ESQUINAS = [
   [JARDIN.x, JARDIN.y],
   [JARDIN.x + JARDIN.w, JARDIN.y],
   [JARDIN.x, JARDIN.y + JARDIN.h],
   [JARDIN.x + JARDIN.w, JARDIN.y + JARDIN.h],
 ] as const;
-/** Las cuatro fuentes van sobre las diagonales, a poco más de la mitad del camino. */
-const FUENTES = ESQUINAS.map(([x, y]) => ({
-  x: KIOSKO.x + (x - KIOSKO.x) * 0.62,
-  y: KIOSKO.y + (y - KIOSKO.y) * 0.62,
-}));
+/** Radio de las fuentes de taza (Ø≈5 m) y de su glorieta de losa. */
+const FUENTE_R = 1.8;
+const GLORIETA_R = 3.9;
+/** Las cuatro fuentes, sobre las diagonales: un poco más allá de la mitad del camino. */
+const FUENTES = ESQUINAS.map(([x, y]) => {
+  const t = y < KIOSKO.y ? 0.6 : 0.66;
+  return { x: KIOSKO.x + (x - KIOSKO.x) * t, y: KIOSKO.y + (y - KIOSKO.y) * t };
+});
 
 const armasSuelo: GroundShape[] = [
   { kind: 'jardin', rect: JARDIN },
@@ -310,210 +461,222 @@ const armasSuelo: GroundShape[] = [
           [KIOSKO.x, KIOSKO.y],
           [x, y],
         ],
-        width: 1.9,
+        width: DIAGONAL,
       },
     }),
   ),
-  // Glorietas de las fuentes y el anillo del kiosko, en losa.
-  ...FUENTES.map((f): GroundShape => ({ kind: 'losa', circle: { x: f.x, y: f.y, r: 2.6 } })),
-  { kind: 'losa', circle: { x: KIOSKO.x, y: KIOSKO.y, r: ANILLO } },
-  // El kiosko se levanta en medio de una jardinera redonda con su reja baja;
+  // Glorietas de las fuentes y el andador circular del kiosko, en losa.
+  ...FUENTES.map((f): GroundShape => ({ kind: 'losa', circle: { x: f.x, y: f.y, r: GLORIETA_R } })),
+  { kind: 'losa', circle: { x: KIOSKO.x, y: KIOSKO.y, r: ANILLO_R } },
+  // El kiosko se levanta en medio de una jardinera redonda con su reja baja negra;
   // un andadorcito cruza el pasto hasta la puertita de su base.
-  { kind: 'jardin', circle: { x: KIOSKO.x, y: KIOSKO_BASE.y, r: 3.6 } },
-  { kind: 'enlosado', rect: { x: KIOSKO.x - 0.55, y: KIOSKO_BASE.y + 2.2, w: 1.1, h: 2 } },
+  { kind: 'jardinera', circle: { x: KIOSKO.x, y: KIOSKO.y, r: JARDINERA_KIOSKO_R } },
+  {
+    kind: 'enlosado',
+    rect: {
+      x: KIOSKO.x - 0.6,
+      y: KIOSKO.y + KIOSKO_R - 0.3,
+      w: 1.2,
+      h: JARDINERA_KIOSKO_R - KIOSKO_R + 0.6,
+    },
+  },
+  // Arriates de los laureles del andador de alrededor: junto a Allende y junto a Abasolo.
+  { kind: 'jardin', rect: { x: 147, y: 23.4, w: 42, h: 1.8 } },
+  { kind: 'jardin', rect: { x: 193.4, y: 30, w: 1.8, h: 53 } },
 ];
 
 /**
- * Bancas a los lados de los ejes, cada una en su nicho de losa abierto en el
- * jardín: de espaldas a la reja, mirando al andador.
+ * Bancas en los ejes, cada una en su nicho de losa abierto en el jardín: de
+ * espaldas a la reja, mirando al andador.
  */
 const bancasDeEje: MapObject[] = [
-  // Eje sur (arriba del kiosko), dos pares.
-  banca('banca-armas-1', KIOSKO.x - EJE - 1, 16.8, 'derecha'),
-  banca('banca-armas-2', KIOSKO.x + EJE, 16.8, 'izquierda'),
-  banca('banca-armas-3', KIOSKO.x - EJE - 1, 20.6, 'derecha'),
-  banca('banca-armas-4', KIOSKO.x + EJE, 20.6, 'izquierda'),
-  // Eje norte (abajo del kiosko).
-  banca('banca-armas-5', KIOSKO.x - EJE - 1, 37.9, 'derecha'),
-  banca('banca-armas-6', KIOSKO.x + EJE, 37.9, 'izquierda'),
-  // Ejes oriente y poniente.
-  banca('banca-armas-7', 73.4, KIOSKO.y - EJE - 1, 'abajo'),
-  banca('banca-armas-8', 73.4, KIOSKO.y + EJE, 'arriba'),
-  banca('banca-armas-9', 91.6, KIOSKO.y - EJE - 1, 'abajo'),
-  banca('banca-armas-10', 91.6, KIOSKO.y + EJE, 'arriba'),
+  // Eje norte–sur, arriba del kiosko y abajo.
+  ...[33.5, 39.5, 45.5].flatMap((y, i) => [
+    banca(`banca-armas-sur-${i * 2 + 1}`, KIOSKO.x - EJE - 1.05, y, 'derecha'),
+    banca(`banca-armas-sur-${i * 2 + 2}`, KIOSKO.x + EJE + 0.05, y, 'izquierda'),
+  ]),
+  ...[72.5, 78.5].flatMap((y, i) => [
+    banca(`banca-armas-norte-${i * 2 + 1}`, KIOSKO.x - EJE - 1.05, y, 'derecha'),
+    banca(`banca-armas-norte-${i * 2 + 2}`, KIOSKO.x + EJE + 0.05, y, 'izquierda'),
+  ]),
+  // Eje oriente–poniente, a la izquierda del kiosko y a la derecha.
+  ...[149.5, 155.5].flatMap((x, i) => [
+    banca(`banca-armas-oriente-${i * 2 + 1}`, x, KIOSKO.y - EJE - 1.05, 'abajo'),
+    banca(`banca-armas-oriente-${i * 2 + 2}`, x, KIOSKO.y + EJE + 0.05, 'arriba'),
+  ]),
+  ...[180.5, 186.5].flatMap((x, i) => [
+    banca(`banca-armas-poniente-${i * 2 + 1}`, x, KIOSKO.y - EJE - 1.05, 'abajo'),
+    banca(`banca-armas-poniente-${i * 2 + 2}`, x, KIOSKO.y + EJE + 0.05, 'arriba'),
+  ]),
 ];
 
-/** El nicho de una banca: losa un poco más grande que ella, abierta en el jardín. */
-function nicho(o: MapObject): GroundShape {
-  return { kind: 'losa', rect: { x: o.x - 0.25, y: o.y - 0.25, w: o.w + 0.5, h: o.h + 0.5 } };
-}
-
-const armasBancas: MapObject[] = [
-  ...bancasDeEje,
-  // En el andador de alrededor, de espaldas a la reja del jardín.
-  banca('banca-armas-11', 75.5, 13.4, 'arriba'),
-  banca('banca-armas-12', 89.5, 13.4, 'arriba'),
-  banca('banca-armas-13', 75.5, 41.6, 'abajo'),
-  banca('banca-armas-14', 89.5, 41.6, 'abajo'),
-  banca('banca-armas-15', 70.4, 20.5, 'izquierda'),
-  banca('banca-armas-16', 70.4, 36.0, 'izquierda'),
-  banca('banca-armas-17', 95.6, 20.5, 'derecha'),
-  banca('banca-armas-18', 95.6, 36.0, 'derecha'),
-];
-
-const armasFuentes = FUENTES.map((f, i) => fuente(`fuente-armas-${i + 1}`, f.x, f.y, 'taza'));
-
-/** Laureles recortados en hilera dentro de los jardines, y fresnos grandes en medio. */
-const armasArboles: MapObject[] = [
-  // (Sin laurel frente a cada fuente: se ve desde el andador.)
-  ...[73.2, 79.2, 88.2, 94.2].map((x, i) => arbol(`laurel-armas-sur-${i + 1}`, x - 0.5, 15.2)),
-  ...[73.2, 79.2, 88.2, 94.2].map((x, i) => arbol(`laurel-armas-norte-${i + 1}`, x - 0.5, 39.6)),
-  ...[18.6, 23.0, 36.5, 40.0].map((y, i) => arbol(`laurel-armas-oriente-${i + 1}`, 71.9, y - 0.5)),
-  ...[18.6, 23.0, 36.5, 40.0].map((y, i) => arbol(`laurel-armas-poniente-${i + 1}`, 94.1, y - 0.5)),
-  arbol('fresno-armas-1', 74.0, 26.5, 'fresno'),
-  arbol('fresno-armas-2', 92.0, 25.0, 'fresno'),
-  // En el andador de afuera, junto a Abasolo y Allende.
-  ...[14.0, 19.0, 24.0, 33.0, 38.0, 43.0].map((y, i) =>
-    arbol(`laurel-abasolo-${i + 1}`, 97.8, y - 0.5),
+/** En el andador de alrededor, de espaldas a la reja del jardín. */
+const bancasDeOrilla: MapObject[] = [
+  ...[151, 158, 176, 183].map((x, i) =>
+    banca(`banca-armas-allende-${i + 1}`, x, JARDIN.y - 1.15, 'arriba'),
   ),
-  ...[70.0, 78.0, 89.0, 97.0].map((x, i) => arbol(`laurel-allende-${i + 1}`, x - 0.5, 11.2)),
+  ...[151, 158, 176, 183].map((x, i) =>
+    banca(`banca-armas-madero-${i + 1}`, x, JARDIN.y + JARDIN.h + 0.15, 'abajo'),
+  ),
+  ...[36, 44, 52, 70, 78].map((y, i) =>
+    banca(`banca-armas-abasolo-${i + 1}`, JARDIN.x + JARDIN.w + 0.15, y, 'derecha'),
+  ),
 ];
 
-const armasFaroles: MapObject[] = [
-  farol('farol-armas-1', 78.4, 29.0),
-  farol('farol-armas-2', 88.0, 29.0),
-  farol('farol-armas-7', 81.5, 12.4),
-  farol('farol-armas-8', 84.6, 43.2),
-];
+const armasFuentes = FUENTES.map((f, i) =>
+  fuente(`fuente-armas-${i + 1}`, f.x, f.y, 'taza', FUENTE_R),
+);
 
 /**
- * Pilastras-farol: un par en la boca de cada diagonal (a los lados, sobre la
- * reja) y una fila por la orilla que da al andador Juárez.
+ * Los árboles de la Plaza de Armas, del OSM: laureles de la India podados en
+ * bloque por las orillas (dentro de la reja y en los arriates de afuera) y,
+ * dentro de los cuadrantes, árboles altos de copa suelta.
  */
-const armasPilastras: MapObject[] = [
-  pilastra('pilastra-armas-1', 73.05, JARDIN.y, 'izquierda'),
-  pilastra('pilastra-armas-2', JARDIN.x, 16.45, 'izquierda'),
-  pilastra('pilastra-armas-3', 93.95, JARDIN.y, 'derecha'),
-  pilastra('pilastra-armas-4', JARDIN.x + JARDIN.w, 16.45, 'derecha'),
-  pilastra('pilastra-armas-5', 73.25, JARDIN.y + JARDIN.h, 'izquierda'),
-  pilastra('pilastra-armas-6', JARDIN.x, 39.85, 'izquierda'),
-  pilastra('pilastra-armas-7', 93.75, JARDIN.y + JARDIN.h, 'derecha'),
-  pilastra('pilastra-armas-8', JARDIN.x + JARDIN.w, 39.85, 'derecha'),
-  pilastra('pilastra-andador-1', 69.0, 17.0, 'izquierda'),
-  pilastra('pilastra-andador-2', 69.0, 25.5, 'izquierda'),
-  pilastra('pilastra-andador-3', 69.0, 35.5, 'izquierda'),
+const ARMAS_LAURELES: readonly (readonly [number, number])[] = [
+  // Dentro de la reja, junto a cada orilla.
+  ...hilera(151, 185, 7).map((x) => [x, 32.8] as const),
+  ...hilera(151, 185, 8).map((x) => [x, 83.6] as const),
+  ...hilera(34, 80, 8).map((y) => [148.6, y] as const),
+  ...hilera(34, 80, 8).map((y) => [187.2, y] as const),
+  // En los arriates de afuera: junto a Allende y junto a Abasolo.
+  ...hilera(150, 186, 8).map((x) => [x, 24.8] as const),
+  ...hilera(32, 81, 11).map((y) => [194.3, y] as const),
+];
+const ARMAS_ALTOS: readonly (readonly [number, number, Especie])[] = [
+  [155.2, 46.6, 'fresno'],
+  [156.2, 53, 'liquidambar'],
+  [158.2, 66.9, 'jacaranda'],
+  [158.9, 72, 'fresno'],
+  [152.2, 69.4, 'liquidambar'],
+  [161.4, 42.5, 'jacaranda'],
+  [163.2, 50.2, 'fresno'],
+  [163.8, 72.7, 'liquidambar'],
+  [173.8, 50.3, 'jacaranda'],
+  [173.3, 72.9, 'fresno'],
+  [177.3, 53.1, 'liquidambar'],
+  [178.1, 67.5, 'jacaranda'],
+  [180.8, 46.6, 'fresno'],
+  [182.8, 70, 'liquidambar'],
+  [174.6, 41.5, 'fresno'],
+  [161.5, 80.2, 'jacaranda'],
+  [174.8, 80.8, 'jacaranda'],
 ];
 
-// ─── Plaza Juárez (entre la Plaza de Armas y el atrio) ─────────────────────
+// ─── Plaza Juárez (entre el atrio y la Plaza de Armas) ─────────────────────
+
+/** El andador Juárez (el de la orilla de la Plaza de Armas) y el de en medio, con la estatua. */
+const ANDADOR_JUAREZ = { x: 135.5, w: 3.5 };
+const JUAREZ_EN_MEDIO_X = 126.5;
+const ESTATUA_JUAREZ = { x: JUAREZ_EN_MEDIO_X, y: 27.5 };
+const FUENTE_COLUMNA = { x: JUAREZ_EN_MEDIO_X, y: 83.2, r: 2.1 };
+/** Las dos hileras de laureles de en medio y la del andador, cada una en su arriate cercado. */
+const HILERA_JUAREZ = [121, 132] as const;
+const HILERA_ANDADOR_X = 140.3;
 
 const juarezSuelo: GroundShape[] = [
-  // Dos hileras de laureles, cada una en su arriate cercado, a los lados del andador.
-  { kind: 'jardin', rect: { x: 57.8, y: 17, w: 1.4, h: 22 } },
-  { kind: 'jardin', rect: { x: 62.8, y: 17, w: 1.4, h: 22 } },
-  // Glorieta de la fuentecita y la de la estatua, en losa.
-  { kind: 'losa', circle: { x: 61, y: 41.6, r: 2.3 } },
-  { kind: 'losa', circle: { x: 61, y: 13.8, r: 2.4 } },
+  ...HILERA_JUAREZ.map(
+    (x): GroundShape => ({ kind: 'jardin', rect: { x: x - 0.8, y: 52, w: 1.6, h: 35.5 } }),
+  ),
+  { kind: 'jardin', rect: { x: HILERA_ANDADOR_X - 0.9, y: 29.5, w: 1.8, h: 57.5 } },
+  // Glorietas de la estatua y de la fuente de columna, en losa.
+  { kind: 'losa', circle: { x: ESTATUA_JUAREZ.x, y: ESTATUA_JUAREZ.y + 0.6, r: 3.4 } },
+  { kind: 'losa', circle: { x: FUENTE_COLUMNA.x, y: FUENTE_COLUMNA.y, r: 3.6 } },
+  // El andador Juárez va en losa de cantera, de Allende a Madero.
+  {
+    kind: 'losa',
+    rect: { x: ANDADOR_JUAREZ.x, y: PLAZAS_Y, w: ANDADOR_JUAREZ.w, h: MADERO_BANQUETA - PLAZAS_Y },
+  },
 ];
 
 const juarezBancas: MapObject[] = [
-  banca('banca-juarez-1', 59.25, 19.5, 'derecha'),
-  banca('banca-juarez-2', 59.25, 26.0, 'derecha'),
-  banca('banca-juarez-3', 59.25, 32.5, 'derecha'),
-  banca('banca-juarez-4', 61.75, 22.5, 'izquierda'),
-  banca('banca-juarez-5', 61.75, 29.0, 'izquierda'),
-  banca('banca-juarez-6', 61.75, 35.5, 'izquierda'),
+  // Bancas de hierro bajo los laureles de en medio, mirando al andador de la estatua.
+  ...[56.5, 61.8, 67, 72.3, 77.6].flatMap((y, i) => [
+    banca(`banca-juarez-a-${i + 1}`, HILERA_JUAREZ[0] + 1.1, y, 'derecha', 'hierro'),
+    banca(`banca-juarez-b-${i + 1}`, HILERA_JUAREZ[1] - 2.1, y, 'izquierda', 'hierro'),
+  ]),
+  // Bancas de cantera entre los laureles del andador, de espaldas al arriate.
+  ...[33.2, 42.7, 54, 64, 74, 83.6].map((y, i) =>
+    banca(`banca-andador-${i + 1}`, HILERA_ANDADOR_X - 2, y, 'izquierda'),
+  ),
 ];
 
 const juarezArboles: MapObject[] = [
-  ...[18.5, 22.0, 25.5, 29.0, 32.5, 36.0].map((y, i) => arbol(`laurel-juarez-a-${i + 1}`, 58.0, y)),
-  ...[18.5, 22.0, 25.5, 29.0, 32.5, 36.0].map((y, i) => arbol(`laurel-juarez-b-${i + 1}`, 63.0, y)),
-  arbol('fresno-juarez-1', 66.2, 24.0, 'fresno'),
-  arbol('fresno-juarez-2', 66.2, 33.0, 'fresno'),
+  ...hilera(54.5, 86, 7).flatMap((y, i) =>
+    HILERA_JUAREZ.map((x, lado) => arbol(`laurel-juarez-${lado ? 'b' : 'a'}-${i + 1}`, x, y)),
+  ),
+  ...hilera(31.4, 86, 12).map((y, i) => arbol(`laurel-andador-${i + 1}`, HILERA_ANDADOR_X, y)),
 ];
 
+/** Fila de pilastras-farol en la orilla oriente del andador Juárez. */
+const pilastrasAndador: MapObject[] = hilera(28, 86, 9).map((y, i) =>
+  pilastra(`pilastra-andador-${i + 1}`, ANDADOR_JUAREZ.x - 0.6, y, 'izquierda'),
+);
+
 /** La fuente de columna del andador, cerca de Madero: pileta de tableros, columna anillada, copa y jarrón. */
-const fuenteJuarez = fuente('fuente-juarez', 61, 41.6, 'columna', 1.3);
+const fuenteJuarez = fuente(
+  'fuente-juarez',
+  FUENTE_COLUMNA.x,
+  FUENTE_COLUMNA.y,
+  'columna',
+  FUENTE_COLUMNA.r,
+);
 
 // ─── Plaza Melchor Ocampo ─────────────────────────────────────────────────
 
 /**
  * La estatua de Melchor Ocampo (bronce, 1888, de Primitivo Miranda): de pie
  * sobre un dado de piedra oscura con su placa, en una pileta baja de piedra
- * gris oscura en cuya orilla se sienta la gente. Desde 2008 ya no hay fuente
- * al norte: ahí brotan del piso las fuentes danzantes.
+ * gris oscura (5 × 6.5 tiles) en cuya orilla se sienta la gente. Desde 2008 ya
+ * no hay fuente al norte: ahí brotan del piso las fuentes danzantes.
  */
 const monumentoOcampo: MapObject = {
   id: 'monumento-ocampo',
   kind: 'fuente',
-  x: 9.5,
-  y: 15,
-  w: 4,
-  h: 3,
+  x: 18,
+  y: 29,
+  w: 5,
+  h: 6.5,
   variant: 'ocampo',
-  solid: [{ x: 0, y: 0.2, w: 4, h: 2.8 }],
+  solid: [{ x: 0, y: 0.3, w: 5, h: 6.2 }],
 };
 const fuentesDanzantes: MapObject = {
   id: 'fuentes-danzantes',
   kind: 'chorros',
-  x: 9.5,
-  y: 36.5,
-  w: 4,
-  h: 4,
+  x: 17.6,
+  y: 76,
+  w: 5,
+  h: 6,
 };
 
-/** Por la reja del atrio: bancas-cubo de cantera clara y macetones, uno y uno. */
-const ocampoCubos: MapObject[] = [12.2, 16.2, 24.2, 28.2, 32.2, 36.2, 40.2].map((y, i) =>
-  cubo(`cubo-ocampo-${i + 1}`, 20.3, y),
-);
-const macetones: MapObject[] = [14.2, 26.2, 30.2, 34.2, 38.2].map((y, i) => ({
+/** Junto a la reja del atrio: bancas-cubo de cantera clara y macetones, uno y uno. */
+const OCAMPO_JUNTO_REJA_X = REJA_ORIENTE_X - 1.6;
+const ocampoCubos: MapObject[] = [
+  ...hilera(23.5, 35.5, 4),
+  ...hilera(46.5, 62.5, 5),
+  ...hilera(66.5, 82.5, 5),
+].map((y, i) => cubo(`cubo-ocampo-${i + 1}`, OCAMPO_JUNTO_REJA_X, y));
+const macetones: MapObject[] = [
+  25.5, 29.5, 33.5, 48.5, 52.5, 56.5, 60.5, 68.5, 72.5, 76.5, 80.5,
+].map((y, i) => ({
   id: `maceton-ocampo-${i + 1}`,
   kind: 'jardinera',
-  x: 20.3,
+  x: OCAMPO_JUNTO_REJA_X,
   y,
   w: 1,
   h: 1,
   variant: 'maceton',
 }));
 
-/** Del lado de Morelos: jardineras de cantera con bugambilias y un naranjo. */
-const jardineras: MapObject[] = [
-  {
-    id: 'jardinera-ocampo-1',
-    kind: 'jardinera',
-    x: 5.3,
-    y: 12.3,
-    w: 2,
-    h: 3.6,
-    variant: 'naranjo',
-  },
-  {
-    id: 'jardinera-ocampo-2',
-    kind: 'jardinera',
-    x: 5.3,
-    y: 21.6,
-    w: 2,
-    h: 3.6,
-    variant: 'bugambilia',
-  },
-  {
-    id: 'jardinera-ocampo-3',
-    kind: 'jardinera',
-    x: 5.3,
-    y: 27.6,
-    w: 2,
-    h: 3.6,
-    variant: 'naranjo',
-  },
-  {
-    id: 'jardinera-ocampo-4',
-    kind: 'jardinera',
-    x: 5.3,
-    y: 33.6,
-    w: 2,
-    h: 3.6,
-    variant: 'bugambilia',
-  },
-];
+/** Del lado de Morelos: jardineras de cantera con bugambilias y naranjos (los árboles del OSM). */
+const jardineras: MapObject[] = [39.5, 45.5, 51.5, 57.5, 63.5, 69.5].map((y, i) => ({
+  id: `jardinera-ocampo-${i + 1}`,
+  kind: 'jardinera',
+  x: 10.2,
+  y,
+  w: 2.4,
+  h: 4,
+  variant: i % 2 === 0 ? 'naranjo' : 'bugambilia',
+}));
 
 /**
  * Donde estuvo el Árbol de los Liberales (una acacia que ya no existe) queda
@@ -522,20 +685,20 @@ const jardineras: MapObject[] = [
 const losaLiberales: MapObject = {
   id: 'losa-liberales',
   kind: 'placa',
-  x: 5.5,
-  y: 18.3,
-  w: 1.6,
-  h: 1,
+  x: 11,
+  y: 36.4,
+  w: 1.8,
+  h: 1.2,
   variant: 'losa',
   solid: [],
 };
 
-/** El asta bandera, muy alta y delgada, al centro de la explanada. */
+/** El asta bandera, muy alta y delgada, en medio de la explanada. */
 const astaBandera: MapObject = {
   id: 'asta-bandera',
   kind: 'asta',
-  x: 14,
-  y: 27,
+  x: 26.5,
+  y: 53,
   w: 1,
   h: 1,
   solid: [{ x: 0.25, y: 0.45, w: 0.5, h: 0.5 }],
@@ -543,16 +706,16 @@ const astaBandera: MapObject = {
 
 const ocampoArboles: MapObject[] = [
   // Jacarandas del lado de Madero.
-  ...[8.0, 14.5, 18.5].map((x, i) => jacaranda(`jacaranda-ocampo-${i + 1}`, x, 42.9)),
-  arbol('fresno-ocampo-1', 18.8, 13.2, 'fresno'),
+  ...[10.6, 15, 30.1, 36.6].map((x, i) =>
+    arbol(`jacaranda-ocampo-${i + 1}`, x, i < 2 ? 85.5 - i * 1.5 : 86.2, 'jacaranda'),
+  ),
+  arbol('fresno-ocampo-1', 36.5, 24, 'fresno'),
 ];
 
-/** Postes negros con dos faroles de campana en su travesaño. */
+/** Postes negros con dos faroles de campana, en dos filas. */
 const ocampoFaroles: MapObject[] = [
-  farol('farol-ocampo-1', 8.6, 20.0, 'campanas'),
-  farol('farol-ocampo-2', 8.6, 32.6, 'campanas'),
-  farol('farol-ocampo-3', 17.4, 22.6, 'campanas'),
-  farol('farol-ocampo-4', 17.4, 34.4, 'campanas'),
+  ...[30, 44, 58, 72].map((y, i) => farol(`farol-ocampo-a-${i + 1}`, 16, y, 'campanas')),
+  ...[30, 44, 58, 72].map((y, i) => farol(`farol-ocampo-b-${i + 1}`, 33.5, y, 'campanas')),
 ];
 
 /** La vendimia de la explanada: el globero con su racimo y el carrito de churros. */
@@ -560,29 +723,48 @@ const vendimia: MapObject[] = [
   {
     id: 'globero',
     kind: 'puesto',
-    x: 11,
-    y: 24,
+    x: 23,
+    y: 45,
     w: 1,
     h: 1,
     variant: 'globos',
     solid: [{ x: 0.2, y: 0.45, w: 0.6, h: 0.5 }],
   },
-  { id: 'carrito-churros', kind: 'puesto', x: 16.5, y: 29.4, w: 2, h: 1, variant: 'churros' },
+  { id: 'carrito-churros', kind: 'puesto', x: 28.5, y: 64.5, w: 2, h: 1, variant: 'churros' },
 ];
 
 // ─── El atrio y la Catedral ───────────────────────────────────────────────
 
 /**
- * La Catedral: torres de 4.5 tiles, cuerpo central de 11; la puerta mayor al
- * centro (x 34). Su huella llega hasta la banqueta de Allende, que pasa por
- * detrás del ábside como la de verdad.
+ * La Catedral: la fachada norte con sus dos torres y el cuerpo central de las
+ * tres puertas; detrás, las bóvedas rojas, el crucero y la cúpula de azulejo.
+ * Lo sólido es la planta que dibuja el arte (catedral.ts): la cabecera, las
+ * naves, el crucero de orilla a orilla, las torres y el anexo del oriente; el
+ * atrio que la rodea se camina donde se ve.
  */
-const CATEDRAL: MapObject = { id: 'catedral', kind: 'catedral', x: 24, y: 11, w: 20, h: 25 };
+const CATEDRAL: MapObject = {
+  id: 'catedral',
+  kind: 'catedral',
+  ...CATEDRAL_HUELLA,
+  solid: [
+    // La cabecera: el ábside y el presbiterio con la sacristía.
+    { x: 8, y: 0.5, w: 24, h: 9.5 },
+    // Las tres naves con sus capillas, antes y después del crucero.
+    { x: 4, y: 10, w: 33, h: 12 },
+    { x: 4, y: 32, w: 33, h: 14 },
+    // El crucero, de orilla a orilla, con las portadas laterales en sus puntas.
+    { x: 0, y: 22, w: 40, h: 10 },
+    // Las torres y el cuerpo central.
+    { x: 4, y: 46, w: 33, h: 10 },
+    // El anexo blanco del costado oriente, junto a la torre.
+    { x: 1, y: 43.5, w: 3, h: 10 },
+  ],
+};
 
 /**
  * La reja del atrio: barrotes de hierro sobre un murete de cantera. Tramos
  * acostados (norte) y parados (oriente y poniente); los portones son sus
- * propios objetos, con pilares de cantera y arco de herrería.
+ * propios objetos, con pilares de cantera y copete de herrería.
  */
 function reja(id: string, x: number, y: number, w: number, h: number): MapObject {
   const acostada = w >= h;
@@ -598,7 +780,7 @@ function reja(id: string, x: number, y: number, w: number, h: number): MapObject
   };
 }
 
-/** Portón del atrio: dos pilares de cantera con perillones y el arco de herrería; se cruza por en medio. */
+/** Portón del atrio: dos pilares de cantera con jarrones y el copete de herrería; se cruza por en medio. */
 function porton(
   id: string,
   x: number,
@@ -616,8 +798,8 @@ function porton(
       h: 1,
       variant: 'porton',
       solid: [
-        { x: 0, y: 0.25, w: 0.75, h: 0.75 },
-        { x: ancho - 0.75, y: 0.25, w: 0.75, h: 0.75 },
+        { x: 0, y: 0.25, w: 0.9, h: 0.75 },
+        { x: ancho - 0.9, y: 0.25, w: 0.9, h: 0.75 },
       ],
     };
   }
@@ -630,119 +812,314 @@ function porton(
     h: ancho,
     variant: 'porton-lado',
     solid: [
-      { x: 0, y: 0, w: 0.75, h: 0.75 },
-      { x: 0, y: ancho - 0.75, w: 0.75, h: 0.75 },
+      { x: 0, y: 0, w: 0.9, h: 0.9 },
+      { x: 0, y: ancho - 0.9, w: 0.9, h: 0.9 },
     ],
   };
 }
 
-// Reja norte (sobre y = 41.5–42.5), con el portón mayor frente a la puerta y uno frente a cada torre.
-const rejaNorte: MapObject[] = [
-  reja('reja-norte-1', 22.5, 41.5, 3.0, 1),
-  porton('porton-torre-oriente', 25.5, 41.5, 2.5, 'norte'),
-  reja('reja-norte-2', 28.0, 41.5, 4.5, 1),
-  porton('porton-mayor', 32.5, 41.5, 3.0, 'norte'),
-  reja('reja-norte-3', 35.5, 41.5, 4.5, 1),
-  porton('porton-torre-poniente', 40.0, 41.5, 2.5, 'norte'),
-  reja('reja-norte-4', 42.5, 41.5, 13.5, 1),
-];
-// Reja oriente (x = 22.25), de Allende a Madero, con portón hacia la Melchor Ocampo.
-const rejaOriente: MapObject[] = [
-  reja('reja-oriente-1', 22.25, 11.2, 1, 8.8),
-  porton('porton-oriente', 22.25, 20.0, 2.5, 'lado'),
-  reja('reja-oriente-2', 22.25, 22.5, 1, 19.5),
-];
-// Reja poniente (x = 55.5): del norte hasta la mitad del atrio (como la real); más al sur, abierto.
-const rejaPoniente: MapObject[] = [
-  reja('reja-poniente-1', 55.5, 21.5, 1, 7.0),
-  porton('porton-poniente', 55.5, 28.5, 2.5, 'lado'),
-  reja('reja-poniente-2', 55.5, 31.0, 1, 11.0),
-];
-
-const atrioCubos: MapObject[] = [28.5, 30.5, 37.0, 39.0, 46.0, 49.0, 52.0].map((x, i) =>
-  cubo(`cubo-atrio-${i + 1}`, x, 40.0),
-);
-
-const atrioArboles: MapObject[] = [
-  arbol('fresno-atrio-1', 52.6, 22.5, 'fresno'),
-  arbol('fresno-atrio-2', 53.4, 30.0, 'fresno'),
-  arbol('fresno-atrio-3', 51.2, 36.2, 'fresno'),
-];
-
-const atrioFaroles: MapObject[] = [
-  farol('farol-atrio-1', 30.2, 37.6),
-  farol('farol-atrio-2', 37.8, 37.6),
-  farol('farol-atrio-3', 46.0, 33.0),
-];
-
-// ─── Allende: portales y fachadas de enfrente ─────────────────────────────
-
 /**
- * Los portales de Allende frente a la Plaza de Armas y la Juárez: arcos de
- * medio punto sobre pilares de cantera cada 3 tiles, con el andador cubierto
- * detrás (y = 5–7) y los comercios al fondo. Lo sólido son los pilares; el
- * Café abre en el arco de x 71.75–74.
+ * Una reja con portones: los tramos llenan lo que queda entre `desde` y
+ * `hasta` alrededor de cada portón (dados por su centro y su ancho).
  */
-const PORTAL_X = 56;
-const PORTAL_ARCOS = 14;
-const portales: MapObject = {
-  id: 'portales-allende',
-  kind: 'portal',
-  x: PORTAL_X,
-  y: 0,
-  w: PORTAL_ARCOS * 3 + 1,
-  h: 7,
-  solid: Array.from({ length: PORTAL_ARCOS + 1 }, (_, i) => ({
-    x: i * 3,
-    y: 6.2,
-    w: 0.75,
-    h: 0.8,
-  })),
-};
-/** La puerta del Café, al fondo del arco entre los pilares de x 71 y 74. */
-const PUERTA_CAFE = { x: 72.875, y: 5.1 };
-
-/** Fachadas sin portal: dos pisos de cantera o aplanado, con balcones y comercios. */
-function edificio(id: string, x: number, w: number, variant: string): MapObject {
-  return { id, kind: 'edificio', x, y: 0, w, h: 7, variant };
+function rejaConPortones(
+  id: string,
+  eje: 'x' | 'y',
+  fija: number,
+  desde: number,
+  hasta: number,
+  portones: readonly { centro: number; ancho: number }[],
+): MapObject[] {
+  const out: MapObject[] = [];
+  let cursor = desde;
+  portones.forEach((p, i) => {
+    const inicio = p.centro - p.ancho / 2;
+    if (inicio > cursor + 0.01) {
+      out.push(
+        eje === 'x'
+          ? reja(`${id}-${i + 1}`, cursor, fija, inicio - cursor, 1)
+          : reja(`${id}-${i + 1}`, fija, cursor, 1, inicio - cursor),
+      );
+    }
+    out.push(
+      eje === 'x'
+        ? porton(`${id}-porton-${i + 1}`, inicio, fija, p.ancho, 'norte')
+        : porton(`${id}-porton-${i + 1}`, fija, inicio, p.ancho, 'lado'),
+    );
+    cursor = inicio + p.ancho;
+  });
+  if (hasta > cursor + 0.01) {
+    out.push(
+      eje === 'x'
+        ? reja(`${id}-fin`, cursor, fija, hasta - cursor, 1)
+        : reja(`${id}-fin`, fija, cursor, 1, hasta - cursor),
+    );
+  }
+  return out;
 }
-const edificios: MapObject[] = [
-  edificio('casa-allende-1', 4, 6, 'cantera'),
-  edificio('casa-allende-2', 10, 5, 'ocre'),
-  edificio('casa-allende-3', 15, 4, 'cantera'),
-  edificio('casa-allende-4', 19, 5, 'rosa'),
-  edificio('casa-allende-5', 24, 7, 'ocre'),
-  edificio('casa-allende-6', 31, 6, 'cantera'),
-  edificio('casa-allende-7', 37, 7, 'rosa'),
-  edificio('casa-allende-8', 44, 6, 'cantera'),
-  edificio('casa-allende-9', 50, 6, 'ocre'),
+
+/** Los tres portones de Madero: el mayor frente a la puerta y uno frente a cada torre. */
+const PORTONES_NORTE = [
+  { centro: 57.5, ancho: 4 },
+  { centro: PUERTA_MAYOR_X, ancho: 4.5 },
+  { centro: 75.5, ancho: 4 },
+] as const;
+const rejaNorte = rejaConPortones(
+  'reja-norte',
+  'x',
+  REJA_NORTE_Y,
+  REJA_ORIENTE_X,
+  REJA_PONIENTE_X + 1,
+  PORTONES_NORTE,
+);
+/** Reja oriente, de Allende a Madero: el portón suroriente, el del crucero y el del ángulo norte. */
+const rejaOriente = rejaConPortones(
+  'reja-oriente',
+  'y',
+  REJA_ORIENTE_X,
+  PLAZAS_Y + 0.4,
+  REJA_NORTE_Y,
+  [
+    { centro: 27, ancho: 3.5 },
+    { centro: 40.8, ancho: 3.5 },
+    { centro: 79, ancho: 3.5 },
+  ],
+);
+/** Reja poniente: del ángulo norte hasta la mitad del atrio (como la real); más al sur, abierto. */
+const rejaPoniente = rejaConPortones(
+  'reja-poniente',
+  'y',
+  REJA_PONIENTE_X,
+  REJA_PONIENTE_DESDE,
+  REJA_NORTE_Y,
+  [
+    { centro: 51, ancho: 3.5 },
+    { centro: 79, ancho: 3.5 },
+  ],
+);
+/** Reja sur, de la esquina de Morelos al ábside (sobre Allende). */
+const rejaSur = [reja('reja-sur', REJA_ORIENTE_X, PLAZAS_Y - 0.6, 13, 1)];
+
+/** Cubos de cantera junto a la reja de Madero, por dentro. */
+const atrioCubos: MapObject[] = [48, 51, 61, 71, 81, 84, 92, 99, 106].map((x, i) =>
+  cubo(`cubo-atrio-${i + 1}`, x, REJA_NORTE_Y - 1.4),
+);
+
+/** Los árboles del atrio (OSM): junto a la reja poniente y en las esquinas del oriente. */
+const atrioArboles: MapObject[] = [
+  arbol('fresno-atrio-1', 104.2, 45, 'fresno'),
+  arbol('fresno-atrio-2', 111.5, 48.3, 'fresno'),
+  arbol('liquidambar-atrio-1', 111.2, 54.8, 'liquidambar'),
+  arbol('fresno-atrio-3', 110.9, 61.8, 'fresno'),
+  arbol('liquidambar-atrio-2', 111.5, 72.2, 'liquidambar'),
+  arbol('fresno-atrio-4', 104.5, 77, 'fresno'),
+  arbol('fresno-atrio-5', 44.2, 34, 'fresno'),
+];
+
+/** Postes con faroles por los costados del atrio (al frente, los faroles van en los portones). */
+const atrioFaroles: MapObject[] = [
+  farol('farol-atrio-3', 92, 70),
+  farol('farol-atrio-4', 92, 52),
+  farol('farol-atrio-5', 92, 34),
+  farol('farol-atrio-6', 44, 50),
+  farol('farol-atrio-7', 44, 68),
+];
+
+// ─── Allende: casas, portales y comercios ─────────────────────────────────
+
+/** Casa de dos pisos (cantera o aplanado de color, balcones, zaguán): su pie en la banqueta. */
+function casa(id: string, x: number, w: number, variant: string): MapObject {
+  return { id, kind: 'edificio', x, y: CASAS_Y - CASA_ALTO, w, h: CASA_ALTO, variant };
+}
+const casas: MapObject[] = [
+  // El fondo de la Cerrada de San Agustín, con la torre del templo.
+  {
+    id: 'cerrada-san-agustin',
+    kind: 'edificio',
+    x: CERRADA.x,
+    y: 0,
+    w: CERRADA.w,
+    h: 10,
+    variant: 'cerrada',
+  },
+  casa('casa-allende-1', 7, 14.5, 'ocre'),
+  casa('casa-allende-2', 21.5, 14.5, 'telas'),
+  casa('casa-allende-3', 36, 16, 'crema'),
+  casa('casa-allende-4', 52, 15, 'cantera'),
 ];
 
 /**
- * El fondo de los portales: los comercios que se ven entre los arcos (el
- * Café, la panadería, el restaurante…). Va aparte de los arcos para que quien
- * camina bajo el portal quede delante de las puertas y detrás de los pilares.
+ * Un portal: la arquería (pilares de cantera cada tres tiles con sus arcos de
+ * medio punto y la planta alta con balcones) sobre el andador cubierto. Lo
+ * sólido son los pilares; al fondo, los comercios. `variant` es el color del
+ * aplanado (el Allende va crema; el Aldama, salmón).
  */
-const comercios: MapObject = {
-  id: 'comercios-allende',
-  kind: 'comercios',
-  x: PORTAL_X,
-  y: 3,
-  w: PORTAL_ARCOS * 3 + 1,
-  h: 2,
+function portal(id: string, x: number, w: number, variant: 'crema' | 'salmon'): MapObject {
+  return {
+    id,
+    kind: 'portal',
+    x,
+    y: PILARES_Y - PORTAL_ALTO,
+    w,
+    h: PORTAL_ALTO,
+    variant,
+    solid: Array.from({ length: Math.floor(w / ARCO) + 1 }, (_, i) => ({
+      x: i * ARCO,
+      y: PORTAL_ALTO - 0.8,
+      w: 0.75,
+      h: 0.8,
+    })).filter((s) => s.x + s.w <= w + 0.001),
+  };
+}
+
+/**
+ * El fondo de un portal: los comercios, uno por arco (la puerta, el aparador y
+ * el letrero). Va aparte de la arquería para que quien camina bajo el portal
+ * quede delante de las puertas y detrás de los pilares. `variant` lista los
+ * giros de izquierda a derecha.
+ */
+function comercios(id: string, x: number, w: number, giros: readonly string[]): MapObject {
+  return {
+    id,
+    kind: 'comercios',
+    x,
+    y: PILARES_Y - PORTAL_FONDO - 2,
+    w,
+    h: 2,
+    variant: giros.join(','),
+  };
+}
+
+const portales: MapObject[] = [
+  portal('portal-aldama', ALDAMA.x, ALDAMA.w, 'salmon'),
+  portal('portal-allende', PORTAL_ALLENDE.x, PORTAL_ALLENDE.w, 'crema'),
+];
+
+/**
+ * Los giros bajo cada portal, arco por arco y con letreros que caben en uno.
+ * Salen del OSM: en el Portal Allende, el Café (donde el Café Michelena), la
+ * panadería y churrería, el restaurante y el museo; en el Aldama, las
+ * zapaterías, la escuela, la nevería y la farmacia. Solo hay un CAFE: el que
+ * lleva al Café.
+ */
+const GIROS_ALDAMA = [
+  'REVISTAS',
+  'REGALOS',
+  'ROPA',
+  'DULCES',
+  'LIBROS',
+  'REGALOS',
+  'ROPA',
+  'DULCES',
+  'NIEVES',
+  'LIBROS',
+  'PAN',
+  'REVISTAS',
+  'ZAPATOS',
+  'ROPA',
+  'ZAPATOS',
+  'REGALOS',
+  'ESCUELA',
+  'NIEVES',
+  'FARMACIA',
+] as const;
+/** El arco del Café en el Portal Allende (entre los pilares de x 144 y 147). */
+const ARCO_CAFE = 1;
+const GIROS_ALLENDE = [
+  'REVISTAS',
+  'CAFE',
+  'DULCES',
+  'LIBROS',
+  'PAN',
+  'CHURROS',
+  'COMIDA',
+  'COMIDA',
+  'NIEVES',
+  'REGALOS',
+  'ROPA',
+  'HOTEL',
+  'HOTEL',
+  'FARMACIA',
+  'LIBROS',
+  'REGALOS',
+  'DULCES',
+  'MUSEO',
+  'MUSEO',
+  'ROPA',
+  'ZAPATOS',
+  'HOTEL',
+] as const;
+const comerciosDeAllende: MapObject[] = [
+  comercios('comercios-aldama', ALDAMA.x, ALDAMA.w, GIROS_ALDAMA),
+  comercios('comercios-allende', PORTAL_ALLENDE.x, PORTAL_ALLENDE.w, GIROS_ALLENDE),
+];
+
+/** La puerta del Café, al fondo del arco entre los pilares de x 144 y 147. */
+const PUERTA_CAFE = {
+  x: PORTAL_ALLENDE.x + ARCO_CAFE * ARCO + 0.75 + (ARCO - 0.75) / 2,
+  y: PILARES_Y - PORTAL_FONDO + 0.1,
 };
 
-const maderoFaroles: MapObject[] = [6, 20, 47, 58, 70, 96].map((x, i) =>
-  farol(`farol-madero-${i + 1}`, x, 44.3),
+/**
+ * Las mesas del café bajo los arcos: una mesa de madera clara con dos sillas,
+ * junto a los pilares; detrás queda el paso a las puertas. Cada silla es un
+ * asiento (como las del Café).
+ */
+function mesaDePortal(id: string, arco: number): MapObject {
+  return {
+    id,
+    kind: 'mesa',
+    x: PORTAL_ALLENDE.x + arco * ARCO + 0.8,
+    y: PILARES_Y - 1.75,
+    w: 2.15,
+    h: 0.9,
+    variant: 'portal',
+  };
+}
+function sillasDePortal(mesa: MapObject): Seat[] {
+  const y = mesa.y + 0.95;
+  return [
+    {
+      id: `${mesa.id}-izquierda`,
+      x: mesa.x + 0.35,
+      y,
+      facing: 'right',
+      exit: { x: mesa.x + 0.35, y: mesa.y - 0.45 },
+      object: mesa.id,
+      lift: 8,
+    },
+    {
+      id: `${mesa.id}-derecha`,
+      x: mesa.x + mesa.w - 0.35,
+      y,
+      facing: 'left',
+      exit: { x: mesa.x + mesa.w - 0.35, y: mesa.y - 0.45 },
+      object: mesa.id,
+      lift: 8,
+    },
+  ];
+}
+const mesasDePortal: MapObject[] = [0, 2, 3, 5, 6, 7].map((arco, i) =>
+  mesaDePortal(`mesa-portal-${i + 1}`, arco),
 );
+
+// ─── Madero ───────────────────────────────────────────────────────────────
+
+/** Postes negros altos de doble brazo con faroles de globo blanco, cada ≈22 m. */
+const maderoFaroles: MapObject[] = [12, 28, 44, 59, 80, 96, 112, 124, 150, 166, 182, 196].map(
+  (x, i) => farol(`farol-madero-${i + 1}`, x, MADERO_Y - 0.6, 'globos'),
+);
+
+/** Los pasos de cebra (OSM): Morelos, dos frente a la Catedral, el andador y Abasolo. */
+const CEBRAS = [9.5, 64.7, 73.3, 130.1, 144, 192] as const;
 
 // ─── Placas y encuadres ───────────────────────────────────────────────────
 
 const placaUnesco: MapObject = {
   id: 'placa-unesco',
   kind: 'placa',
-  x: 65.6,
-  y: 42.9,
+  x: 136.6,
+  y: 85.8,
   w: 1,
   h: 1,
   variant: 'unesco',
@@ -751,8 +1128,8 @@ const placaUnesco: MapObject = {
 const estatuaJuarez: MapObject = {
   id: 'estatua-juarez',
   kind: 'estatua',
-  x: 60.2,
-  y: 12.6,
+  x: ESTATUA_JUAREZ.x - 0.8,
+  y: ESTATUA_JUAREZ.y - 0.8,
   w: 1.6,
   h: 1.6,
   variant: 'juarez',
@@ -761,8 +1138,8 @@ const estatuaJuarez: MapObject = {
 const signs: Sign[] = [
   {
     id: 'placa-unesco',
-    x: 66.1,
-    y: 44.0,
+    x: 137.1,
+    y: 87.2,
     reach: 1.4,
     label: 'Leer la placa',
     title: 'Patrimonio Cultural de la Humanidad',
@@ -773,9 +1150,9 @@ const signs: Sign[] = [
   },
   {
     id: 'puerta-catedral',
-    x: 34,
-    y: 36.4,
-    reach: 1.9,
+    x: PUERTA_MAYOR_X,
+    y: FACHADA_Y + 0.5,
+    reach: 2,
     label: 'Ver la Catedral',
     title: 'Catedral de Morelia',
     body: [
@@ -785,8 +1162,8 @@ const signs: Sign[] = [
   },
   {
     id: 'placa-juarez',
-    x: 61,
-    y: 14.9,
+    x: ESTATUA_JUAREZ.x,
+    y: ESTATUA_JUAREZ.y + 1.6,
     reach: 1.5,
     label: 'Leer la placa',
     title: 'Benito Juárez',
@@ -796,9 +1173,9 @@ const signs: Sign[] = [
   },
   {
     id: 'placa-ocampo',
-    x: 11.5,
-    y: 18.7,
-    reach: 1.2,
+    x: monumentoOcampo.x + monumentoOcampo.w / 2,
+    y: monumentoOcampo.y + monumentoOcampo.h + 0.4,
+    reach: 1.3,
     label: 'Leer la placa',
     title: 'Melchor Ocampo',
     body: [
@@ -808,8 +1185,8 @@ const signs: Sign[] = [
   },
   {
     id: 'placa-liberales',
-    x: 6.3,
-    y: 18.9,
+    x: losaLiberales.x + 0.9,
+    y: losaLiberales.y + 1.6,
     reach: 1.4,
     label: 'Leer la losa',
     title: 'Árbol de los Liberales',
@@ -821,7 +1198,7 @@ const signs: Sign[] = [
   {
     id: 'placa-armas',
     x: KIOSKO.x,
-    y: KIOSKO_BASE.y + 3.0,
+    y: KIOSKO.y + KIOSKO_R + 1.3,
     reach: 1.5,
     label: 'Leer la placa',
     title: 'Plaza de Armas',
@@ -833,16 +1210,58 @@ const signs: Sign[] = [
 ];
 
 /** Frente a la Catedral, la cámara sube para que se vean las torres. */
-const cameraZones: CameraZone[] = [{ x: 22, y: 33, w: 34, h: 13, lookUp: 6 }];
+const cameraZones: CameraZone[] = [
+  { x: REJA_ORIENTE_X, y: FACHADA_Y - 10, w: REJA_PONIENTE_X - REJA_ORIENTE_X, h: 24, lookUp: 12 },
+];
+
+// ─── Los árboles de la Plaza de Armas, solo sobre pasto ─────────────────────
+
+/**
+ * Del OSM a veces cae un árbol sobre un andador: aquí solo quedan los que
+ * pisan jardín (la última forma que cubre su tronco es `jardin`).
+ */
+function sobrePasto(x: number, y: number, formas: readonly GroundShape[]): boolean {
+  let arriba: GroundShape | undefined;
+  for (const f of formas) if (insideShape(f, x, y)) arriba = f;
+  return arriba?.kind === 'jardin';
+}
+const formasDeArmas = [...armasSuelo, ...bancasDeEje.map(nicho)];
+const armasArboles: MapObject[] = [
+  ...ARMAS_LAURELES.filter(([x, y]) => sobrePasto(x, y, formasDeArmas)).map(([x, y], i) =>
+    arbol(`laurel-armas-${i + 1}`, x, y),
+  ),
+  ...ARMAS_ALTOS.filter(([x, y]) => sobrePasto(x, y, formasDeArmas)).map(([x, y, especie], i) =>
+    arbol(`${especie}-armas-${i + 1}`, x, y, especie),
+  ),
+];
+
+/** Pilastras-farol: un par en la boca de cada diagonal, sobre la reja del jardín. */
+const armasPilastras: MapObject[] = ESQUINAS.flatMap(([x, y], i) => {
+  const dx = x < KIOSKO.x ? 1 : -1;
+  const dy = y < KIOSKO.y ? 1 : -1;
+  const brazo = x < KIOSKO.x ? 'izquierda' : 'derecha';
+  return [
+    pilastra(`pilastra-armas-${i * 2 + 1}`, x + dx * 1.85, y, brazo),
+    pilastra(`pilastra-armas-${i * 2 + 2}`, x, y + dy * 2.15, brazo),
+  ];
+});
+
+/** Postes con faroles en el jardín: junto al anillo del kiosko y en los ejes. */
+const armasFaroles: MapObject[] = [
+  farol('farol-armas-1', KIOSKO.x - 5.2, KIOSKO.y - 6.4),
+  farol('farol-armas-2', KIOSKO.x + 5.2, KIOSKO.y - 6.4),
+  farol('farol-armas-3', KIOSKO.x - 5.2, KIOSKO.y + 6.8),
+  farol('farol-armas-4', KIOSKO.x + 5.2, KIOSKO.y + 6.8),
+];
 
 // ─── El mapa ──────────────────────────────────────────────────────────────
 
-const bancas = [...armasBancas, ...juarezBancas, ...ocampoCubos, ...atrioCubos];
+const bancas = [...bancasDeEje, ...bancasDeOrilla, ...juarezBancas, ...ocampoCubos, ...atrioCubos];
 const fuentesConBorde = [...armasFuentes, fuenteJuarez];
 
 export const PLAZA: MapDef = {
   id: 'plaza',
-  version: 2,
+  version: 3,
   name: 'La Plaza',
   width: W,
   height: H,
@@ -850,22 +1269,23 @@ export const PLAZA: MapDef = {
   ground,
   objects: [
     CATEDRAL,
-    comercios,
-    portales,
-    ...edificios,
+    ...comerciosDeAllende,
+    ...portales,
+    ...casas,
     ...rejaNorte,
     ...rejaOriente,
     ...rejaPoniente,
+    ...rejaSur,
     {
       // Kiosko octagonal de hierro fundido (1887) sobre su base de cantera.
       // Lo sólido es la base: el octágono, casi un círculo.
       id: 'kiosko',
       kind: 'kiosko',
-      x: KIOSKO.x - 3,
-      y: KIOSKO_BASE.y - 2.8,
-      w: 6,
-      h: 5.6,
-      solid: [{ circle: { x: 3, y: 2.8, r: KIOSKO_BASE.r } }],
+      x: KIOSKO.x - 4.5,
+      y: KIOSKO.y - 4,
+      w: 9,
+      h: 8,
+      solid: [{ circle: { x: 4.5, y: 4, r: KIOSKO_R } }],
     },
     ...armasFuentes,
     fuenteJuarez,
@@ -878,6 +1298,7 @@ export const PLAZA: MapDef = {
     ...jardineras,
     ...macetones,
     ...vendimia,
+    ...mesasDePortal,
     ...bancas,
     ...armasArboles,
     ...juarezArboles,
@@ -885,15 +1306,16 @@ export const PLAZA: MapDef = {
     ...atrioArboles,
     ...armasFaroles,
     ...armasPilastras,
+    ...pilastrasAndador,
     ...ocampoFaroles,
     ...atrioFaroles,
     ...maderoFaroles,
   ],
   spawns: {
     // En el atrio, frente a la puerta mayor, mirando la fachada.
-    entrada: { x: 34, y: 39.9, facing: 'up' },
+    entrada: { x: PUERTA_MAYOR_X, y: FACHADA_Y + 3.6, facing: 'up' },
     // Bajo los portales, en la puerta del Café.
-    'desde-cafe': { x: PUERTA_CAFE.x, y: 5.75, facing: 'down' },
+    'desde-cafe': { x: PUERTA_CAFE.x, y: PUERTA_CAFE.y + 0.65, facing: 'down' },
   },
   defaultSpawn: 'entrada',
   portals: [
@@ -909,8 +1331,22 @@ export const PLAZA: MapDef = {
   seats: [
     ...bancas.flatMap(lugaresDe),
     ...fuentesConBorde.flatMap((f) => bordeDeFuente(f)),
+    ...mesasDePortal.flatMap(sillasDePortal),
     // En la orilla de la pileta de Ocampo, a los lados de la placa.
-    ...bordeDeFuente(monumentoOcampo, 3, [-1.3, 1.3]),
+    ...[-1.7, 1.7].map(
+      (dx, i): Seat => ({
+        id: `monumento-ocampo-borde-${i + 1}`,
+        x: monumentoOcampo.x + monumentoOcampo.w / 2 + dx,
+        y: monumentoOcampo.y + monumentoOcampo.h + 0.08,
+        facing: 'down',
+        exit: {
+          x: monumentoOcampo.x + monumentoOcampo.w / 2 + dx,
+          y: monumentoOcampo.y + monumentoOcampo.h + 0.63,
+        },
+        object: monumentoOcampo.id,
+        lift: 3,
+      }),
+    ),
   ],
   signs,
   cameraZones,
@@ -918,10 +1354,12 @@ export const PLAZA: MapDef = {
     ...armasSuelo,
     ...bancasDeEje.map(nicho),
     ...juarezSuelo,
-    // Pasos de cebra en Madero, frente a cada plaza.
-    { kind: 'cebra', rect: { x: 9.5, y: 46, w: 2.5, h: 3 } },
-    { kind: 'cebra', rect: { x: 32.5, y: 46, w: 3, h: 3 } },
-    { kind: 'cebra', rect: { x: 60, y: 46, w: 2.5, h: 3 } },
-    { kind: 'cebra', rect: { x: 82.25, y: 46, w: 2.5, h: 3 } },
+    // Pasos de cebra en Madero (OSM).
+    ...CEBRAS.map(
+      (x): GroundShape => ({
+        kind: 'cebra',
+        rect: { x: x - 1.3, y: MADERO_Y, w: 2.6, h: H - MADERO_Y },
+      }),
+    ),
   ],
 };

@@ -11,7 +11,7 @@ describe('game-core y world-data dentro del Worker', () => {
     let p: Vec = spawnOf(PLAZA, 'entrada');
     // Hacia arriba desde el atrio: se detiene en la escalinata de la Catedral.
     for (let i = 0; i < 80; i++) p = stepMovement(p, normalizeInput(0, -1), 100, grid);
-    expect(p.y).toBeGreaterThan(36.1);
-    expect(p.y).toBeLessThan(36.3);
+    expect(p.y).toBeGreaterThan(77.1);
+    expect(p.y).toBeLessThan(77.3);
   });
 });

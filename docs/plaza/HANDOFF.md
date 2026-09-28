@@ -3,11 +3,12 @@
 Documento para el agente que continúe la Plaza de Wous en un chat nuevo. Reúne lo que se pidió, lo
 que ya existe, cómo está hecho, lo que se encontró investigando el centro de Morelia, las
 referencias y un plan para lo que falta. Escrito el 27 de septiembre de 2026, al cerrar la sesión
-que hizo la Plaza v2.
+que hizo la Plaza v2; actualizado el 28 por la sesión que la hizo al doble (Plaza v3, ADR-0014).
 
 **Orden de lectura sugerido:** este documento completo → `CLAUDE.md` → `PLAN_CONSTRUCCION_WOUS.md`
 (§1, §13–17, §25, §34, §36–38) → `docs/adr/0007-escala-y-arte-procedural.md` →
-`docs/adr/0013-plaza-de-morelia-asientos-y-placas.md` → `docs/plaza/investigacion.md` (larga:
+`docs/adr/0013-plaza-de-morelia-asientos-y-placas.md` →
+`docs/adr/0014-plaza-al-doble-y-suelo-en-trozos.md` → `docs/plaza/investigacion.md` (larga:
 consúltala por secciones). Al final hay un prompt listo para pegar en el chat nuevo (§14).
 
 ---
@@ -40,9 +41,8 @@ Y al ver el resultado:
 
 **Lo que te toca, en orden:**
 
-1. **Agrandar el mapa** para que la escala sea más realista respecto al personaje (§6). «Un poco
-   más grande» es vago: propón una escala con capturas y confírmala con el usuario antes de
-   rehacer todo.
+1. ~~**Agrandar el mapa**~~ **hecho** (§6): se le mostró una maqueta con capturas a 1.5×, 2×,
+   2.5× y 3× y eligió **2×** (1.4 m por tile, ADR-0014).
 2. **Detallar el entorno al máximo**, fiel al centro real (§7).
 3. **Nutrirlo de interacción y feedback** (§8).
 4. **Pendiente, no ahora:** entrar a la Catedral (será otro mapa con su portal, como el Café). Su
@@ -58,17 +58,15 @@ desplegar lo tuyo.**
 
 ## 2. Estado al cerrar esta sesión
 
-- **Fases 0–9 del plan: hechas.** La Fase 9 (alpha cerrada: la caseta, invitaciones, suspensiones
-  con fin, observabilidad, carga medida) y la Plaza v2 están **en producción**
-  (`https://wous.logidma.com`) y en staging (`https://wous-staging.logidma.workers.dev`).
-- **Todo está en la rama `claude/woz-workers-analysis-my1k8g`, PR #1 de `DavisMtz/Wous`, sin
-  fusionar a `main` todavía.** Si el PR ya se fusionó, parte de `main` en una rama nueva; si no,
-  parte de esa rama (o pídele al usuario que lo fusione primero). `main` no tiene la Plaza v2.
+- **Fases 0–9 del plan: hechas** y en producción (`https://wous.logidma.com`) con la Plaza v2;
+  staging igual (`https://wous-staging.logidma.workers.dev`). El PR #1 ya se fusionó a `main`.
+- **La Plaza v3 (el doble de grande, ADR-0014) vive en la rama `claude/plaza-wous-morelia-1j16v9`
+  y su PR, sin desplegar.** El usuario pidió: «Antes de desplegar a producción, pregúntame».
 - **Producción tiene registro solo por invitación.** Las invitaciones se crean en la caseta
   (`/caseta`), y el rol de la caseta solo lo da el script
   `node scripts/moderacion/moderar.mts <entorno> dar-caseta @usuario --motivo "…"` (nunca la web).
-- `pnpm test` en verde: worker 184, contratos 38, world-data 19, game-core 14, web 38. E2E de la
-  Plaza, portales, multijugador, charla y caseta en verde (ver §3 para correrlos en la nube).
+- `pnpm test` en verde: worker 184, contratos 38, world-data 23, game-core 14, web 38. E2E de la
+  Plaza, portales y multijugador en verde con la v3 (ver §3 para correrlos en la nube).
 
 ---
 
@@ -86,6 +84,7 @@ pnpm install
 # Worker local: secretos de desarrollo (cualquier valor largo sirve en local).
 cp apps/worker/.dev.vars.example apps/worker/.dev.vars   # y rellena; el Turnstile de prueba está ahí
 pnpm db:migrate:local
+pnpm build                        # una vez: el Worker local sirve apps/web/dist y sin él no arranca
 pnpm dev                          # Worker :8787 + Vite :5173
 
 # E2E en la nube: sin Chrome instalado, apunta al Chromium del contenedor.
@@ -102,18 +101,19 @@ node scripts/plaza/referencias.mts
 | --- | --- |
 | `node scripts/plaza/validar.mts` | `validateWorld` + tamaño, objetos, asientos y tiempo de la rejilla, en segundos |
 | `node scripts/plaza/osm.mts --escala 1.4 --svg plano.svg --json elementos.json --con-mapa` | El OSM real en tiles a la escala que pidas, con rejilla; `--con-mapa` encima la Plaza de hoy escalada |
+| `node scripts/plaza/pasillos.mts y:96:80.6:20.5 x:20.5:96:145.875` | Holgura de cada tramo de una ruta a pie (cuánto puede ir corrido el E2E sin chocar) |
 | `node scripts/plaza/referencias.mts` | Baja las 27 fotos y el extracto de OSM |
 | `node e2e/scripts/captura.mjs "<url>" salida.png 1400 900` | Captura del juego (usa `WOUS_CHROMIUM` si existe) |
 
 **El banco de la Plaza** (solo desarrollo, sin sesión ni servidor):
 `http://localhost:5173/dev-plaza.html?quieto&en=x,y&zoom=N` pone a la persona en cualquier punto
-(tiles) con zoom fijo; `zoom=1` y una ventana de 1664×784 muestran el mapa entero. `?spawn=desde-cafe`,
+(tiles) con zoom fijo; `zoom=1` y una ventana de 3328×1568 muestran el mapa entero. `?spawn=desde-cafe`,
 `?mapa=cafe`. Ahí también se sienta uno y se leen las placas sin servidor. El juego expone
 `window.__wousJuego` (posición, sala, remotos…) solo en desarrollo.
 
 **Tiempos de referencia en la nube:** las pruebas de world-data, menos de un segundo; un E2E de la
-Plaza con el banco, ~7 s; `portales.spec.ts`, ~70 s; las del worker (en workerd) son las que más
-tardan.
+Plaza con el banco, ~7 s; `portales.spec.ts`, ~80 s (la ruta al Café es el doble de larga); las del
+worker (en workerd) son las que más tardan.
 
 ---
 
@@ -131,9 +131,11 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
   - `GroundKind`: `fachada`, `azotea`, `calle`, `seto`, `pared` bloquean (`BLOCKING_GROUND`);
     `banqueta`, `enlosado` (Plaza de Armas), `losa` (atrio), `explanada` (Melchor Ocampo),
     `empedrado` (Allende), `portal`, `ladrillo`, `pasto`, `duela`, `mosaico` se pisan.
-  - `paint`: formas (`rect`, `circle`, `path` con ancho, `polygon`) que el cliente rasteriza por
-    pixel. Solo `jardin` (pasto con reja baja) estorba; en cada celda manda la última forma que la
-    cubre (un andador pintado encima de un jardín lo abre). La `cebra` solo va sobre `calle`.
+  - `paint`: formas (`rect`, `circle`, `path` con ancho, `polygon`; `src/shapes.ts`) que el cliente
+    rasteriza por pixel. Solo `jardin` (pasto con reja baja verde) y `jardinera` (pasto con reja
+    negra de postes, la del kiosko) estorban (`BLOCKING_SHAPES`); en cada celda manda la última
+    forma que la cubre (un andador pintado encima de un jardín lo abre). La `cebra` solo va sobre
+    `calle`.
   - `MapObject`: huella en tiles (acepta fracciones) + `kind` + `variant` + `solid` opcional
     (rectángulos o círculos relativos a la huella). Sin `solid`, estorba toda la huella, salvo los
     de `NON_SOLID` (`papel-picado`, `tapete`, `focos`, `comercios`, `chorros`); `solid: []` = se pisa.
@@ -147,10 +149,13 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
   estar, sólido dentro de la huella, asientos con salida pisable a ≤ 1.6, formas sobre suelo
   pisable, y **que desde el spawn por defecto se llegue a pie a cada spawn, puerta, asiento y
   placa** (una reja sin portón rompe la prueba).
-- `src/maps/plaza.ts` (≈930 líneas) — la Plaza v2. Helpers: `banca(id, x, y, mira)`, `cubo`,
-  `lugaresDe` (los asientos de cada banca), `fuente`, `bordeDeFuente`, `arbol`, `farol`,
-  `pilastra`, `jacaranda`, `reja`, `porton`, `edificio`, `nicho`. Constantes: `KIOSKO`,
-  `KIOSKO_BASE`, `ANILLO`, `EJE`, `JARDIN`, `FUENTES`, `PORTAL_X`, `PUERTA_CAFE`.
+- `src/maps/plaza.ts` (≈1330 líneas) — la Plaza v3. Helpers: `banca(id, x, y, mira, material)`
+  (cantera o hierro), `cubo`, `lugaresDe` (los asientos de cada banca), `fuente`, `bordeDeFuente`
+  (frente y costados), `arbol(id, x, y, especie)` (laurel, fresno, liquidámbar, jacaranda, naranjo),
+  `farol(id, x, y, tipo)` (linternas, campanas, globos), `pilastra`, `nicho`, `hilera`, `reja`,
+  `porton`, `rejaConPortones`, `casa`, `portal`, `comercios`, `mesaDePortal`/`sillasDePortal`.
+  El trazo son constantes con nombre sacadas del OSM a 1.4 m por tile (`CASAS_Y`, `PILARES_Y`,
+  `ALDAMA`, `CERRADA`, `PORTAL_ALLENDE`, `REJA_*`, `CATEDRAL_HUELLA`, `KIOSKO`, `JARDIN`, `FUENTES`…).
 - `src/maps/cafe.ts` — el Café (v3): 22×15, `cellsPerTile` 1, sus 8 sillas son asientos.
 
 ### 4.2 Colisión y movimiento: `packages/game-core`
@@ -175,21 +180,27 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
 
 ### 4.4 Cliente: `apps/web`
 
-- `game/phaser/world-scene.ts` — arma la escena: **el suelo entero es UNA textura**
-  (`paintGround(map)`, 1664×784 px hoy) y cada objeto es su propia textura con `depth` = línea de
+- `game/phaser/world-scene.ts` — arma la escena: **el suelo va en trozos de 512 px**
+  (`phaser/suelo.ts`, ADR-0014): los que se ven se pintan al entrar y los demás uno por cuadro con
+  tope de 4 ms, del más cercano al más lejano (`groundPainter(map).paint(región)`); cada trozo es
+  su textura `suelo:<mapa>:<versión>:<i>:<j>` y su `depth` los ordena (en el renderer de canvas,
+  sin eso, quedaba una costura de 1 px). Cada objeto es su propia textura con `depth` = línea de
   sus pies (lo que pisa más abajo se dibuja encima); los `occluder` se vuelven translúcidos si te
   tapan. Zoom entero de 2 a 6 según el viewport (`layoutCamera`). Encuadres (`lookUp`) con
-  suavizado. Acciones: `nearestInteraction` → botón «E» (o la estrella en táctil) → portal, sentarse,
-  levantarse o placa.
+  suavizado. Acciones: `nearestInteraction` → botón «E» (o la estrella en táctil) → portal,
+  sentarse, levantarse o placa.
 - `game/world-art/` — **todo el arte es código** (ADR-0007): canvas a 1×, ruido determinista.
   - `paint.ts` (pincel, `hash`, letreros de 3×5), `world-palette.ts` (paletas; varias salen de la
-    investigación), `ground.ts` (materiales por pixel, guarniciones, reja baja de jardines,
-    sombras horneadas), `objects.ts` (despacho por `kind`/`variant`, profundidad, sombras).
-  - `catedral.ts` (canvas 320×528 para la huella de 20×25), `morelia.ts` (portales, comercios y el
-    Café, casas, reja y portones, kiosko, fuentes de taza, estatua de Juárez, placa, bancas,
-    laureles, fresnos, faroles), `plazas.ts` (monumento de Ocampo, fuentes danzantes, asta,
-    jardineras, macetones, faroles de campana, pilastras, fuente de columna, globero, churros,
-    losa de los Liberales), `interior.ts` (el Café).
+    investigación), `ground.ts` (materiales por pixel y por región, calles con carriles según su
+    tramo, guarniciones, rejas de jardines y de la jardinera, sombras horneadas), `objects.ts`
+    (despacho por `kind`/`variant`, profundidad, sombras).
+  - `catedral.ts` (canvas 640×896 para la huella de 40×56), `allende.ts` (los portales, los
+    comercios y el Café, las mesas bajo los arcos, las casas de Allende, la Cerrada de San
+    Agustín), `morelia.ts` (reja y portones, kiosko, fuentes de taza, estatua de Juárez, placa,
+    bancas de cantera y de hierro, laureles, liquidámbares, fresnos, faroles, postes de globos),
+    `plazas.ts` (monumento de Ocampo, fuentes danzantes, asta, jardineras, macetones, faroles de
+    campana, pilastras, fuente de columna, globero, churros, losa de los Liberales), `interior.ts`
+    (el Café).
 - `game/phaser/persona.ts` y `game/rendering/pixel-character.ts` — el personaje 16×32 y su pose
   sentada (`SIT_FRAME`, piernas en `sprite-maps.ts`). `game/network/room-state.ts` interpola a los
   demás (sentarse es un salto, no un deslizamiento). `app/plaza/Placa.tsx` muestra las placas.
@@ -202,62 +213,76 @@ fuente. El mismo `@wous/world-data` lo usan la sala (colisión, asientos, puerta
   `world-socket.test.ts` («las paredes del mapa»: bajo el portal del Café), `world-portals.test.ts`
   (spawn `desde-cafe`, `mapVersion`), `world-seats.test.ts` (lugar guardado dentro de la Catedral).
 - `apps/web/test/red.test.ts` (IDs de asientos).
-- `e2e/tests/plaza.spec.ts` (banca en `?en=76,43.2`, placa UNESCO, puerta de la Catedral),
-  `portales.spec.ts` (ruta a pie al Café), `multijugador.spec.ts` (caminar 0.8 s hacia arriba).
+- `e2e/tests/plaza.spec.ts` (banca en `?en=151.5,88.25`, placa UNESCO en `?en=137.1,88`, puerta
+  de la Catedral en `?en=66.5,78.3`), `portales.spec.ts` (ruta a pie al Café),
+  `multijugador.spec.ts` (caminar 0.8 s hacia arriba).
   **Caminar en E2E:** soltar una tecla tarda (sin GPU, casi un tile); `caminarHasta` de
   `portales.spec.ts` camina a toquecitos midiendo, y cada tramo pide la holgura de su pasillo.
-  Diseña las rutas por pasillos de ±0.6 tiles o más.
+  Diseña las rutas por pasillos de ±0.6 tiles o más y mídelas con `scripts/plaza/pasillos.mts`. Si
+  un tramo termina contra una pared, su tolerancia debe incluir el tope (la puerta del Café: la
+  pared deja a los pies en y 15.16).
 
 ---
 
-## 5. El mapa hoy (Plaza v2)
+## 5. El mapa hoy (Plaza v3)
 
 **Orientación (ADR-0013):** la vista mira **al sur desde Madero** (el mapa real girado 180°). La
 fachada de la Catedral, que da al norte, queda de frente; la Plaza de Armas (poniente) a la
 derecha; la Melchor Ocampo (oriente) a la izquierda; la calle Allende (sur) arriba con sus
 portales; Madero (norte) abajo.
 
-**Escala medida:** ≈ **2.8 m por tile** en ambos ejes, ajustada a mano sobre el OSM (± 2 tiles).
-`scripts/plaza/osm.mts` reproduce esa transformación: `x = (93.9 − este) / escala`,
-`y = (68.2 − sur) / escala`, en metros de una proyección local centrada en la Catedral
-(19.70225, −101.19231).
+**Escala (ADR-0014):** **1.4 m por tile**, trazada sobre el OSM con
+`node scripts/plaza/osm.mts --escala 1.4` (`x = (X0 − este) / escala`, `y = (Y0 − sur) / escala`,
+en metros de una proyección local centrada en la Catedral, 19.70225, −101.19231). 208 × 98 tiles
+(3328 × 1568 px).
 
-**Bandas de izquierda a derecha (x):** azoteas 0–1 · Morelos (calle) 2–3 · banqueta 4 · Melchor
-Ocampo 5–21 · reja del atrio 22.25 · Catedral 24–44 · atrio poniente 44–55.5 · reja poniente 55.5
-(del sur hasta la mitad) · andador Juárez 56–68 (arriates de laureles en 57.8 y 62.8) · Plaza de
-Armas 69–99 (jardín cercado 71.5–95.5) · banqueta 99 · Abasolo (calle) 100–101 · azoteas 102–103.
+**Bandas de izquierda a derecha (x):** azoteas 0–2 · Morelos (calle) 2–7 · banqueta 7–9 · Melchor
+Ocampo 9–41 · reja oriente del atrio 41 · Catedral 46–86 · atrio poniente 86–115.5 · reja poniente
+115.5 (de y 42.5 a Madero; al sur, abierto) · Plaza Juárez 116–135.5 (andador de la estatua en
+126.5, hileras de laureles en 121 y 132) · andador Juárez 135.5–139 (losa) con su hilera en 140.3 ·
+Plaza de Armas 141–197 (jardín cercado 145.5–190.5) · banqueta 197–199 · Abasolo 199–205 ·
+azoteas 205–208.
 
-**De arriba abajo (y):** fachadas de Allende 0–6 (con portales en x 56–99, andador cubierto en
-y 5–6) · banqueta 7 · empedrado 8–9 · banqueta 10 · plazas 11–44 (el atrio es `losa` 11–41; su
-reja norte en y 41.5 con tres portones) · banqueta de Madero 45 · Madero (calle) 46–48.
+**De arriba abajo (y):** casas de Allende (x 7–67, pie en 15) · García Obeso (x 67–73, sube al
+sur) · Portal Aldama (x 73–130.75) y Portal Allende (x 141–204.75): frente de y 9 a 18, andador
+cubierto 15–18, pilares cada 3 tiles en 18 · Cerrada de San Agustín entre los dos (x 131–141, losa
+10–18, el templo al fondo) · empedrado de Allende 16–20 · banqueta norte 20–21 · plazas 21–88 (el
+atrio es `losa` hasta la reja de Madero, en 86.5, con tres portones) · banqueta de Madero 88–91 ·
+Madero (calle) 91–98.
 
 | Qué | Dónde (tiles) |
 | --- | --- |
-| Spawn `entrada` | (34, 39.9), en el atrio frente a la puerta mayor, mirando arriba |
-| Puerta del Café (portal `plaza-cafe`) | (72.875, 5.1), alcance 1.4; spawn `desde-cafe` (72.875, 5.75) |
-| Catedral (huella) | x 24–44, y 11–36; placa `puerta-catedral` en (34, 36.4) |
-| Portones de la reja norte | x 25.5–28, 32.5–35.5 (mayor), 40–42.5; oriente y 20–22.5; poniente y 28.5–31 |
-| Kiosko | base en (83.5, 30.6), r 2.55; jardinera r 3.6; andadorcito a su puerta; placa en (83.5, 33.6) |
-| Fuentes de la Plaza de Armas | (76.06, 20.58), (90.94, 20.58), (76.06, 37.32), (90.94, 37.32); r 1.4 |
-| Fuente de columna (andador Juárez) | (61, 41.6), r 1.3 |
-| Estatua de Juárez / placa | (61, 13.4) / (61, 14.9) |
-| Placa de la UNESCO | (66.1, 44.0) |
-| Monumento a Ocampo | huella (9.5, 15) 4×3; placa en (11.5, 18.7); dos lugares en su orilla |
-| Fuentes danzantes | (9.5, 36.5) 4×4, se pisan |
-| Losa de los Liberales | (5.5, 18.3), se pisa; placa en (6.3, 18.9) |
-| Asta bandera | (14, 27) |
-| Encuadre de la Catedral | x 22–56, y 33–46, sube 6 tiles |
+| Spawn `entrada` | (66.5, 80.6), en el atrio frente a la puerta mayor, mirando arriba |
+| Puerta del Café (portal `plaza-cafe`) | (145.875, 15.1), alcance 1.4; spawn `desde-cafe` (145.875, 15.75) |
+| Catedral (huella) | x 46–86, y 21–77; placa `puerta-catedral` en (66.5, 77.5) |
+| Portones de la reja | Madero: centros x 57.5, 66.5 (mayor), 75.5; oriente: y 27, 40.8, 79; poniente: y 51, 79 |
+| Kiosko | centro (168, 61), base r 3.5; jardinera de reja negra r 5; anillo r 8.2; placa en (168, 65.8) |
+| Fuentes de la Plaza de Armas | (154.5, 41.8), (181.5, 41.8), (153.15, 77.83), (182.85, 77.83); r 1.8 |
+| Fuente de columna (Plaza Juárez) | (126.5, 83.2), r 2.1 |
+| Estatua de Juárez / placa | (126.5, 27.5) / (126.5, 29.1) |
+| Placa de la UNESCO | (137.1, 87.2), en el andador Juárez junto a Madero |
+| Monumento a Ocampo | huella (18, 29) 5×6.5; placa en (20.5, 35.9); dos lugares en su orilla |
+| Fuentes danzantes | (17.6, 76) 5×6, se pisan |
+| Losa de los Liberales | (11, 36.4), se pisa; placa en (11.9, 38) |
+| Asta bandera | (26.5, 53) |
+| Mesas de café (Portal Allende) | 6 mesas bajo los arcos, dos sillas cada una; el arco del Café queda libre |
+| Encuadre de la Catedral | x 41–115.5, y 67–91, sube 12 tiles |
 
-Números: 163 objetos, 74 asientos, 6 placas, 1 puerta. Rejilla de 416×196 celdas (2 ms).
+Números: 282 objetos, 156 asientos, 6 placas, 1 puerta. Rejilla de 832×392 celdas (≈10 ms).
 
 **Ruta a pie de la entrada al Café** (la de `portales.spec.ts`; direcciones de pantalla): a la
-derecha hasta x 49 por el atrio, hacia arriba por el atrio poniente (sin reja de ese lado, como la
-real) hasta el empedrado de Allende (y 8.5), a la derecha hasta x 72.875 y arriba hasta la puerta.
-Ojo con el giro: en pantalla, derecha = poniente, izquierda = oriente, arriba = sur, abajo = norte.
+derecha hasta x 96 por el atrio, hacia arriba por el atrio poniente (sin reja al sur, como el real)
+hasta el empedrado de Allende (y 20.5), a la derecha hasta x 145.875 y arriba hasta la puerta
+(y 15.3). ≈35 s a pie. Ojo con el giro: en pantalla, derecha = poniente, izquierda = oriente,
+arriba = sur, abajo = norte.
 
 ---
 
-## 6. Tarea 1 · Agrandar el mapa
+## 6. Tarea 1 · Agrandar el mapa (hecha: ADR-0014)
+
+**Hecha en la sesión del 28/09/2026.** Se le mostró al usuario una maqueta (la v2 ampliada pixel
+por pixel en el banco) a 1.5×, 2×, 2.5× y 3×, en el teléfono y en la computadora, y eligió **2×**.
+Lo que sigue queda como registro de cómo se midió y decidió; el resultado está en §5.
 
 ### El problema, medido
 
@@ -294,31 +319,19 @@ exageradas respecto al piso (como hoy): en 3/4 cenital se lee mejor.
   macetones, la persona. Lo que sí cambia es **cuántos** caben: con el doble de espacio hacen falta
   más bancas, árboles y faroles. Usa los 114 árboles reales del OSM (`--json`) como guía.
 
-### Cómo hacerlo (plan técnico)
+### Cómo se hizo
 
-1. **ADR-0014** antes de tocar nada (§38): escala nueva, textura de suelo en trozos, versión 3 del
-   mapa. Cita ADR-0007 y ADR-0013.
-2. **Suelo en trozos.** Hoy `paintGround` pinta UNA textura; más de 2048 px de lado no entra en la
-   GPU de muchos teléfonos. Parte el suelo en trozos de ≤ 1024 px (o 2048), cada uno su textura
-   (`suelo:plaza:3:i:j`) con `depth` −10, y pinta solo lo que se necesita (o todo al entrar, si se
-   mide que cabe en tiempo). `materialBuffer` ya trabaja por pixel: se puede acotar a una región.
-   Mide el tiempo de pintado en un teléfono modesto (hoy 1.3 Mpx; a 2× son 5.2 Mpx).
-3. **Retrazar con el OSM:** `node scripts/plaza/osm.mts --escala 1.4 --svg plano.svg --json
-   elementos.json --con-mapa`. El SVG trae la rejilla cada tile (marcas cada 5 y 10) y, en rojo,
-   la Plaza de hoy escalada: sirve para ver qué se descuadra. Reescribe `plaza.ts` con constantes
-   derivadas de la escala (no números sueltos), versión 3.
-4. **Arte que crece:** `catedral()` está dibujada para 20 tiles de ancho (canvas 320×528). Hay que
-   dibujarla para la huella nueva (parametrízala por ancho o redibújala). Lo mismo el kiosko
-   (hoy 112×216 px para 6 tiles), `portal(w)` y `comercios(w)` (ya aceptan ancho),
-   `fuenteDeTaza(r)` y `fuenteDeColumna(r)` (ya aceptan radio), `edificio(w)`.
-5. **Cámara:** el zoom entero (2–6, `layoutCamera`) sigue igual; revisa el encuadre de la Catedral
-   (`cameraZones`, `lookUp`) para que se vean las torres, y `LOOK_MARGIN_TILES`.
-6. **Servidor:** nada cambia en el protocolo. La rejilla a 2× son 832×392 celdas (bien) y
-   `validateWorld` sigue en milisegundos. Sube `version` (los clientes con el mapa viejo recargan
-   al entrar) y confía en `lugarValido` para los fantasmas.
-7. **Pruebas:** todas las de §4.5. Rehaz las rutas de E2E con pasillos anchos.
-8. **Revisión visual:** capturas del banco con `zoom=1` (mapa entero) y `zoom=2`/`3` por zonas;
-   compáralas con las fotos (`docs/plaza/referencias/`).
+1. **ADR-0014**: 1.4 m por tile, suelo en trozos, versión 3 del mapa.
+2. **Suelo en trozos de 512 px** (`phaser/suelo.ts` + `groundPainter` en `ground.ts`): lo visible
+   al entrar, el resto uno por cuadro; se verificó pixel por pixel contra el suelo de una pieza.
+3. **Retrazo con el OSM** a 1.4: calles, andadores, rejas, fuentes, los árboles (los de pasto),
+   las arcadas (19 arcos el Aldama, 21 el Allende) y la Cerrada de San Agustín.
+4. **Arte redibujado** para la huella nueva (no ampliado): la Catedral (640×896 px), el kiosko,
+   los portales, los comercios, las casas, la reja y sus portones, el monumento a Ocampo, los
+   árboles; y piezas nuevas: mesas de café, bancas de hierro, liquidámbares, postes de globos.
+5. **Cámara:** encuadre de la Catedral más alto (`lookUp` 12) para que se vean las torres.
+6. **Servidor:** sin cambios de protocolo; `version` 3 y `lugarValido` para los fantasmas.
+7. **Pruebas** de §4.5 rehechas; la ruta de E2E va por pasillos medidos con `pasillos.mts`.
 
 ---
 
@@ -486,10 +499,7 @@ Todo con fuentes en `docs/plaza/investigacion.md`. Lo esencial:
 
 ## 13. Pendientes y deuda conocida
 
-- El suelo es una sola textura: tope de ~2048 px por lado (ver §6).
 - Todo es estático: agua, chorros, bandera, árboles.
-- La reja de la jardinera del kiosko sale verde (la real es negra): `paintFences` no distingue.
-- Los faroles colgantes de los portales se quitaron; hay que volver a ponerlos sin tapar letreros.
 - Del otro lado de Madero (Palacio de Gobierno, portales Hidalgo y Galeana) y de Abasolo (Portal
   Matamoros) no se ve nada: la cámara mira al sur y esos frentes dan la espalda.
 - La Catedral no se abre: la sala interior será otro mapa con su portal (como el Café).

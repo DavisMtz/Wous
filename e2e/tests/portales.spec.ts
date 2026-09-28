@@ -85,14 +85,16 @@ test('cruza al Café: la Plaza deja de verla, recargar la deja ahí y de regreso
     );
   await beVeAAna(true);
 
-  // Ana camina del atrio a la puerta del Café, bajo los portales de Allende:
-  // por el atrio poniente (sin reja al norte, como el de verdad) hasta el
-  // empedrado de Allende, y por él hasta el arco del Café. Cada tramo tiene
-  // holgura para un personaje que no se detiene exacto.
-  await caminarHasta(a, 'x', 49, 1.2);
-  await caminarHasta(a, 'y', 8.5, 0.6);
-  await caminarHasta(a, 'x', 72.875, 0.6);
-  await caminarHasta(a, 'y', 5.3, 0.3);
+  // Ana camina del atrio a la puerta del Café, bajo el Portal Allende: por el
+  // atrio poniente (sin reja al sur, como el de verdad) hasta el empedrado de
+  // Allende, y por él hasta el arco del Café. Cada tramo tiene holgura para un
+  // personaje que no se detiene exacto: el atrio deja ±2 tiles libres, la
+  // calle casi 3 y entre los pilares del arco caben ±0.8. El último tramo
+  // incluye el tope de la pared (15.16): subir hasta chocar también llega.
+  await caminarHasta(a, 'x', 96, 1.2);
+  await caminarHasta(a, 'y', 20.5, 1);
+  await caminarHasta(a, 'x', 145.875, 0.5);
+  await caminarHasta(a, 'y', 15.3, 0.3);
   await expect(a.locator('.pista--accion')).toContainText('Entrar al Café');
   await a.keyboard.press('KeyE');
 

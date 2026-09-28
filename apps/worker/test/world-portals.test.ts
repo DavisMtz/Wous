@@ -2,6 +2,7 @@ import { runInDurableObject } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { NETWORK, PORTALS } from '@wous/config';
 import { WS_CLOSE, WS_PING_TEXT } from '@wous/contracts';
+import { PLAZA, spawnOf } from '@wous/world-data';
 import { describe, expect, it } from 'vitest';
 import type { RoomDO } from '../src/durable-objects/RoomDO.ts';
 import { claimPresence } from '../src/world/location.ts';
@@ -16,6 +17,9 @@ import {
   playerWithCharacter,
   sleep,
 } from './world-support.ts';
+
+/** Donde aparece quien sale del Café: bajo el portal, en su puerta. */
+const FRENTE_AL_CAFE = spawnOf(PLAZA, 'desde-cafe');
 
 /** Alguien que ya está frente a la puerta del Café (la Plaza lo espera ahí). */
 async function frenteAlCafe(characterId: string) {
@@ -33,8 +37,8 @@ describe('portales (§16)', () => {
     const snapA = await a.next('ROOM_SNAPSHOT');
     expect(snapA.payload.room.mapId).toBe('plaza');
     expect(snapA.payload.players.find((p) => p.id === ana.characterId)).toMatchObject({
-      x: 72.875,
-      y: 5.75,
+      x: FRENTE_AL_CAFE.x,
+      y: FRENTE_AL_CAFE.y,
     });
     const b = (await connect(beto.cookie)).socket;
     if (!b) throw new Error('Beto no entró');
@@ -76,8 +80,8 @@ describe('portales (§16)', () => {
     const plaza = await a3.next('ROOM_SNAPSHOT');
     expect(plaza.payload.room.mapId).toBe('plaza');
     expect(plaza.payload.players.find((p) => p.id === ana.characterId)).toMatchObject({
-      x: 72.875,
-      y: 5.75,
+      x: FRENTE_AL_CAFE.x,
+      y: FRENTE_AL_CAFE.y,
     });
     await b.next('PLAYER_JOINED', (m) => m.payload.player.id === ana.characterId);
     a3.close();

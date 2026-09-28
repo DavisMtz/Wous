@@ -154,14 +154,16 @@ export type Sign = {
 export type ShapeKind =
   | 'pasto'
   | 'jardin'
+  /** Pasto con reja baja negra de postes y dos travesaños (la jardinera del kiosko). */
+  | 'jardinera'
   | 'enlosado'
   | 'losa'
   | 'ladrillo'
   | 'empedrado'
   | 'cebra';
 
-/** Formas que además de dibujarse estorban: el jardín con su reja baja. */
-export const BLOCKING_SHAPES: ReadonlySet<ShapeKind> = new Set(['jardin']);
+/** Formas que además de dibujarse estorban: los jardines con su reja baja. */
+export const BLOCKING_SHAPES: ReadonlySet<ShapeKind> = new Set(['jardin', 'jardinera']);
 
 /**
  * Una forma del suelo, en tiles. Pinta un material sobre tiles que se pisan,

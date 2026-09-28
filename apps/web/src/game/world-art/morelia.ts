@@ -1,22 +1,18 @@
 import { mix, WOOD } from '../rendering/palette.ts';
-import { hash, type Painter, painter, pick, sign, signWidth } from './paint.ts';
+import { hash, type Painter, painter } from './paint.ts';
 import {
   AGUA,
   BRONCE,
-  CAL,
   CAL_TRONCO,
   CANTERA_GRIS,
   CANTERA_ROSA,
   CORTEZA,
   FAROL,
-  FOSFO,
   HERRERIA,
   hundido,
   LAMINA,
   LAUREL,
-  LONAS,
   MIEL,
-  PLUMON,
   TILE,
 } from './world-palette.ts';
 
@@ -34,7 +30,6 @@ export type Art = { canvas: HTMLCanvasElement; ox: number; oy: number };
 const C = CANTERA_ROSA;
 const G = CANTERA_GRIS;
 const VIDRIO = { dark: '#3b3552', light: '#8f84b8' };
-const LUZ = { warm: '#ffd98a', warmDeep: '#f2a24e', glow: '#fff4d6' };
 
 // ─── Utilidades de cantera ────────────────────────────────────────────────
 
@@ -62,7 +57,7 @@ export function sillar(p: Painter, x: number, y: number, w: number, h: number, s
 }
 
 /** Aplanado pintado (ocre, rosa) con sus poros. */
-function aplanado(
+export function aplanado(
   p: Painter,
   x: number,
   y: number,
@@ -81,7 +76,14 @@ function aplanado(
   }
 }
 
-function arcoVano(p: Painter, cx: number, bottom: number, w: number, h: number, fill: string) {
+export function arcoVano(
+  p: Painter,
+  cx: number,
+  bottom: number,
+  w: number,
+  h: number,
+  fill: string,
+) {
   const r = w / 2;
   for (let yy = 0; yy < h; yy++) {
     const y = bottom - h + yy;
@@ -96,7 +98,7 @@ function arcoVano(p: Painter, cx: number, bottom: number, w: number, h: number, 
 }
 
 /** Borra (transparente) un vano de medio punto: por ahí se ve lo de atrás. */
-function vaciarArco(p: Painter, cx: number, bottom: number, w: number, h: number): void {
+export function vaciarArco(p: Painter, cx: number, bottom: number, w: number, h: number): void {
   const r = w / 2;
   for (let yy = 0; yy < h; yy++) {
     const y = bottom - h + yy;
@@ -110,7 +112,7 @@ function vaciarArco(p: Painter, cx: number, bottom: number, w: number, h: number
   }
 }
 
-function perillon(p: Painter, cx: number, y: number): void {
+export function perillon(p: Painter, cx: number, y: number): void {
   p.rect(cx - 2, y + 6, 5, 2, C.base);
   p.rect(cx - 1, y + 3, 3, 3, C.light);
   p.px(cx - 1, y + 3, C.lighter);
@@ -120,7 +122,7 @@ function perillon(p: Painter, cx: number, y: number): void {
 }
 
 /** Balcón de herrería con su losa de cantera. */
-function balcon(p: Painter, x: number, y: number, w: number): void {
+export function balcon(p: Painter, x: number, y: number, w: number): void {
   p.rect(x - 1, y, w + 2, 2, C.light);
   p.rect(x - 1, y + 2, w + 2, 1, C.deep);
   p.rect(x, y - 7, w, 1, HERRERIA.base);
@@ -129,7 +131,14 @@ function balcon(p: Painter, x: number, y: number, w: number): void {
 }
 
 /** Ventana de dos hojas con su marco de cantera (y postigos de madera). */
-function ventana(p: Painter, x: number, y: number, w: number, h: number, seed: number): void {
+export function ventana(
+  p: Painter,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seed: number,
+): void {
   p.rect(x - 2, y - 2, w + 4, h + 3, C.lighter);
   p.rect(x - 1, y - 1, w + 2, h + 1, C.shade);
   p.rect(x, y, w, h, VIDRIO.dark);
@@ -142,239 +151,6 @@ function ventana(p: Painter, x: number, y: number, w: number, h: number, seed: n
     p.rect(x - 4, y, 2, h, WOOD.base);
     p.rect(x - 4, y, 1, h, mix(WOOD.base, '#fff4d6', 0.3));
   }
-}
-
-// ─── Portales de Allende ──────────────────────────────────────────────────
-
-/**
- * La arquería del portal: pilares de cantera cada 3 tiles, arcos de medio
- * punto y la planta alta con sus ventanas y balcones. Los vanos quedan
- * transparentes: por ahí se ven los comercios y quien camina debajo.
- */
-export function portal(wTiles: number): Art {
-  const W = wTiles * TILE;
-  const H = 7 * TILE;
-  const p = painter(W, H);
-  const bay = 3 * TILE;
-  const pilar = 12;
-  const imposta = H - 44;
-
-  // El Portal Allende va aplanado y pintado de crema; la cantera rosa queda
-  // en los arcos, los pilares, las cornisas y los marcos.
-  aplanado(p, 0, 0, W, H, '#efe3cd', 401);
-  // Cornisa y pretil arriba.
-  p.rect(0, 0, W, 2, C.lighter);
-  p.rect(0, 2, W, 3, C.light);
-  p.rect(0, 5, W, 1, C.deep);
-  // Planta alta: una ventana con balcón sobre cada arco.
-  for (let k = 0; k * bay + pilar < W; k++) {
-    const cx = k * bay + pilar + (bay - pilar) / 2;
-    ventana(p, Math.round(cx - 5), 12, 10, 18, k);
-    balcon(p, Math.round(cx - 8), 33, 16);
-    // Gárgola de cantera entre ventana y ventana.
-    p.rect(k * bay + 4, 6, 4, 2, C.shade);
-  }
-  // Cornisa de la arquería.
-  p.rect(0, imposta - 22, W, 1, C.lighter);
-  p.rect(0, imposta - 21, W, 2, C.light);
-  p.rect(0, imposta - 19, W, 1, C.deep);
-  // Arcos: la dovela de luz, el vano vacío y los pilares con su imposta.
-  for (let k = 0; k * bay + pilar < W; k++) {
-    const x0 = k * bay + pilar;
-    const w = Math.min(bay - pilar, W - x0);
-    const cx = x0 + w / 2;
-    arcoVano(p, cx, H, w + 10, H - imposta + w / 2 + 6, C.shade);
-    arcoVano(p, cx, H, w + 8, H - imposta + w / 2 + 5, C.base);
-    arcoVano(p, cx, H, w + 6, H - imposta + w / 2 + 4, C.lighter);
-    arcoVano(p, cx, H, w + 2, H - imposta + w / 2 + 1, C.shade);
-    vaciarArco(p, cx, H, w, H - imposta + w / 2);
-    // La clave del arco.
-    p.rect(Math.round(cx) - 2, imposta - w / 2 - 6, 4, 5, C.light);
-  }
-  for (let k = 0; k * bay < W; k++) {
-    const x = k * bay;
-    p.rect(x, imposta, pilar, H - imposta, C.base);
-    p.rect(x, imposta, 2, H - imposta, C.lighter);
-    p.rect(x + pilar - 2, imposta, 2, H - imposta, C.shade);
-    p.rect(x - 1, imposta - 2, pilar + 2, 3, C.light);
-    p.rect(x - 1, imposta + 1, pilar + 2, 1, C.deep);
-    p.rect(x - 1, H - 5, pilar + 2, 5, C.shade);
-    p.rect(x - 1, H - 5, pilar + 2, 1, C.light);
-    // Arbotante en pilares alternos: brazo de hierro y linterna tibia.
-    if (k % 2 === 0) {
-      const lx = x + pilar / 2 - 2;
-      p.rect(lx + 1, imposta + 6, 3, 1, HERRERIA.base);
-      p.rect(lx, imposta + 7, 5, 7, HERRERIA.base);
-      p.rect(lx + 1, imposta + 8, 3, 5, LUZ.warm);
-      p.px(lx + 1, imposta + 8, LUZ.glow);
-    }
-  }
-  return { canvas: p.canvas, ox: 0, oy: 0 };
-}
-
-/** Lo que vende cada comercio, arco por arco (el Café en el arco 5). */
-const COMERCIOS = [
-  'HOTEL',
-  'NIEVES',
-  'LIBROS',
-  'PAN',
-  'DULCES',
-  'CAFE',
-  'CHURROS',
-  'ROPA',
-  'FARMACIA',
-  'HOTEL',
-  'DULCES',
-  'PAN',
-  'NIEVES',
-  'LIBROS',
-] as const;
-/** El arco del Café (entre los pilares de x 71 y 74). */
-export const ARCO_CAFE = 5;
-
-/**
- * El fondo del portal: el techo de vigas en sombra y los comercios al fondo,
- * uno por arco, con su puerta, su aparador y su letrero. El Café tiene su
- * puerta verde botella, la luz tibia de adentro y su rótulo.
- */
-export function comercios(wTiles: number): Art {
-  const W = wTiles * TILE;
-  const H = 2 * TILE;
-  const p = painter(W, H);
-  const bay = 3 * TILE;
-  // Techo de vigas (lo que se ve arriba, entre los arcos).
-  p.rect(0, 0, W, 7, '#4a3228');
-  for (let x = 0; x < W; x += 6) p.rect(x, 0, 2, 7, '#6b4a36');
-  p.rect(0, 7, W, 1, '#2f1f18');
-  // Muro del fondo.
-  for (let y = 8; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      p.px(x, y, hash(x, y, 411) < 0.05 ? hundido('#d9c6b3', 0.12) : '#d9c6b3');
-    }
-  }
-  // Sombra del portal sobre el fondo.
-  p.rect(0, 8, W, 3, 'rgb(43 18 56 / 0.28)');
-  COMERCIOS.forEach((giro, k) => {
-    const x0 = k * bay + 12;
-    const cx = x0 + (bay - 12) / 2;
-    if (giro === 'CAFE') {
-      cafe(p, Math.round(cx), H);
-      return;
-    }
-    comercio(p, Math.round(cx), H, giro, k);
-  });
-  return { canvas: p.canvas, ox: 0, oy: 0 };
-}
-
-function comercio(p: Painter, cx: number, bottom: number, giro: string, seed: number): void {
-  const tinte = pick(['#7a2f2a', '#2a4f7a', '#355a2a', '#6b3a78', '#7a5a2a'], seed, 3, 4);
-  // Puerta al centro y aparadores a los lados.
-  p.rect(cx - 5, bottom - 16, 10, 16, hundido(tinte, 0.25));
-  p.rect(cx - 4, bottom - 15, 8, 7, LUZ.warm);
-  p.rect(cx, bottom - 15, 1, 15, hundido(tinte, 0.45));
-  for (const dx of [-14, 9]) {
-    p.rect(cx + dx, bottom - 12, 6, 9, hundido(tinte, 0.2));
-    p.rect(cx + dx + 1, bottom - 11, 4, 6, mix(LUZ.warm, '#fff4d6', 0.4));
-    // Lo del aparador: tres cositas de colores.
-    for (let i = 0; i < 3; i++) {
-      p.px(
-        cx + dx + 1 + i,
-        bottom - 7,
-        pick(['#ff4f9a', '#ffd23f', '#35c77a', '#3f7bff'], seed, i, 5),
-      );
-    }
-  }
-  // Letrero pintado arriba de la puerta.
-  const label = giro;
-  const w = signWidth(label) + 4;
-  p.rect(cx - Math.round(w / 2), bottom - 23, w, 7, tinte);
-  sign(p, label, cx - Math.round(w / 2) + 2, bottom - 22, CAL.base);
-}
-
-const VERDE_BOTELLA = { base: '#1f5a47', light: '#2e7a60', shade: '#153f32' };
-
-function cafe(p: Painter, cx: number, bottom: number): void {
-  // Marco verde botella, la puerta de vidrio con luz tibia y las mesitas asomadas.
-  p.rect(cx - 16, bottom - 18, 32, 18, VERDE_BOTELLA.base);
-  p.rect(cx - 16, bottom - 18, 32, 1, VERDE_BOTELLA.light);
-  p.rect(cx - 7, bottom - 16, 14, 16, WOOD.base);
-  for (let y = bottom - 15; y < bottom - 3; y++) {
-    p.rect(cx - 6, y, 12, 1, mix(LUZ.warm, LUZ.warmDeep, (y - bottom + 15) / 12));
-  }
-  p.rect(cx, bottom - 15, 1, 15, WOOD.shadow);
-  p.px(cx + 4, bottom - 8, '#f0cf45');
-  // Vitrinas con tazas.
-  for (const dx of [-14, 8]) {
-    p.rect(cx + dx, bottom - 13, 6, 8, LUZ.warm);
-    p.px(cx + dx + 1, bottom - 8, '#fff4d6');
-    p.px(cx + dx + 3, bottom - 8, LONAS.rosa.luz);
-  }
-  // Rótulo: CAFÉ en cal sobre verde.
-  p.rect(cx - 13, bottom - 25, 26, 8, VERDE_BOTELLA.shade);
-  sign(p, 'CAFÉ', cx - 7, bottom - 23, '#fff4d6');
-}
-
-// ─── Casas de Allende ─────────────────────────────────────────────────────
-
-const PINTURAS: Record<string, string> = { ocre: '#d7a24e', rosa: '#d98a8a' };
-
-/**
- * Casa de dos pisos de la calle: sillería de cantera o aplanado de color con
- * marcos de cantera, zaguán o comercio abajo, balcones arriba, cornisa con
- * gárgolas. Vista de frente: su pie es la banqueta de Allende.
- */
-export function edificio(wTiles: number, variant: string | undefined, seed: number): Art {
-  const W = wTiles * TILE;
-  const H = 7 * TILE;
-  const p = painter(W, H);
-  const pintura = variant ? PINTURAS[variant] : undefined;
-  if (pintura) aplanado(p, 0, 0, W, H, pintura, 421 + seed);
-  else sillar(p, 0, 0, W, H, 421 + seed);
-  // Pretil, cornisa y gárgolas.
-  p.rect(0, 0, W, 2, C.lighter);
-  p.rect(0, 2, W, 3, C.light);
-  p.rect(0, 5, W, 1, C.deep);
-  for (let x = 6; x < W - 4; x += 22) {
-    p.rect(x, 6, 5, 2, C.shade);
-    p.px(x + 4, 8, C.deep);
-  }
-  // Pilastras de las orillas.
-  p.rect(0, 6, 3, H - 6, C.light);
-  p.rect(W - 3, 6, 3, H - 6, C.shade);
-  // Planta alta: balcones.
-  const n = Math.max(1, Math.floor(W / 30));
-  for (let i = 0; i < n; i++) {
-    const cx = Math.round(((i + 0.5) * W) / n);
-    ventana(p, cx - 5, 14, 10, 20, seed * 7 + i);
-    balcon(p, cx - 8, 37, 16);
-  }
-  // Faja entre pisos.
-  p.rect(0, 46, W, 2, C.light);
-  p.rect(0, 48, W, 1, C.deep);
-  // Planta baja: zaguán al centro y, si cabe, un comercio a un lado.
-  const cx = Math.round(W / 2);
-  p.rect(cx - 10, H - 34, 20, 34, C.lighter);
-  p.rect(cx - 8, H - 32, 16, 32, WOOD.base);
-  p.rect(cx - 8, H - 32, 16, 2, WOOD.shadow);
-  p.rect(cx, H - 30, 1, 30, WOOD.shadow);
-  for (const y of [H - 24, H - 14]) p.rect(cx - 7, y, 14, 1, WOOD.shadow);
-  p.px(cx - 2, H - 16, '#f0cf45');
-  if (W >= 80) {
-    const sx = seed % 2 === 0 ? 8 : W - 26;
-    p.rect(sx, H - 26, 18, 26, C.shade);
-    p.rect(sx + 1, H - 25, 16, 12, LUZ.warm);
-    p.rect(sx + 1, H - 13, 16, 13, hundido(pintura ?? C.base, 0.35));
-    const board = pick(FOSFO, seed, 2, 6);
-    p.rect(sx, H - 33, 18, 6, board);
-    sign(
-      p,
-      pick(['PAN', 'ROPA', 'NIEVES', 'DULCES'], seed, 4, 7).slice(0, 4),
-      sx + 2,
-      H - 32,
-      PLUMON,
-    );
-  }
-  return { canvas: p.canvas, ox: 0, oy: 0 };
 }
 
 // ─── Reja del atrio y portones ────────────────────────────────────────────
@@ -422,43 +198,79 @@ export function reja(wTiles: number, hTiles: number, acostada: boolean): Art {
 }
 
 /**
- * Portón del atrio: dos pilares de cantera con perillones y, entre ellos, el
- * arco de herrería con su medallón; las hojas abiertas contra los pilares.
+ * Portón del atrio (reja de 1854): dos pilares cuadrados de sillar de ≈4.5 m
+ * con su cornisa volada, el jarrón con piña encima y un farol negro de brazo;
+ * entre ellos, el copete semicircular de filigrana con su medallón oval, y las
+ * dos hojas de barrotes abiertas contra los pilares.
  */
 export function porton(wTiles: number): Art {
-  const W = wTiles * TILE;
-  const top = 44;
+  const W = Math.round(wTiles * TILE);
+  const top = 70;
   const H = TILE + top;
   const p = painter(W, H);
   const pie = H - 1;
-  const pw = 12;
+  const pw = 16;
+  const alto = 58;
   for (const x of [0, W - pw]) {
-    p.rect(x, pie - 40, pw, 40, C.base);
-    for (let y = pie - 40; y < pie; y += 5) p.rect(x, y, pw, 1, C.joint);
-    p.rect(x, pie - 40, 2, 40, C.lighter);
-    p.rect(x + pw - 2, pie - 40, 2, 40, C.shade);
-    p.rect(x - 1, pie - 43, pw + 2, 3, C.light);
-    p.rect(x - 1, pie - 40, pw + 2, 1, C.deep);
-    perillon(p, x + pw / 2, pie - 52);
-    // Farol en el pilar.
-    p.rect(x + pw / 2 - 1, pie - 30, 3, 5, HERRERIA.base);
-    p.px(x + pw / 2, pie - 29, LUZ.warm);
+    p.rect(x, pie - alto, pw, alto, C.base);
+    for (let y = pie - alto; y < pie; y += 6) p.rect(x, y, pw, 1, C.joint);
+    p.rect(x + pw / 2, pie - alto, 1, alto, C.joint);
+    p.rect(x, pie - alto, 2, alto, C.lighter);
+    p.rect(x + pw - 2, pie - alto, 2, alto, C.shade);
+    // Pilastra rehundida al frente.
+    p.rect(x + 4, pie - alto + 8, pw - 8, alto - 20, C.shade);
+    p.rect(x + 4, pie - alto + 8, pw - 8, 1, C.deep);
+    // Cornisa volada y el jarrón con piña.
+    p.rect(x - 2, pie - alto - 4, pw + 4, 4, C.light);
+    p.rect(x - 2, pie - alto - 4, pw + 4, 1, C.lighter);
+    p.rect(x - 1, pie - alto, pw + 2, 1, C.deep);
+    const vx = x + pw / 2;
+    p.rect(vx - 3, pie - alto - 6, 7, 2, C.base);
+    p.ellipse(vx, pie - alto - 10, 5, 4, C.light);
+    p.px(vx - 3, pie - alto - 12, C.lighter);
+    p.rect(vx - 1, pie - alto - 17, 3, 4, C.base);
+    p.px(vx, pie - alto - 18, C.lighter);
+    // Voluta de piedra en la base.
+    p.rect(x - 2, pie - 5, pw + 4, 5, C.shade);
+    p.rect(x - 2, pie - 5, pw + 4, 1, C.light);
+    // Farol negro de brazo, hacia afuera del portón.
+    const hacia = x === 0 ? -1 : 1;
+    const bx = x + (hacia < 0 ? 0 : pw);
+    p.rect(Math.min(bx, bx + hacia * 5), pie - 40, 5, 1, HERRERIA.base);
+    const lx = bx + hacia * 6 - 2;
+    p.rect(lx, pie - 44, 5, 1, HERRERIA.base);
+    p.rect(lx, pie - 43, 5, 6, '#f4ecd6');
+    p.rect(lx + 1, pie - 42, 3, 4, '#fff6d4');
+    p.rect(lx, pie - 37, 5, 1, HERRERIA.base);
   }
-  // Arco de herrería de pilar a pilar y el medallón.
+  // El copete de filigrana de pilar a pilar y su medallón oval.
   const cx = W / 2;
   const r = (W - pw * 2) / 2;
-  for (let a = 0; a <= 40; a++) {
-    const ang = Math.PI + (a / 40) * Math.PI;
+  const arranque = pie - 40;
+  for (let a = 0; a <= 60; a++) {
+    const ang = Math.PI + (a / 60) * Math.PI;
     const x = Math.round(cx + Math.cos(ang) * r);
-    const y = Math.round(pie - 36 + Math.sin(ang) * (r * 0.7));
+    const y = Math.round(arranque + Math.sin(ang) * r * 0.85);
     p.px(x, y, HERRERIA.base);
-    if (a % 4 === 0) p.px(x, y + 2, HERRERIA.base);
+    p.px(x, y + 1, HERRERIA.shade);
+    if (a % 5 === 0) {
+      // Rizos hacia adentro.
+      const ix = Math.round(cx + Math.cos(ang) * (r - 4));
+      const iy = Math.round(arranque + Math.sin(ang) * (r - 4) * 0.85);
+      p.px(ix, iy, HERRERIA.base);
+      p.px(ix + 1, iy - 1, HERRERIA.base);
+    }
   }
-  p.ellipse(cx, pie - 36 - r * 0.7 - 2, 4, 4, HERRERIA.base);
-  p.ellipse(cx, pie - 36 - r * 0.7 - 2, 2, 2, '#c9a45a');
-  // Hojas abiertas, plegadas junto a los pilares.
-  for (const x of [pw, W - pw - 3]) {
-    for (let i = 0; i < 3; i++) p.rect(x + i, pie - 30, 1, 30, HERRERIA.base);
+  p.rect(pw, arranque, W - pw * 2, 1, HERRERIA.base);
+  const my = Math.round(arranque - r * 0.85 * 0.55);
+  p.ellipse(cx, my, 5, 6, HERRERIA.base);
+  p.ellipse(cx, my, 3, 4, '#c9a45a');
+  p.px(cx, my - 1, '#e8d08a');
+  // Las hojas abiertas, plegadas junto a los pilares.
+  for (const x of [pw, W - pw - 4]) {
+    for (let i = 0; i < 4; i++) p.rect(x + i, pie - 36, 1, 36, HERRERIA.base);
+    p.rect(x, pie - 30, 4, 1, HERRERIA.light);
+    p.rect(x, pie - 12, 4, 1, HERRERIA.light);
   }
   // Escalón.
   p.rect(pw, pie - 2, W - pw * 2, 2, C.light);
@@ -487,228 +299,190 @@ export function portonLado(hTiles: number): Art {
 // ─── Kiosko ───────────────────────────────────────────────────────────────
 
 /**
- * El kiosko de la Plaza de Armas: plataforma ochavada de cantera (su tapa
- * vista desde arriba, 5.5 × 4 tiles) con la escalinata al frente, columnas
- * delgadas de hierro, barandal y la cúpula de lámina gris con su
- * linternilla. La huella es de 6×5 tiles y el pie de la plataforma cae en su
- * orilla de abajo.
+ * El kiosko de la Plaza de Armas (1887), como en las fotos: la base alta de
+ * cantera gris con un tablero rehundido por cara, su cornisa y la puertita de
+ * lámina negra al frente; las ocho columnas torsas de hierro negro con el
+ * barandal; el alero octagonal con su friso calado, el plafón de madera miel
+ * que se asoma por la orilla y la crestería de florones; y encima el cupulín
+ * de lámina plateada en forma de campana, con sus costillas y la cruz de
+ * hierro. `wTiles`/`hTiles` es la huella; la base ocupa su centro.
  */
-export function kiosko(): Art {
-  const W = 112;
-  const H = 216;
+export function kiosko(wTiles: number, hTiles: number): Art {
+  const W = Math.round(wTiles * TILE);
+  const fondo = Math.round(hTiles * TILE);
+  const alto = 132;
+  const H = fondo + alto;
   const p = painter(W, H);
-  const cx = 56;
-  /** Centro de la huella de la base en el canvas (en el mapa, el centro de su octágono). */
-  const GY = 170;
-  /** Alto de la base de cantera y de las columnas. */
+  const cx = Math.round(W / 2);
+  /** Centro de la huella de la base (en el mapa, el centro del octágono). */
+  const GY = alto + Math.round(fondo / 2);
+  /** Apotema de la base (3.5 tiles), alto de la base y de las columnas. */
+  const A = Math.round(3.5 * TILE);
   const PH = 26;
-  const CH = 64;
-  const A = 41; // apotema de la base (2.55 tiles)
-  const G = CANTERA_GRIS;
-
-  // Contorno inferior del octágono de la base, por columna de pixeles.
-  const abajo = (x: number) => Math.min(A, A * 2 - 24 - Math.abs(x));
-  const arriba = (x: number) => -abajo(x);
-
-  // ── La base: tapa y cara del frente con sus tableros rehundidos.
+  const CH = 54;
   const tapaY = GY - PH;
+  const esquina = Math.round(A * 0.414);
+  /** Medio alto de un octágono de apotema `a` (con esquinas de `e`) a `x` de su centro. */
+  const octagono = (a: number, e: number) => (x: number) => Math.min(a, a + e - Math.abs(x));
+  const bordeBase = octagono(A, esquina);
+
+  // ── La base: su tapa y las caras del frente con sus tableros.
   for (let x = -A; x <= A; x++) {
-    for (let y = arriba(x); y <= abajo(x); y++) {
-      const junta = (x + A) % 12 === 0 || (y + A) % 10 === 0;
+    const b = bordeBase(x);
+    for (let y = -b; y <= b; y++) {
+      const junta = (x + A) % 14 === 0 || (y + A) % 11 === 0;
       p.px(cx + x, tapaY + y, junta ? G.joint : G.light);
     }
   }
   for (let x = -A; x <= A; x++) {
-    const y0 = tapaY + abajo(x);
-    // Faceta del frente iluminada; las de los lados, una con luz y otra en sombra.
-    const faceta = Math.abs(x) <= 17 ? G.base : x < 0 ? G.lighter : G.shade;
+    const y0 = tapaY + bordeBase(x);
+    const faceta = Math.abs(x) <= esquina ? G.base : x < 0 ? G.lighter : G.shade;
     p.rect(cx + x, y0, 1, PH, faceta);
-    p.px(cx + x, y0, G.lighter); // cornisa
-    p.px(cx + x, y0 + 1, G.deep);
+    p.px(cx + x, y0, G.lighter);
+    p.px(cx + x, y0 + 1, G.light);
+    p.px(cx + x, y0 + 2, G.deep);
     p.px(cx + x, y0 + PH - 1, G.deep);
+    p.px(cx + x, y0 + PH - 2, G.shade);
   }
-  // Tableros: uno por faceta (el del frente, partido por la puertita).
-  const tablero = (x0: number, x1: number, y0: (x: number) => number) => {
+  const tablero = (x0: number, x1: number) => {
     for (let x = x0; x <= x1; x++) {
-      const yy = y0(x);
-      p.rect(cx + x, yy + 5, 1, PH - 10, x === x0 ? G.deep : x === x1 ? G.lighter : G.shade);
-      p.px(cx + x, yy + 5, G.deep);
-      p.px(cx + x, yy + PH - 6, G.lighter);
+      const yy = tapaY + bordeBase(x);
+      p.rect(cx + x, yy + 6, 1, PH - 12, x === x0 ? G.deep : x === x1 ? G.lighter : G.shade);
+      p.px(cx + x, yy + 6, G.deep);
+      p.px(cx + x, yy + PH - 7, G.lighter);
     }
   };
-  const bordeFrente = (x: number) => tapaY + abajo(x);
-  tablero(-37, -21, bordeFrente);
-  tablero(21, 37, bordeFrente);
-  tablero(-14, -8, bordeFrente);
-  tablero(8, 14, bordeFrente);
+  tablero(-A + 4, -esquina - 4);
+  tablero(esquina + 4, A - 4);
+  tablero(-esquina + 3, -8);
+  tablero(8, esquina - 3);
   // La puertita de lámina negra (la bodega) al centro del frente.
-  const puertaY = tapaY + A + 5;
-  p.rect(cx - 5, puertaY, 10, PH - 5, HERRERIA.base);
-  p.rect(cx - 5, puertaY, 10, 1, HERRERIA.light);
-  p.rect(cx - 6, puertaY - 1, 12, 1, G.lighter);
-  p.px(cx + 3, puertaY + 10, '#c9a45a');
+  const puertaY = tapaY + A + 6;
+  p.rect(cx - 6, puertaY, 12, PH - 6, HERRERIA.base);
+  p.rect(cx - 6, puertaY, 12, 1, HERRERIA.light);
+  p.rect(cx - 7, puertaY - 1, 14, 1, G.lighter);
+  p.px(cx + 4, puertaY + 10, '#c9a45a');
+  // Cornisa sobre la tapa: su orilla clara.
+  for (let x = -A; x <= A; x++) p.px(cx + x, tapaY - bordeBase(x), G.lighter);
 
-  // ── Barandal de hierro negro y columnas torsas, primero las de atrás.
+  // ── Columnas torsas y barandal: primero las de atrás.
+  const V = Math.round(A * 0.88);
+  const ve = Math.round(V * 0.414);
   const vertices: [number, number][] = [
-    [-16, -38],
-    [16, -38],
-    [38, -16],
-    [38, 16],
-    [16, 38],
-    [-16, 38],
-    [-38, 16],
-    [-38, -16],
+    [-ve, -V],
+    [ve, -V],
+    [V, -ve],
+    [V, ve],
+    [ve, V],
+    [-ve, V],
+    [-V, ve],
+    [-V, -ve],
   ];
   const barandal = (x0: number, y0: number, x1: number, y1: number, color: string) => {
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
     for (let i = 0; i <= n; i++) {
       const x = Math.round(x0 + ((x1 - x0) * i) / n);
       const y = Math.round(y0 + ((y1 - y0) * i) / n);
-      p.px(cx + x, tapaY + y - 9, color);
-      if (i % 3 === 0) p.rect(cx + x, tapaY + y - 8, 1, 8, color);
+      p.px(cx + x, tapaY + y - 10, color);
+      p.px(cx + x, tapaY + y - 3, color);
+      if (i % 3 === 0) p.rect(cx + x, tapaY + y - 9, 1, 7, color);
+      else if (i % 3 === 1) p.px(cx + x, tapaY + y - 6, color);
     }
   };
-  const columnaTorsa = (x: number, y: number, frente: boolean) => {
-    const base = tapaY + y;
+  const columna = (x: number, y: number, frente: boolean) => {
+    const pie = tapaY + y;
     const c = frente ? HERRERIA.base : HERRERIA.shade;
-    p.rect(cx + x - 1, base - CH, 3, CH, c);
-    for (let yy = base - CH + 2; yy < base; yy += 4) {
+    p.rect(cx + x - 1, pie - CH, 3, CH, c);
+    for (let yy = pie - CH + 2; yy < pie; yy += 4) {
       p.px(cx + x - 1 + (Math.floor(yy / 4) % 2) * 2, yy, frente ? HERRERIA.light : HERRERIA.base);
     }
-    p.rect(cx + x - 2, base - 3, 5, 3, c);
-    p.rect(cx + x - 2, base - CH, 5, 2, c);
+    p.rect(cx + x - 2, pie - 3, 5, 3, c);
+    p.rect(cx + x - 2, pie - CH, 5, 3, c);
+    // Ménsula de encaje hacia arriba.
+    p.px(cx + x - 3, pie - CH + 3, c);
+    p.px(cx + x + 3, pie - CH + 3, c);
   };
-  const atras = vertices.filter(([, y]) => y < 0);
   for (let i = 0; i < vertices.length; i++) {
     const [x0, y0] = vertices[i] as [number, number];
     const [x1, y1] = vertices[(i + 1) % vertices.length] as [number, number];
     if (y0 < 0 || y1 < 0) barandal(x0, y0, x1, y1, HERRERIA.shade);
   }
-  for (const [x, y] of atras) columnaTorsa(x, y, false);
+  for (const [x, y] of vertices.filter(([, vy]) => vy < 0)) columna(x, y, false);
   for (let i = 0; i < vertices.length; i++) {
     const [x0, y0] = vertices[i] as [number, number];
     const [x1, y1] = vertices[(i + 1) % vertices.length] as [number, number];
     if (y0 >= 0 && y1 >= 0) barandal(x0, y0, x1, y1, HERRERIA.base);
   }
-  for (const [x, y] of vertices.filter(([, vy]) => vy >= 0)) columnaTorsa(x, y, true);
+  for (const [x, y] of vertices.filter(([, vy]) => vy >= 0)) columna(x, y, true);
 
-  // ── El techo: octágono de lámina gris que sube a la punta.
-  const E = 50; // apotema del alero
-  const eaveY = tapaY - CH;
-  const apex = { x: cx, y: eaveY - 30 };
-  const alero: [number, number][] = [
-    [-21, -E],
-    [21, -E],
-    [E, -21],
-    [E, 21],
-    [21, E],
-    [-21, E],
-    [-E, 21],
-    [-E, -21],
-  ].map(([x, y]) => [cx + (x as number), eaveY + (y as number)]);
-  // Las ocho faldas, de atrás para adelante; la luz viene de arriba a la izquierda.
-  const faldas = alero.map((a, i) => {
-    const b = alero[(i + 1) % alero.length] as [number, number];
-    const mx = (a[0] + b[0]) / 2 - cx;
-    const my = (a[1] + b[1]) / 2 - eaveY;
-    return { a, b, orden: my, luz: (-mx - my) / (E * 1.4) };
-  });
-  faldas.sort((f, g) => f.orden - g.orden);
-  for (const f of faldas) {
-    const color =
-      f.luz > 0.35
-        ? LAMINA.light
-        : f.luz < -0.35
-          ? LAMINA.deep
-          : f.luz < 0
-            ? LAMINA.shade
-            : LAMINA.base;
-    triangulo(p, f.a, f.b, [apex.x, apex.y], color);
-  }
-  // Limas (las aristas) y costuras de la lámina.
-  for (const v of alero) linea(p, v[0], v[1], apex.x, apex.y, LAMINA.deep);
-  for (const f of faldas) {
-    if (f.orden < 0) continue;
-    for (const t of [0.33, 0.66]) {
-      const x = f.a[0] + (f.b[0] - f.a[0]) * t;
-      const y = f.a[1] + (f.b[1] - f.a[1]) * t;
-      linea(p, Math.round(x), Math.round(y), apex.x, apex.y, f.luz > 0 ? '#ffffff' : LAMINA.shade);
+  // ── El alero: la lámina del techo vista desde arriba, casi plana.
+  const E = Math.round(A * 1.12);
+  const ee = Math.round(E * 0.414);
+  const bordeAlero = octagono(E, ee);
+  const aleroY = tapaY - CH;
+  // El alero es casi plano: lámina oscura con sus costuras a lo largo de cada falda.
+  for (let x = -E; x <= E; x++) {
+    const b = bordeAlero(x);
+    for (let y = -b; y <= b; y++) {
+      const orilla = b - Math.abs(y) < 2 || E - Math.abs(x) < 2;
+      let c = x < -E * 0.4 ? '#5d6670' : x > E * 0.45 ? '#3f4750' : '#4f5861';
+      if ((Math.abs(x) + Math.abs(y)) % 6 === 0) c = hundido(c, 0.14);
+      if (orilla) c = '#2c3238';
+      p.px(cx + x, aleroY + y, c);
     }
   }
-  // Bajo el alero del frente: el plafón de madera color miel y el friso calado.
+  // El canto del alero al frente, el plafón miel que se asoma y el friso calado.
   for (let x = -E; x <= E; x++) {
-    const y = eaveY + Math.min(E, E * 2 - 29 - Math.abs(x));
-    p.px(cx + x, y + 1, MIEL.base);
-    p.px(cx + x, y + 2, MIEL.shade);
+    const y = aleroY + bordeAlero(x);
+    p.px(cx + x, y, HERRERIA.base);
+    p.px(cx + x, y + 1, MIEL.light);
+    p.px(cx + x, y + 2, MIEL.base);
+    p.px(cx + x, y + 3, MIEL.shade);
     const k = (x + E) % 6;
-    p.px(cx + x, y + 3, HERRERIA.base);
-    if (k === 0 || k === 3) p.px(cx + x, y + 4, HERRERIA.base);
-    if (k === 0) p.px(cx + x, y + 5, HERRERIA.base);
+    p.px(cx + x, y + 4, HERRERIA.base);
+    if (k === 0 || k === 3) p.px(cx + x, y + 5, HERRERIA.base);
+    if (k === 0) p.px(cx + x, y + 6, HERRERIA.base);
   }
-  // La crestería: florones de hierro sobre toda la orilla del alero.
-  for (let i = 0; i < alero.length; i++) {
-    const a = alero[i] as [number, number];
-    const b = alero[(i + 1) % alero.length] as [number, number];
-    const n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
-    for (let t = 0; t <= n; t++) {
-      const x = Math.round(a[0] + ((b[0] - a[0]) * t) / n);
-      const y = Math.round(a[1] + ((b[1] - a[1]) * t) / n);
-      p.px(x, y, HERRERIA.base);
-      if (t % 4 === 0) {
-        p.px(x, y - 1, HERRERIA.base);
-        p.px(x, y - 2, HERRERIA.light);
+  // La crestería de florones en toda la orilla.
+  for (let x = -E; x <= E; x++) {
+    for (const lado of [-1, 1]) {
+      const y = aleroY + lado * bordeAlero(x);
+      p.px(cx + x, y - 1, HERRERIA.base);
+      if ((x + E) % 4 === 0) {
+        p.px(cx + x, y - 2, HERRERIA.base);
+        p.px(cx + x, y - 3, HERRERIA.light);
       }
     }
   }
-  // El cupulín: campana de lámina plateada con costillas, y su cruz de hierro.
-  const cb = apex.y + 2;
-  for (let y = 0; y < 18; y++) {
-    const t = y / 18;
-    const half = Math.round(8 * Math.sin(Math.PI * (0.18 + t * 0.62)) * (0.55 + t * 0.45));
+  // El farol que cuelga al centro se asoma apenas bajo el alero del frente.
+  p.rect(cx - 1, aleroY + E + 3, 2, 3, HERRERIA.base);
+  p.rect(cx - 2, aleroY + E + 6, 4, 4, '#ffe7a0');
+
+  // ── El cupulín de lámina plateada, en forma de campana, con sus costillas.
+  const R = Math.round(E * 0.62);
+  const cupAlto = 42;
+  const cupBase = aleroY + 2;
+  for (let yy = 0; yy < cupAlto; yy++) {
+    const t = yy / cupAlto;
+    // Media esfera un poco alargada, que se abre en la falda como campana.
+    const half = Math.round(R * Math.sqrt(Math.max(0, 1 - (1 - t) ** 2)) * (0.92 + t * 0.08));
     for (let x = -half; x <= half; x++) {
-      let c = x < -half / 3 ? LAMINA.light : x > half / 2 ? LAMINA.shade : LAMINA.base;
-      if (x % 3 === 0) c = x < 0 ? '#ffffff' : LAMINA.deep;
-      p.px(cx + x, cb - 18 + y, c);
+      const u = (x + half) / Math.max(1, half * 2);
+      let c =
+        u < 0.25 ? '#ffffff' : u < 0.45 ? LAMINA.light : u > 0.78 ? LAMINA.shade : LAMINA.base;
+      const costilla = Math.round((x / Math.max(1, half)) * 4);
+      if (Math.abs(x - Math.round((costilla / 4) * half)) < 1 && yy > 3) {
+        c = u < 0.5 ? LAMINA.base : LAMINA.deep;
+      }
+      p.px(cx + x, cupBase - cupAlto + yy, c);
     }
   }
-  p.rect(cx - 9, cb, 19, 2, LAMINA.deep);
-  p.rect(cx, cb - 25, 1, 8, HERRERIA.base);
-  p.rect(cx - 2, cb - 23, 5, 1, HERRERIA.base);
-  return { canvas: p.canvas, ox: -8, oy: -125 };
-}
-
-function linea(p: Painter, x0: number, y0: number, x1: number, y1: number, color: string): void {
-  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
-  for (let i = 0; i <= n; i++) {
-    p.px(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n), color);
-  }
-}
-
-/** Triángulo relleno (pixeles cuyo centro cae dentro). */
-function triangulo(
-  p: Painter,
-  a: readonly [number, number],
-  b: readonly [number, number],
-  c: readonly [number, number],
-  color: string,
-): void {
-  const x0 = Math.floor(Math.min(a[0], b[0], c[0]));
-  const x1 = Math.ceil(Math.max(a[0], b[0], c[0]));
-  const y0 = Math.floor(Math.min(a[1], b[1], c[1]));
-  const y1 = Math.ceil(Math.max(a[1], b[1], c[1]));
-  const lado = (p0: readonly number[], p1: readonly number[], x: number, y: number) =>
-    ((p1[0] as number) - (p0[0] as number)) * (y - (p0[1] as number)) -
-    ((p1[1] as number) - (p0[1] as number)) * (x - (p0[0] as number));
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      const d1 = lado(a, b, x, y);
-      const d2 = lado(b, c, x, y);
-      const d3 = lado(c, a, x, y);
-      const neg = d1 < 0 || d2 < 0 || d3 < 0;
-      const pos = d1 > 0 || d2 > 0 || d3 > 0;
-      if (!(neg && pos)) p.px(x, y, color);
-    }
-  }
+  p.rect(cx - R + 2, cupBase - 1, R * 2 - 3, 2, LAMINA.deep);
+  // Remate y la cruz de hierro.
+  p.rect(cx - 2, cupBase - cupAlto - 4, 5, 4, LAMINA.light);
+  p.rect(cx, cupBase - cupAlto - 16, 1, 12, HERRERIA.base);
+  p.rect(cx - 3, cupBase - cupAlto - 13, 7, 1, HERRERIA.base);
+  return { canvas: p.canvas, ox: 0, oy: -alto };
 }
 
 // ─── Fuentes ──────────────────────────────────────────────────────────────
@@ -831,6 +605,7 @@ export function placa(): Art {
  * o a un lado (se ve de canto).
  */
 export function banca(variant: string | undefined): Art {
+  if (variant?.startsWith('hierro-')) return bancaDeHierro(variant.slice(7));
   switch (variant) {
     case 'arriba':
       return bancaDeEspaldas();
@@ -842,6 +617,65 @@ export function banca(variant: string | undefined): Art {
     default:
       return bancaDeFrente();
   }
+}
+
+const HIERRO_VERDE = { base: '#214a2e', light: '#2f5a3a', lighter: '#4f7a55', shade: '#153220' };
+
+/**
+ * Banca de hierro fundido verde botella, de las porfirianas del andador:
+ * listones de madera pintada, respaldo de rizos y patas curvas. De lado
+ * (mira a la izquierda o a la derecha) o de frente.
+ */
+function bancaDeHierro(mira: string): Art {
+  const V = HIERRO_VERDE;
+  if (mira === 'izquierda' || mira === 'derecha') {
+    const derecha = mira === 'derecha';
+    const W = 16;
+    const H = 2 * TILE + 14;
+    const p = painter(W, H);
+    const pie = H - 3;
+    const sx = derecha ? 5 : 1;
+    const rx = derecha ? 1 : 12;
+    // Asiento de listones (corre hacia abajo) con su cara al frente.
+    for (let x = 0; x < 10; x++) {
+      p.rect(sx + x, 14, 1, pie - 19, x % 3 === 2 ? V.shade : x % 3 === 0 ? V.lighter : V.light);
+    }
+    p.rect(sx, pie - 5, 10, 4, V.shade);
+    p.rect(sx, pie - 5, 10, 1, V.lighter);
+    // Respaldo de rizos: su canto arriba y el calado.
+    p.rect(rx, 4, 3, pie - 8, V.base);
+    p.rect(rx, 4, 3, 1, V.lighter);
+    for (let y = 8; y < pie - 8; y += 5) {
+      p.px(rx + (derecha ? 3 : -1), y, V.base);
+      p.px(rx + (derecha ? 3 : -1), y + 1, V.shade);
+    }
+    // Patas curvas en las puntas.
+    for (const y of [13, pie - 2]) {
+      p.rect(sx - (derecha ? 1 : 0), y, 11, 2, V.shade);
+      p.px(derecha ? sx - 1 : sx + 10, y + 2, V.shade);
+    }
+    p.rect(sx + 1, pie, 2, 3, V.shade);
+    p.rect(sx + 7, pie, 2, 3, V.shade);
+    return { canvas: p.canvas, ox: 0, oy: -14 };
+  }
+  const W = 32;
+  const H = 30;
+  const p = painter(W, H);
+  const espaldas = mira === 'arriba';
+  // Respaldo de rizos y el asiento de listones.
+  p.rect(1, espaldas ? 9 : 3, 30, 12, V.base);
+  p.rect(1, espaldas ? 9 : 3, 30, 1, V.lighter);
+  for (let x = 3; x < 29; x += 4) {
+    p.ellipse(x + 1, (espaldas ? 9 : 3) + 6, 1.5, 3, V.shade);
+  }
+  p.rect(0, 16, 32, 4, V.light);
+  for (let x = 0; x < 32; x += 3) p.px(x, 17, V.shade);
+  p.rect(0, 20, 32, 2, V.shade);
+  p.rect(2, 22, 3, 6, V.shade);
+  p.rect(27, 22, 3, 6, V.shade);
+  p.px(1, 27, V.shade);
+  p.px(30, 27, V.shade);
+  return { canvas: p.canvas, ox: 0, oy: -14 };
 }
 
 function respaldo(p: Painter, x: number, y: number, w: number, h: number): void {
@@ -934,43 +768,47 @@ function cubo(): Art {
 
 /**
  * Laurel de la India (ficus) podado en bloque, como las hileras de la Plaza
- * de Armas y el andador Juárez: tapa plana y lisa, lima donde le da el sol,
- * caras que bajan a plomo y el tronco encalado hasta la mitad.
+ * de Armas y el andador Juárez (la firma de la plaza): copa de 4–5 m con la
+ * tapa plana y lisa, lima donde le da el sol, caras que bajan a plomo con las
+ * esquinas redondeadas, y el tronco (a veces doble) encalado hasta la mitad.
  */
 export function laurel(seedId: string): Art {
-  const W = 46;
+  const W = 64;
   const H = 76;
   const p = painter(W, H);
   const seed = semilla(seedId);
-  const cx = 23;
-  // Tronco (a veces doble) con su cal.
-  p.rect(cx - 3, 40, 6, 34, CORTEZA.base);
-  p.rect(cx - 3, 40, 1, 34, CORTEZA.light);
-  p.rect(cx + 2, 40, 1, 34, CORTEZA.shade);
-  p.rect(cx - 4, 56, 8, 17, CAL_TRONCO.base);
-  p.rect(cx + 2, 56, 2, 17, CAL_TRONCO.shade);
-  p.rect(cx - 5, 72, 10, 2, CORTEZA.shade);
+  const cx = 32;
+  const doble = hash(seed, 3, 11) < 0.35;
+  // Tronco (o dos) con su cal.
+  const troncos = doble ? [cx - 4, cx + 3] : [cx];
+  for (const tx of troncos) {
+    p.rect(tx - 3, 44, 6, 30, CORTEZA.base);
+    p.rect(tx - 3, 44, 1, 30, CORTEZA.light);
+    p.rect(tx + 2, 44, 1, 30, CORTEZA.shade);
+    p.rect(tx - 4, 58, 8, 15, CAL_TRONCO.base);
+    p.rect(tx + 2, 58, 2, 15, CAL_TRONCO.shade);
+  }
+  p.rect(cx - 7, 72, 14, 2, CORTEZA.shade);
   // Copa: la tapa (una elipse aplanada) y las caras hacia abajo.
   const x0 = 2;
-  const cw = 42;
-  const tapaAlto = 16;
-  const caraAlto = 22;
-  const top = 4;
+  const cw = 60;
+  const tapaAlto = 20;
+  const caraAlto = 24;
+  const top = 2;
   for (let y = 0; y < tapaAlto + caraAlto; y++) {
     for (let x = 0; x < cw; x++) {
       const u = (x - cw / 2 + 0.5) / (cw / 2);
-      // Esquinas redondeadas de la tapa y de la base del bloque.
       const tapaY = (tapaAlto / 2) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
       const baseY =
-        tapaAlto + caraAlto - 1 - (caraAlto / 5) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
+        tapaAlto + caraAlto - 1 - (caraAlto / 4) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
       if (y < tapaY || y > baseY) continue;
       const hoja = hash(Math.floor((x + (y % 2)) / 2), Math.floor(y / 2), seed + 1);
-      const borde = y - tapaY < 1.2 || baseY - y < 1.2 || Math.abs(u) > 0.96;
+      const borde = y - tapaY < 1.2 || baseY - y < 1.2 || Math.abs(u) > 0.97;
       if (borde && hash(x, y, seed) < 0.35) continue;
       let c: string;
-      if (y < tapaAlto) {
+      if (y < tapaY + tapaAlto / 2 + 3) {
         // Tapa plana: lima al sol, un poco más oscura hacia atrás a la derecha.
-        c = u < 0.25 ? LAUREL.lighter : LAUREL.light;
+        c = u < 0.2 ? LAUREL.lighter : LAUREL.light;
         if (hoja < 0.14) c = LAUREL.base;
         else if (hoja > 0.93) c = '#a9d85e';
       } else {
@@ -983,7 +821,46 @@ export function laurel(seedId: string): Art {
       p.px(x0 + x, top + y, c);
     }
   }
-  return { canvas: p.canvas, ox: -15, oy: -60 };
+  return { canvas: p.canvas, ox: -(cx - 8), oy: -(H - TILE) };
+}
+
+/**
+ * Liquidámbar (plantados en 2004): copa en punta, tupida, de hojas en
+ * estrella; verde de primavera a otoño, rojizo en invierno.
+ */
+export function liquidambar(seedId: string, otono = false): Art {
+  const W = 56;
+  const H = 104;
+  const p = painter(W, H);
+  const seed = semilla(seedId);
+  const cx = 28;
+  p.rect(cx - 3, 60, 6, 42, '#6d5b4d');
+  p.rect(cx - 3, 60, 1, 42, '#8c7867');
+  p.rect(cx + 2, 60, 1, 42, '#4f4137');
+  p.rect(cx - 3, 86, 7, 15, CAL_TRONCO.base);
+  p.rect(cx + 2, 86, 2, 15, CAL_TRONCO.shade);
+  p.rect(cx - 6, 100, 12, 2, CORTEZA.shade);
+  const hojas = otono
+    ? { base: '#b8542e', light: '#d9753c', lighter: '#f0a04a', shade: '#8f3a22', deep: '#62261a' }
+    : { base: '#4f8a38', light: '#6aa647', lighter: '#8cc25c', shade: '#3c6f2c', deep: '#29501f' };
+  for (let y = 0; y < 76; y++) {
+    const t = y / 76;
+    // Pirámide redondeada: angosta arriba, ancha abajo.
+    const half = Math.round(
+      26 * Math.sin(Math.PI * Math.min(1, t * 0.9 + 0.08)) * (0.35 + t * 0.7),
+    );
+    for (let x = -half; x <= half; x++) {
+      const borde = Math.abs(x) > half - 2;
+      if (borde && hash(x, y, seed) < 0.5) continue;
+      const luz = -x / Math.max(1, half) - (t - 0.5);
+      const hoja = hash(Math.floor((cx + x) / 2), Math.floor(y / 2), seed + 2);
+      let c = luz > 0.5 ? hojas.light : luz < -0.4 ? hojas.shade : hojas.base;
+      if (hoja > 0.9) c = hojas.lighter;
+      else if (hoja < 0.1) c = hojas.deep;
+      p.px(cx + x, 2 + y, c);
+    }
+  }
+  return { canvas: p.canvas, ox: -(cx - 8), oy: -(H - TILE) };
 }
 
 const COPA_FRESNO: [number, number, number][] = [
@@ -999,11 +876,11 @@ const COPA_FRESNO: [number, number, number][] = [
 
 /** Fresno grande: tronco gris, ramas y una copa irregular de muchos verdes. */
 export function fresno(seedId: string, grande = false): Art {
-  const W = grande ? 88 : 72;
-  const H = grande ? 104 : 90;
+  const W = grande ? 96 : 72;
+  const H = grande ? 118 : 90;
   const p = painter(W, H);
   const seed = semilla(seedId);
-  const s = grande ? 1.2 : 1;
+  const s = grande ? 1.35 : 1;
   const cx = W / 2;
   const tw = grande ? 10 : 6;
   p.rect(cx - tw / 2 - 2, H - 6, tw + 4, 5, CORTEZA.shade);
@@ -1086,6 +963,49 @@ export function farol(): Art {
     linterna(p, lx, ly);
   }
   return { canvas: p.canvas, ox: -5, oy: -58 };
+}
+
+/**
+ * Poste negro alto de Madero, cada 20–25 m: zócalo, fuste con anillos, la
+ * corona ornamental y un doble brazo curvo con faroles de globo blanco.
+ */
+export function posteDeGlobos(): Art {
+  const W = 40;
+  const H = 104;
+  const p = painter(W, H);
+  const cx = 20;
+  const pie = H - 2;
+  p.rect(cx - 4, pie - 10, 9, 10, HERRERIA.base);
+  p.rect(cx - 4, pie - 10, 9, 1, HERRERIA.light);
+  p.rect(cx - 5, pie - 1, 11, 1, HERRERIA.shade);
+  p.rect(cx - 1, pie - 80, 3, 70, HERRERIA.base);
+  p.rect(cx - 1, pie - 80, 1, 70, HERRERIA.light);
+  for (const y of [pie - 26, pie - 50, pie - 70]) p.rect(cx - 2, y, 5, 2, HERRERIA.base);
+  // Los brazos: dos curvas que suben hacia los lados.
+  for (const lado of [-1, 1]) {
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const x = Math.round(cx + lado * (1 + t * 12));
+      const y = Math.round(pie - 78 - Math.sin(t * Math.PI * 0.9) * 6);
+      p.px(x, y, HERRERIA.base);
+      p.px(x, y + 1, HERRERIA.base);
+    }
+    const gx = cx + lado * 13;
+    // Rizo bajo el brazo.
+    p.px(cx + lado * 4, pie - 75, HERRERIA.base);
+    p.px(cx + lado * 5, pie - 74, HERRERIA.base);
+    // El globo blanco con su cuello.
+    p.rect(gx - 1, pie - 84, 3, 3, HERRERIA.base);
+    p.ellipse(gx, pie - 90, 5, 6, '#e9e4dc');
+    p.ellipse(gx - 1, pie - 91, 3, 4, '#fbf9f4');
+    p.px(gx - 2, pie - 93, '#ffffff');
+  }
+  // La corona al centro, arriba.
+  p.rect(cx - 2, pie - 86, 5, 6, HERRERIA.base);
+  p.px(cx - 2, pie - 87, HERRERIA.light);
+  p.px(cx + 2, pie - 87, HERRERIA.light);
+  p.px(cx, pie - 89, HERRERIA.base);
+  return { canvas: p.canvas, ox: -(cx - 8), oy: -(H - TILE) };
 }
 
 function linterna(p: Painter, x: number, y: number): void {

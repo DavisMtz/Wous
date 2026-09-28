@@ -1,20 +1,20 @@
 import type { MapObject } from '@wous/world-data';
+import { casa, cerrada, comercios, mesaDePortal, portal } from './allende.ts';
 import { catedral } from './catedral.ts';
 import { barra, maceta, mesa, tapete, vitroleros } from './interior.ts';
 import {
   banca,
-  comercios,
-  edificio,
   estatua,
   farol,
   fresno,
   fuenteDeTaza,
   kiosko,
   laurel,
+  liquidambar,
   placa,
-  portal,
   porton,
   portonLado,
+  posteDeGlobos,
   reja,
 } from './morelia.ts';
 import { hash, type Painter, painter } from './paint.ts';
@@ -64,19 +64,20 @@ export function paintObject(o: MapObject): ObjectArt | null {
   });
   switch (o.kind) {
     case 'catedral':
-      return at(catedral());
+      return at(catedral(o.w, o.h));
     case 'portal':
-      return at(portal(o.w));
+      return at(portal(o.w, o.h, o.variant));
     case 'comercios':
-      return at(comercios(o.w));
+      return at(comercios(o.w, (o.variant ?? '').split(',')));
     case 'edificio':
-      return at(edificio(o.w, o.variant, Math.round(o.x)));
+      if (o.variant === 'cerrada') return at(cerrada(o.w, o.h));
+      return at(casa(o.w, o.h, o.variant, Math.round(o.x)));
     case 'reja':
       if (o.variant === 'porton') return at(porton(o.w));
       if (o.variant === 'porton-lado') return at(portonLado(o.h));
       return at(reja(o.w, o.h, o.variant !== 'parada'));
     case 'kiosko':
-      return at(kiosko(), true);
+      return at(kiosko(o.w, o.h), true);
     case 'fuente':
       if (o.variant === 'ocampo') return at(monumentoOcampo(o.w, o.h), true);
       if (o.variant === 'columna') return at(fuenteDeColumna(o.w / 2), true);
@@ -103,17 +104,19 @@ export function paintObject(o: MapObject): ObjectArt | null {
     }
     case 'arbol':
       if (o.variant === 'laurel') return at(laurel(o.id), true);
-      return at(fresno(o.id, o.variant === 'liberales'), true);
+      if (o.variant === 'liquidambar') return at(liquidambar(o.id), true);
+      return at(fresno(o.id, true), true);
     case 'jacaranda':
       return at(jacaranda(o.id), true);
     case 'farol':
+      if (o.variant === 'globos') return at(posteDeGlobos());
       return at(o.variant === 'campanas' ? farolDeCampanas() : farol());
     case 'puesto':
       return at(o.variant === 'globos' ? globos(o.id) : churros(o.id), o.variant === 'globos');
     case 'jardinera':
       return at(jardinera(o.variant, o.w, o.h, o.id), o.variant === 'naranjo');
     case 'mesa':
-      return at(mesa(o.variant));
+      return at(o.variant === 'portal' ? mesaDePortal(o.id, o.w, o.h) : mesa(o.variant));
     case 'barra':
       return at(barra(o.w, o.h));
     case 'vitroleros':
@@ -131,45 +134,59 @@ export function paintObject(o: MapObject): ObjectArt | null {
 // ─── Jacaranda ────────────────────────────────────────────────────────────
 
 const COPA: [number, number, number][] = [
-  [32, 24, 19],
-  [16, 32, 13],
-  [48, 31, 14],
-  [22, 15, 12],
-  [42, 14, 13],
-  [32, 38, 13],
-  [9, 40, 7],
-  [55, 40, 7],
+  [42, 31, 25],
+  [21, 42, 17],
+  [62, 40, 18],
+  [29, 20, 16],
+  [55, 18, 17],
+  [42, 49, 17],
+  [12, 52, 9],
+  [72, 52, 9],
 ];
 
-/** Jacaranda en flor: tronco con ramas y una copa de racimos morados. */
-function jacaranda(seedId: string): Omit<ObjectArt, 'depth' | 'occluder'> {
-  const W = 64;
-  const H = 80;
+/**
+ * Jacaranda: tronco con ramas y una copa de racimos. En flor (de febrero a
+ * abril) morada; el resto del año, de hojita fina verde brillante.
+ */
+function jacaranda(seedId: string, enFlor = true): Omit<ObjectArt, 'depth' | 'occluder'> {
+  const W = 84;
+  const H = 104;
   const p = painter(W, H);
   const seed = [...seedId].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const cx = 42;
+  const pie = H - 3;
+  const hoja = enFlor
+    ? JACARANDA
+    : {
+        flower: '#5f9a3a',
+        light: '#7fb84e',
+        lighter: '#a2d06a',
+        shade: '#487a2c',
+        deep: '#305a22',
+      };
 
   // Tronco con raíces, corteza y ramas.
-  p.rect(27, 72, 11, 5, CORTEZA.shade);
-  p.rect(29, 42, 6, 34, CORTEZA.base);
-  p.rect(29, 42, 1, 34, CORTEZA.light);
-  p.rect(33, 42, 2, 34, CORTEZA.shade);
-  for (let y = 46; y < 72; y += 5) p.px(31 + (y % 2), y, CORTEZA.shade);
-  branch(p, 31, 46, 16, 28);
-  branch(p, 33, 44, 47, 24);
-  branch(p, 32, 44, 31, 18);
+  p.rect(cx - 6, pie - 5, 13, 5, CORTEZA.shade);
+  p.rect(cx - 3, pie - 42, 7, 42, CORTEZA.base);
+  p.rect(cx - 3, pie - 42, 1, 42, CORTEZA.light);
+  p.rect(cx + 2, pie - 42, 2, 42, CORTEZA.shade);
+  for (let y = pie - 38; y < pie - 6; y += 5) p.px(cx - 1 + (y % 2), y, CORTEZA.shade);
+  branch(p, cx - 1, pie - 38, cx - 22, pie - 62);
+  branch(p, cx + 1, pie - 40, cx + 20, pie - 66);
+  branch(p, cx, pie - 40, cx - 1, pie - 72);
 
   // Copa: racimos. El tono depende de la «altura» del racimo en cada pixel.
-  for (let y = 0; y < 56; y++) {
+  for (let y = 0; y < 72; y++) {
     for (let x = 0; x < W; x++) {
       let best = -1;
       let bx = 0;
       let by = 0;
-      for (const [cx, cy, r] of COPA) {
-        const d = 1 - Math.hypot(x - cx, (y - cy) * 1.1) / r;
+      for (const [ccx, ccy, r] of COPA) {
+        const d = 1 - Math.hypot(x - ccx, (y - ccy) * 1.1) / r;
         if (d > best) {
           best = d;
-          bx = (x - cx) / r;
-          by = (y - cy) / r;
+          bx = (x - ccx) / r;
+          by = (y - ccy) / r;
         }
       }
       if (best <= 0) continue;
@@ -177,14 +194,14 @@ function jacaranda(seedId: string): Omit<ObjectArt, 'depth' | 'occluder'> {
       if (best < 0.14 && hash(x, y, seed) < 0.35) continue;
       const light = -bx * 0.6 - by * 0.8;
       const bloom = hash(Math.floor(x / 2), Math.floor(y / 2), seed + 1);
-      let c = light > 0.35 ? JACARANDA.light : light < -0.35 ? JACARANDA.shade : JACARANDA.flower;
-      if (best < 0.12) c = light > 0 ? JACARANDA.flower : JACARANDA.deep;
-      if (bloom > 0.9 && light > -0.2) c = JACARANDA.lighter;
-      else if (bloom < 0.08) c = JACARANDA.deep;
+      let c = light > 0.35 ? hoja.light : light < -0.35 ? hoja.shade : hoja.flower;
+      if (best < 0.12) c = light > 0 ? hoja.flower : hoja.deep;
+      if (bloom > 0.9 && light > -0.2) c = hoja.lighter;
+      else if (bloom < 0.08) c = hoja.deep;
       p.px(x, y, c);
     }
   }
-  return { canvas: p.canvas, ox: -24, oy: -64 };
+  return { canvas: p.canvas, ox: -(cx - 8), oy: -(H - TILE) };
 }
 
 function branch(p: Painter, x0: number, y0: number, x1: number, y1: number): void {
@@ -287,11 +304,11 @@ export function objectShadow(p: Painter, o: MapObject): void {
       break;
     case 'arbol':
     case 'jacaranda': {
-      // Sombra moteada de la copa: elipse con huecos de luz.
+      // Sombra moteada de la copa: elipse con huecos de luz (el sol, alto y un poco al sur).
       const cx = x + 10;
       const cy = y + 10;
-      const rx = o.variant === 'laurel' ? 20 : 30;
-      const ry = o.variant === 'laurel' ? 8 : 11;
+      const rx = o.variant === 'laurel' ? 28 : o.variant === 'liquidambar' ? 22 : 38;
+      const ry = o.variant === 'laurel' ? 10 : o.variant === 'liquidambar' ? 9 : 13;
       for (let yy = -ry; yy <= ry; yy++) {
         for (let xx = -rx; xx <= rx; xx++) {
           if ((xx * xx) / (rx * rx) + (yy * yy) / (ry * ry) > 1) continue;

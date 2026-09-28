@@ -27,27 +27,38 @@ import {
   TILE,
 } from './world-palette.ts';
 
+/** Lado (px) de cada trozo del suelo: su propia textura (ADR-0014). */
+export const TROZO = 512;
+
+/** Una región del suelo en pixeles del mundo. */
+export type Region = { x: number; y: number; w: number; h: number };
+
 /**
- * El suelo del mapa en un solo canvas (ancho × alto en tiles, 16 px cada
- * uno). Primero se decide el material de cada pixel —el del tile y, encima,
- * las formas del mapa (andadores en diagonal, el anillo del kiosko, los
- * jardines), que solo cambian el dibujo—; luego se pinta cada pixel con su
- * material mirando a sus vecinos (las guarniciones salen de ahí); al final
- * los interiores y las sombras de los objetos, horneadas: son estáticas y así
- * quedan siempre debajo de las personas.
+ * El suelo del mapa (ancho × alto en tiles, 16 px cada uno), por regiones.
+ * Primero se decide el material de cada pixel —el del tile y, encima, las
+ * formas del mapa (andadores en diagonal, el anillo del kiosko, los
+ * jardines), que solo cambian el dibujo—, una sola vez para todo el mapa;
+ * luego cada región pinta sus pixeles mirando a sus vecinos (las guarniciones
+ * salen de ahí) y encima los interiores y las sombras de los objetos,
+ * horneadas: son estáticas y así quedan siempre debajo de las personas.
+ * Una región pinta lo mismo que ese pedazo del suelo entero: los trozos casan.
  */
-export function paintGround(map: MapDef): HTMLCanvasElement {
+export function groundPainter(map: MapDef) {
   const w = map.width * TILE;
   const h = map.height * TILE;
-  const p = painter(w, h);
-  const image = p.ctx.createImageData(w, h);
   const kindAt = (tx: number, ty: number): GroundKind | null =>
     tx < 0 || ty < 0 || tx >= map.width || ty >= map.height
       ? null
       : (map.ground[ty * map.width + tx] ?? null);
-  const mat = materialBuffer(map, w, h);
+  let mat: Uint8Array | null = null;
+  const material = () => {
+    mat ??= materialBuffer(map, w, h);
+    return mat;
+  };
   const matAt = (gx: number, gy: number): Material | null =>
-    gx < 0 || gy < 0 || gx >= w || gy >= h ? null : (MATERIALS[mat[gy * w + gx] ?? 0] ?? null);
+    gx < 0 || gy < 0 || gx >= w || gy >= h
+      ? null
+      : (MATERIALS[material()[gy * w + gx] ?? 0] ?? null);
   const petals = map.objects
     .filter((o) => o.kind === 'jacaranda')
     .map((o) => ({ x: (o.x + 0.5) * TILE, y: (o.y + 0.9) * TILE }));
@@ -55,41 +66,66 @@ export function paintGround(map: MapDef): HTMLCanvasElement {
   let backRows = 0;
   while (backRows < map.height && kindAt(1, backRows) === 'pared') backRows++;
 
-  for (let gy = 0; gy < h; gy++) {
-    for (let gx = 0; gx < w; gx++) {
-      const tx = Math.floor(gx / TILE);
-      const ty = Math.floor(gy / TILE);
-      const material = matAt(gx, gy) ?? 'enlosado';
-      const ctx: Px = {
-        gx,
-        gy,
-        lx: gx % TILE,
-        ly: gy % TILE,
-        tx,
-        ty,
-        kindAt,
-        matAt,
-        backRows,
-      };
-      let color = PAINTERS[material](ctx);
-      // Pétalos de jacaranda caídos cerca de cada árbol (en piso, no en seto).
-      if (material === 'enlosado' || material === 'explanada' || material === 'losa') {
-        color = petal(gx, gy, petals) ?? color;
+  return {
+    width: w,
+    height: h,
+    /** Pinta una región del suelo (px del mundo) en su propio canvas. */
+    paint(region: Region): HTMLCanvasElement {
+      const { x: x0, y: y0 } = region;
+      const rw = Math.min(region.w, w - x0);
+      const rh = Math.min(region.h, h - y0);
+      const p = painter(rw, rh);
+      const image = p.ctx.createImageData(rw, rh);
+      for (let gy = y0; gy < y0 + rh; gy++) {
+        for (let gx = x0; gx < x0 + rw; gx++) {
+          const tx = Math.floor(gx / TILE);
+          const ty = Math.floor(gy / TILE);
+          const kind = matAt(gx, gy) ?? 'enlosado';
+          const ctx: Px = {
+            gx,
+            gy,
+            lx: gx % TILE,
+            ly: gy % TILE,
+            tx,
+            ty,
+            kindAt,
+            matAt,
+            backRows,
+          };
+          let color = PAINTERS[kind](ctx);
+          // Pétalos de jacaranda caídos cerca de cada árbol (en piso, no en seto).
+          if (kind === 'enlosado' || kind === 'explanada' || kind === 'losa') {
+            color = petal(gx, gy, petals) ?? color;
+          }
+          put(image.data, ((gy - y0) * rw + (gx - x0)) * 4, color);
+        }
       }
-      put(image.data, (gy * w + gx) * 4, color);
-    }
-  }
-  p.ctx.putImageData(image, 0, 0);
+      p.ctx.putImageData(image, 0, 0);
+      // Lo demás se dibuja en coordenadas del mundo: lo que cae fuera se recorta solo.
+      p.ctx.translate(-x0, -y0);
+      const donde = { x: x0, y: y0, w: rw, h: rh };
+      paintFences(p, matAt, donde);
+      paintInterior(p, map, kindAt);
+      paintShadows(p, map, kindAt, backRows, donde);
+      p.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      return p.canvas;
+    },
+    /** Suelta el buffer de materiales (ya se pintó todo lo que hacía falta). */
+    release(): void {
+      mat = null;
+    },
+  };
+}
 
-  paintFences(p, matAt, w, h);
-  paintInterior(p, map, kindAt);
-  paintShadows(p, map, kindAt, backRows);
-  return p.canvas;
+/** El suelo entero en un solo canvas (mapas chicos, como el Café). */
+export function paintGround(map: MapDef): HTMLCanvasElement {
+  const suelo = groundPainter(map);
+  return suelo.paint({ x: 0, y: 0, w: suelo.width, h: suelo.height });
 }
 
 // ─── Materiales por pixel ──────────────────────────────────────────────────
 
-type Material = GroundKind | 'cebra' | 'jardin';
+type Material = GroundKind | 'cebra' | 'jardin' | 'jardinera';
 const MATERIALS: readonly Material[] = [
   'fachada',
   'azotea',
@@ -108,6 +144,7 @@ const MATERIALS: readonly Material[] = [
   'pared',
   'cebra',
   'jardin',
+  'jardinera',
 ];
 const INDEX = new Map(MATERIALS.map((m, i) => [m, i]));
 
@@ -167,7 +204,8 @@ const PAINTERS: Record<Material, (px: Px) => string> = {
   enlosado: enlosado,
   explanada: explanada,
   losa: losa,
-  jardin: jardin,
+  jardin: (px) => jardin(px, 'jardin'),
+  jardinera: (px) => jardin(px, 'jardinera'),
   ladrillo: ladrillo,
   pasto: pasto,
   banqueta: banqueta,
@@ -309,35 +347,47 @@ function pastoTexture(gx: number, gy: number): string {
  * Jardín cercado (ADR-0013): el mismo pasto, sin guarnición (la reja baja se
  * pinta encima, en `paintFences`) y con un poco más de sombra en la orilla.
  */
-function jardin(px: Px): string {
+function jardin(px: Px, kind: 'jardin' | 'jardinera'): string {
   const { gx, gy, matAt } = px;
-  const inside = (dx: number, dy: number) => matAt(gx + dx, gy + dy) === 'jardin';
+  const inside = (dx: number, dy: number) => matAt(gx + dx, gy + dy) === kind;
   if (!inside(0, 1) || !inside(0, -1) || !inside(1, 0) || !inside(-1, 0)) return PASTO.deep;
   if (!inside(0, -2) || !inside(-2, 0)) return PASTO.shade;
   return pastoTexture(gx, gy);
 }
 
 /**
- * La reja baja de los jardines, de hierro verde: se para en la orilla y sube
- * 6 px, con barrotes cada 3 px y el pasamanos con su luz. Horneada en el
- * suelo: quien pasa enfrente la tapa, como debe ser.
+ * Las rejas bajas, horneadas en el suelo (quien pasa enfrente las tapa, como
+ * debe ser). La de los jardines es verde botella de barrotes con punta de
+ * lanza cada 3 px y su pasamanos con luz; la de la jardinera del kiosko,
+ * negra de postes cada 5 px con dos travesaños.
  */
 function paintFences(
   p: Painter,
   matAt: (gx: number, gy: number) => Material | null,
-  w: number,
-  h: number,
+  region: Region,
 ): void {
   const HEIGHT = 6;
-  for (let gy = 0; gy < h; gy++) {
-    for (let gx = 0; gx < w; gx++) {
-      if (matAt(gx, gy) !== 'jardin') continue;
+  // Una reja se para en la orilla y sube: también cuentan las orillas justo debajo de la región.
+  for (let gy = region.y; gy < region.y + region.h + HEIGHT + 2; gy++) {
+    for (let gx = region.x; gx < region.x + region.w; gx++) {
+      const kind = matAt(gx, gy);
+      if (kind !== 'jardin' && kind !== 'jardinera') continue;
       const edge =
-        matAt(gx, gy + 1) !== 'jardin' ||
-        matAt(gx, gy - 1) !== 'jardin' ||
-        matAt(gx + 1, gy) !== 'jardin' ||
-        matAt(gx - 1, gy) !== 'jardin';
+        matAt(gx, gy + 1) !== kind ||
+        matAt(gx, gy - 1) !== kind ||
+        matAt(gx + 1, gy) !== kind ||
+        matAt(gx - 1, gy) !== kind;
       if (!edge) continue;
+      if (kind === 'jardinera') {
+        p.px(gx, gy, HERRERIA_NEGRA.shade);
+        p.px(gx, gy - HEIGHT + 1, HERRERIA_NEGRA.base);
+        p.px(gx, gy - 3, HERRERIA_NEGRA.base);
+        if ((gx + gy) % 5 === 0) {
+          for (let k = 1; k < HEIGHT; k++) p.px(gx, gy - k, HERRERIA_NEGRA.base);
+          p.px(gx, gy - HEIGHT, HERRERIA_NEGRA.light);
+        }
+        continue;
+      }
       p.px(gx, gy, HIERRO.shade);
       p.px(gx, gy - HEIGHT, HIERRO.light);
       p.px(gx, gy - HEIGHT + 1, HIERRO.base);
@@ -349,6 +399,8 @@ function paintFences(
     }
   }
 }
+
+const HERRERIA_NEGRA = { base: '#262129', light: '#4b4252', shade: '#141116' };
 
 /** Banqueta de concreto con juntas por tile y guarnición hacia la calle o el empedrado. */
 function banqueta({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
@@ -415,36 +467,73 @@ function portal(px: Px): string {
 }
 
 /**
- * Asfalto. En una avenida acostada (Madero) la raya amarilla va al centro de
- * la franja; en una parada (Morelos, Abasolo), en vertical.
+ * Asfalto. Cada calle sabe su rumbo por lo largo del tramo: acostada (Madero)
+ * o parada (Morelos, García Obeso, Abasolo). Al centro de su ancho va la raya
+ * amarilla: doble y con boyas en relieve si es ancha (Madero), sencilla y
+ * cortada si es angosta.
  */
 function calle({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
   const isCalle = (dx: number, dy: number) => kindAt(tx + dx, ty + dy) === 'calle';
-  const vertical = isCalle(0, -1) && isCalle(0, 1) && !(isCalle(-1, 0) && isCalle(1, 0));
-  if (vertical) {
-    if (!isCalle(-1, 0) && lx === 0) return ASFALTO.shade;
-    if (isCalle(1, 0) && !isCalle(-1, 0) && lx === 15 && gy % 24 < 12) return ASFALTO.line;
-  } else {
-    if (!isCalle(0, -1) && ly === 0) return ASFALTO.shade;
-    const top = !isCalle(0, -1);
-    const bottom = !isCalle(0, 1);
-    // Franja de tres tiles: la raya doble va en el de en medio, con sus boyas
-    // amarillas en relieve cada tanto (luz arriba, sombra abajo).
-    if (!top && !bottom && ly >= 6 && ly <= 10 && gx % 40 >= 18 && gx % 40 <= 20) {
-      if (ly === 6) return '#fff0a6';
-      if (ly === 10) return '#9a7b1e';
-      return gx % 40 === 20 ? '#c9a22c' : ASFALTO.line;
+  const tramo = tramoDeCalle(tx, ty, kindAt);
+  const parada = tramo.alto > tramo.ancho;
+  // Guarnición: la orilla de la calle junto a lo que no es calle.
+  if (parada ? !isCalle(-1, 0) && lx === 0 : !isCalle(0, -1) && ly === 0) return ASFALTO.shade;
+  if (parada ? !isCalle(1, 0) && lx === 15 : !isCalle(0, 1) && ly === 15) return ASFALTO.shade;
+  // Distancia (px) al centro del ancho de la calle.
+  const centro = parada
+    ? ((tramo.x0 + tramo.x1 + 1) / 2) * TILE
+    : ((tramo.y0 + tramo.y1 + 1) / 2) * TILE;
+  const d = (parada ? gx : gy) + 0.5 - centro;
+  const largo = parada ? gy : gx;
+  const ancho = parada ? tramo.ancho : tramo.alto;
+  if (ancho >= 5) {
+    // Doble raya amarilla con sus boyas en relieve cada tanto.
+    if (Math.abs(d) <= 2.5 && largo % 40 >= 18 && largo % 40 <= 20) {
+      if (d < -1.5) return '#fff0a6';
+      if (d > 1.5) return '#9a7b1e';
+      return largo % 40 === 20 ? '#c9a22c' : ASFALTO.line;
     }
-    if (!top && !bottom && (ly === 7 || ly === 9)) return ASFALTO.line;
-    if (top && isCalle(0, 1) && !isCalle(0, 2) && ly === 15 && gx % 24 < 12) {
-      return ASFALTO.line;
-    }
+    if (Math.abs(Math.abs(d) - 1.5) < 0.6) return ASFALTO.line;
+    // Rayas blancas cortadas entre carriles.
+    if (Math.abs(Math.abs(d) - ancho * 4) < 0.6 && largo % 32 < 14) return '#e9e9e6';
+  } else if (Math.abs(d) < 0.6 && largo % 24 < 12) {
+    return ASFALTO.line;
   }
   const speck = hash(gx, gy, 51);
   if (speck < 0.08) return ASFALTO.shade;
   if (speck > 0.93) return ASFALTO.light;
   return ASFALTO.base;
 }
+
+/** Hasta dónde sigue la calle desde un tile: su ancho y su alto (hasta 12 tiles por lado). */
+function tramoDeCalle(
+  tx: number,
+  ty: number,
+  kindAt: (tx: number, ty: number) => GroundKind | null,
+): Tramo {
+  let tramos = TRAMOS.get(kindAt);
+  if (!tramos) {
+    tramos = new Map();
+    TRAMOS.set(kindAt, tramos);
+  }
+  const clave = ty * 10000 + tx;
+  const guardado = tramos.get(clave);
+  if (guardado) return guardado;
+  let x0 = tx;
+  let x1 = tx;
+  let y0 = ty;
+  let y1 = ty;
+  while (tx - x0 < 12 && kindAt(x0 - 1, ty) === 'calle') x0--;
+  while (x1 - tx < 12 && kindAt(x1 + 1, ty) === 'calle') x1++;
+  while (ty - y0 < 12 && kindAt(tx, y0 - 1) === 'calle') y0--;
+  while (y1 - ty < 12 && kindAt(tx, y1 + 1) === 'calle') y1++;
+  const tramo = { x0, x1, y0, y1, ancho: x1 - x0 + 1, alto: y1 - y0 + 1 };
+  tramos.set(clave, tramo);
+  return tramo;
+}
+type Tramo = { x0: number; x1: number; y0: number; y1: number; ancho: number; alto: number };
+/** Los tramos ya medidos, por mapa (la función `kindAt` de cada pintor de suelo). */
+const TRAMOS = new WeakMap<(tx: number, ty: number) => GroundKind | null, Map<number, Tramo>>();
 
 /**
  * Paso peatonal: franjas blancas gastadas sobre el asfalto. Como en la calle
@@ -453,8 +542,8 @@ function calle({ gx, gy, lx, ly, tx, ty, kindAt }: Px): string {
  */
 function cebra(px: Px): string {
   const { gx, gy, tx, ty, kindAt } = px;
-  const isCalle = (dx: number, dy: number) => kindAt(tx + dx, ty + dy) === 'calle';
-  const vertical = isCalle(0, -1) && isCalle(0, 1) && !(isCalle(-1, 0) && isCalle(1, 0));
+  const tramo = tramoDeCalle(tx, ty, kindAt);
+  const vertical = tramo.alto > tramo.ancho;
   const stripe = (vertical ? gx : gy) % 8 < 4;
   if (!stripe) return calle(px);
   const worn = hash(gx, gy, 57);
@@ -553,11 +642,15 @@ function parse(hex: string): number {
 
 // ─── Sombras horneadas ────────────────────────────────────────────────────
 
+/** Hasta dónde puede caer la sombra de un objeto fuera de su huella (px). */
+const SOMBRA_MAX = 64;
+
 function paintShadows(
   p: ReturnType<typeof painter>,
   map: MapDef,
   kindAt: (tx: number, ty: number) => GroundKind | null,
   backRows: number,
+  region: Region,
 ): void {
   if (backRows > 0) {
     // La sombra de la pared del fondo sobre el piso.
@@ -586,8 +679,12 @@ function paintShadows(
     }
   } else {
     // Afuera: la sombra de cada fachada sobre lo que tiene enfrente (el sol está alto, al sur).
-    for (let ty = 1; ty < map.height; ty++) {
-      for (let tx = 0; tx < map.width; tx++) {
+    const ty0 = Math.max(1, Math.floor(region.y / TILE));
+    const ty1 = Math.min(map.height, Math.ceil((region.y + region.h) / TILE) + 1);
+    const tx0 = Math.max(0, Math.floor(region.x / TILE));
+    const tx1 = Math.min(map.width, Math.ceil((region.x + region.w) / TILE));
+    for (let ty = ty0; ty < ty1; ty++) {
+      for (let tx = tx0; tx < tx1; tx++) {
         const above = kindAt(tx, ty - 1);
         const here = kindAt(tx, ty);
         if ((above === 'fachada' || above === 'azotea') && here !== above && here !== 'azotea') {
@@ -598,5 +695,17 @@ function paintShadows(
       }
     }
   }
-  for (const o of map.objects) objectShadow(p, o);
+  for (const o of map.objects) {
+    const x = o.x * TILE;
+    const y = o.y * TILE;
+    if (
+      x + o.w * TILE + SOMBRA_MAX < region.x ||
+      y + o.h * TILE + SOMBRA_MAX < region.y ||
+      x - SOMBRA_MAX > region.x + region.w ||
+      y - SOMBRA_MAX > region.y + region.h
+    ) {
+      continue;
+    }
+    objectShadow(p, o);
+  }
 }

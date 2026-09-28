@@ -20,7 +20,8 @@ cambies la arquitectura en silencio (§38).
 | 9 · Alpha cerrada | ✅ hecha · la caseta (`/caseta`), invitaciones, suspensiones con fin, carga medida y observabilidad (ADR-0012) |
 
 La Plaza es el centro de Morelia (ADR-0013): Catedral, Plaza de Armas, Melchor Ocampo y el Café
-bajo los portales de Allende, con asientos y placas. **Para seguir con ella (agrandar el mapa,
+bajo los portales de Allende, con asientos y placas. Desde la v3 va a 1.4 m por tile (208 × 98) y su
+suelo se pinta en trozos de 512 px (ADR-0014). **Para seguir con ella (agrandar el mapa,
 detallar, interacción): `docs/plaza/HANDOFF.md`** — pedido, arquitectura, investigación,
 referencias y plan.
 
@@ -121,4 +122,8 @@ de línea en el valor). Antes de cada commit: `git status` sin ningún archivo d
   (la config lo usa en lugar del canal `chrome`). Capturas: `node e2e/scripts/captura.mjs "<url>" out.png`.
 - Caminar en E2E: soltar una tecla tarda (sin GPU, casi un tile). `caminarHasta` de
   `portales.spec.ts` camina a toquecitos midiendo, y cada tramo pide la holgura que su pasillo
-  permite; una ruta nueva va por pasillos anchos (la del Café cruza el atrio poniente).
+  permite; una ruta nueva va por pasillos anchos (la del Café cruza el atrio poniente) y se mide con
+  `node scripts/plaza/pasillos.mts`. Un tramo que acaba contra una pared incluye el tope en su
+  tolerancia.
+- El Worker local no arranca sin `apps/web/dist` (lo sirve como assets): `pnpm build` una vez antes
+  del primer `pnpm dev` en un contenedor nuevo.

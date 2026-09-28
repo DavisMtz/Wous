@@ -24,6 +24,8 @@ const inicio =
     ? { x: enX, y: enY }
     : undefined;
 
+const mapa = params.get('mapa');
+
 const root = document.getElementById('root');
 if (!root) throw new Error('Falta #root');
 createRoot(root).render(
@@ -33,7 +35,7 @@ createRoot(root).render(
       nombre="Prueba"
       conectar={false}
       onSalir={() => window.location.reload()}
-      {...(params.get('mapa') ? { mapa: params.get('mapa') ?? '' } : {})}
+      {...(mapa ? { mapa } : {})}
       {...(params.get('spawn') ? { spawn: params.get('spawn') ?? '' } : {})}
       {...(inicio ? { inicio } : {})}
       {...(params.get('zoom') ? { zoom: Number(params.get('zoom')) } : {})}
