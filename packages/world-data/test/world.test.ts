@@ -58,8 +58,8 @@ describe('integridad del mundo', () => {
     expect(validateWorld()).toEqual([]);
   });
 
-  it('la Plaza es la v4 (la v3 al doble de la v2, con más asientos): 208 × 98 con colisión fina', () => {
-    expect(PLAZA.version).toBe(4);
+  it('la Plaza es la v5 (la v3 al doble de la v2, con más asientos): 208 × 98 con colisión fina', () => {
+    expect(PLAZA.version).toBe(5);
     expect(PLAZA.width).toBe(208);
     expect(PLAZA.height).toBe(98);
     expect(PLAZA.cellsPerTile).toBe(4);
@@ -273,6 +273,29 @@ describe('asientos y letreros', () => {
     // Los macetones de junto a la reja no tienen asientos.
     const macetones = PLAZA.objects.filter((o) => o.variant === 'maceton').map((o) => o.id);
     expect(PLAZA.seats.filter((s) => macetones.includes(s.object))).toEqual([]);
+  });
+
+  it('sobre Madero: el zócalo de la reja y el escalón de cada portón, mirando a la avenida y sin tapar el paso', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const delFrente = PLAZA.objects.filter((o) => o.id.startsWith('reja-norte'));
+    const portones = delFrente.filter((o) => o.variant === 'porton');
+    expect(portones).toHaveLength(3);
+    const lugares = PLAZA.seats.filter((s) => delFrente.some((o) => o.id === s.object));
+    expect(lugares.length).toBeGreaterThanOrEqual(40);
+    for (const s of lugares) {
+      expect(s.facing).toBe('down');
+      // Se levanta en la banqueta de Madero, del lado de la calle.
+      expect(s.exit.y).toBeGreaterThan(88);
+      expect(bloqueado(grid, s.exit.x, s.exit.y)).toBe(false);
+    }
+    for (const p of portones) {
+      const enElEscalon = lugares.filter((s) => s.object === p.id);
+      expect(enElEscalon).toHaveLength(2);
+      // El centro del portón queda libre para entrar y salir del atrio.
+      const centro = p.x + p.w / 2;
+      for (const s of enElEscalon) expect(Math.abs(s.x - centro)).toBeGreaterThan(0.6);
+      expect(bloqueado(grid, centro, p.y + 0.5)).toBe(false);
+    }
   });
 
   it('bajo los arcos del Portal Allende, cada mesa de café trae sus dos sillas', () => {

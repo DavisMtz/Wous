@@ -28,7 +28,8 @@ import { groundBuilder } from './builder.ts';
  * Allende con el Café y sus mesas bajo los arcos. Abajo, Madero.
  *
  * Versión 3: el doble de grande que la v2 (ADR-0014). Versión 4: se sienta uno
- * también en el bordillo de las jardineras de la Melchor Ocampo.
+ * también en el bordillo de las jardineras de la Melchor Ocampo. Versión 5: y en
+ * el zócalo de la reja de Madero y los escalones de sus portones.
  */
 
 const W = 208;
@@ -968,6 +969,55 @@ const rejaNorte = rejaConPortones(
   REJA_PONIENTE_X + 1,
   PORTONES_NORTE,
 );
+/**
+ * Sobre Madero la reja se para en un zócalo de cantera y cada portón tiene su
+ * escalón; en las fotos hay gente sentada al pie de la reja y de los portones
+ * (investigacion.md §7, foto 2). Ahí se sienta uno mirando a Madero: a lo largo
+ * de cada tramo y en las puntas de cada escalón, con el paso del centro libre.
+ */
+const ZOCALO_Y = REJA_NORTE_Y + 1;
+/** Entre dos lugares del zócalo, y lo que se deja libre junto a cada pilar. */
+const ZOCALO_PASO = 1.5;
+const ZOCALO_ORILLA = 0.75;
+/** Lo que sale el escalón de un portón hacia la banqueta (el arte lo pinta igual: 8 px). */
+const ESCALON_FONDO = 0.5;
+
+function zocaloDe(tramo: MapObject): Seat[] {
+  const libre = tramo.w - ZOCALO_ORILLA * 2;
+  if (libre < 0) return [];
+  const n = Math.floor(libre / ZOCALO_PASO) + 1;
+  const paso = n > 1 ? libre / (n - 1) : 0;
+  return Array.from({ length: n }, (_, i) => {
+    const x = Math.round((tramo.x + ZOCALO_ORILLA + i * paso) * 100) / 100;
+    return {
+      id: `${tramo.id}-zocalo-${i + 1}`,
+      x,
+      y: ZOCALO_Y + 0.1,
+      facing: 'down' as const,
+      exit: { x, y: ZOCALO_Y + 0.7 },
+      object: tramo.id,
+      lift: 3,
+    };
+  });
+}
+
+/** Las dos puntas del escalón de un portón, junto a cada pilar: el centro queda para pasar. */
+function escalonDe(porton: MapObject): Seat[] {
+  return [porton.x + 1.3, porton.x + porton.w - 1.3].map((x, i) => ({
+    id: `${porton.id}-escalon-${i + 1}`,
+    x,
+    y: ZOCALO_Y + ESCALON_FONDO / 2,
+    facing: 'down' as const,
+    exit: { x, y: ZOCALO_Y + ESCALON_FONDO + 0.35 },
+    object: porton.id,
+    lift: 1,
+  }));
+}
+
+const lugaresDeMadero: Seat[] = rejaNorte.flatMap((o) =>
+  o.variant === 'porton' ? escalonDe(o) : zocaloDe(o),
+);
+
 /** Reja oriente, de Allende a Madero: el portón suroriente, el del crucero y el del ángulo norte. */
 const rejaOriente = rejaConPortones(
   'reja-oriente',
@@ -1480,7 +1530,7 @@ const fuentesConBorde = [...armasFuentes, fuenteJuarez];
 
 export const PLAZA: MapDef = {
   id: 'plaza',
-  version: 4,
+  version: 5,
   name: 'La Plaza',
   width: W,
   height: H,
@@ -1553,6 +1603,7 @@ export const PLAZA: MapDef = {
     ...fuentesConBorde.flatMap((f) => bordeDeFuente(f)),
     ...mesasDePortal.flatMap(sillasDePortal),
     ...jardineras.flatMap(bordeDeJardinera),
+    ...lugaresDeMadero,
     // En la orilla de la pileta de Ocampo, a los lados de la placa.
     ...[-1.7, 1.7].map(
       (dx, i): Seat => ({

@@ -211,17 +211,21 @@ export function reja(wTiles: number, hTiles: number, acostada: boolean): Art {
  * Portón del atrio (reja de 1854): dos pilares cuadrados de sillar de ≈4.5 m
  * con su cornisa volada, el jarrón con piña encima y un farol negro de brazo;
  * entre ellos, el copete semicircular de filigrana con su medallón oval, y las
- * dos hojas de barrotes abiertas contra los pilares.
+ * dos hojas de barrotes abiertas contra los pilares. Al pie, el escalón de
+ * cantera que baja a la banqueta de Madero (el atrio va más alto que la calle):
+ * sale de la huella del portón, y quien se para o se sienta en él queda encima.
  */
+const ESCALON = 8;
 export function porton(wTiles: number): Art {
   const W = Math.round(wTiles * TILE);
   const top = 70;
-  const H = TILE + top;
+  const H = TILE + top + ESCALON;
   // Los faroles salen hacia afuera de los pilares: el lienzo lleva margen para ellos.
   const M = 10;
   const p = painter(W + M * 2, H);
   p.ctx.translate(M, 0);
-  const pie = H - 1;
+  // El pie de los pilares es la orilla de la huella; el escalón queda debajo.
+  const pie = TILE + top - 1;
   const pw = 16;
   const alto = 58;
   for (const x of [0, W - pw]) {
@@ -285,8 +289,15 @@ export function porton(wTiles: number): Art {
     p.rect(x, pie - 30, 4, 1, HERRERIA.light);
     p.rect(x, pie - 12, 4, 1, HERRERIA.light);
   }
-  // Escalón.
-  p.rect(pw, pie - 2, W - pw * 2, 2, C.light);
+  // El escalón: un poco más ancho que el paso, con su huella clara, la arista
+  // de luz y la cara en sombra que baja a la banqueta.
+  const ex = pw - 6;
+  const ew = W - pw * 2 + 12;
+  p.rect(ex, pie - 1, ew, ESCALON - 2, C.light);
+  p.rect(ex, pie - 1, ew, 1, C.lighter);
+  for (let x = ex + 9; x < ex + ew - 2; x += 13) p.rect(x, pie, 1, ESCALON - 4, C.joint);
+  p.rect(ex, pie + ESCALON - 3, ew, 3, C.shade);
+  p.rect(ex, pie + ESCALON - 1, ew, 1, C.deep);
   p.ctx.setTransform(1, 0, 0, 1, 0, 0);
   return {
     canvas: p.canvas,
