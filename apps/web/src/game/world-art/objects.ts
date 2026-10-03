@@ -165,8 +165,13 @@ export function paintObject(o: MapObject, cuadro = 0, encendida = true): ObjectA
         default:
           return at(churros(o.id));
       }
-    case 'jardinera':
-      return at(jardinera(o.variant, o.w, o.h, o.id), o.variant === 'naranjo');
+    case 'jardinera': {
+      const art = at(jardinera(o.variant, o.w, o.h, o.id), o.variant === 'naranjo');
+      // Como las bancas de canto: en su bordillo se sienta la gente (también de
+      // lado), así que la jardinera va al fondo y quien se sienta queda encima.
+      // Los macetones de junto a la reja no tienen asientos: se quedan como están.
+      return o.variant === 'maceton' ? art : { ...art, depth: o.y * TILE + 2 };
+    }
     case 'mesa':
       return at(o.variant === 'portal' ? mesaDePortal(o.id, o.w, o.h) : mesa(o.variant));
     case 'barra':

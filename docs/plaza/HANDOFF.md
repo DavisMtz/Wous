@@ -3,7 +3,8 @@
 Documento para el agente que continúe la Plaza de Wous en un chat nuevo. Reúne lo que se pidió, lo
 que ya existe, cómo está hecho, lo que se encontró investigando el centro de Morelia, las
 referencias y un plan para lo que falta. Escrito el 27 de septiembre de 2026, al cerrar la sesión
-que hizo la Plaza v2; actualizado el 28 por la sesión que la hizo al doble (Plaza v3, ADR-0014).
+que hizo la Plaza v2; actualizado el 28 por la sesión que la hizo al doble (Plaza v3, ADR-0014) y
+el 3 de octubre por la que agregó los asientos de las jardineras (Plaza v4).
 
 **Orden de lectura sugerido:** este documento completo → `CLAUDE.md` → `PLAN_CONSTRUCCION_WOUS.md`
 (§1, §13–17, §25, §34, §36–38) → `docs/adr/0007-escala-y-arte-procedural.md` →
@@ -64,8 +65,10 @@ desplegar lo tuyo.**
 - **La Plaza v3 (el doble de grande, ADR-0014) está en producción** (`https://wous.logidma.com`)
   **y en staging** (`https://wous-staging.logidma.workers.dev`) desde el 28 de septiembre de 2026,
   con el visto bueno del usuario («Despliega a producción»). Salió del commit `1527528` de la rama
-  `claude/plaza-wous-morelia-1j16v9` (PR #2): mientras ese PR no se fusione, `main` va detrás de
-  lo desplegado.
+  `claude/plaza-wous-morelia-1j16v9`, que el 3 de octubre se fusionó a `main` (avance rápido,
+  pedido por el usuario): `main` vuelve a ser lo desplegado. Trabaja desde `main`.
+- **Plaza v4 (3 de octubre):** 30 lugares más en el bordillo de las jardineras de la Melchor
+  Ocampo (§8). Está en `main`; desplegarla espera el visto bueno del usuario.
 - **Producción tiene registro solo por invitación.** Las invitaciones se crean en la caseta
   (`/caseta`), y el rol de la caseta solo lo da el script
   `node scripts/moderacion/moderar.mts <entorno> dar-caseta @usuario --motivo "…"` (nunca la web).
@@ -283,7 +286,7 @@ Madero (calle) 91–98.
 | Vendedores | globero (23, 45), churros (28.5, 64.5), gazpacho (57, 16.6) y (132.6, 11.5), elotes (142.2, 26.2), bolero (138.3, 38.4) |
 | Encuadre de la Catedral | x 41–115.5, y 67–91, sube 12 tiles |
 
-Números: 296 objetos, 176 asientos, 7 placas, 1 puerta. Rejilla de 832×392 celdas (≈10 ms).
+Números (v4): 296 objetos, 206 asientos, 7 placas, 1 puerta. Rejilla de 832×392 celdas (≈10 ms).
 
 **Ruta a pie de la entrada al Café** (la de `portales.spec.ts`; direcciones de pantalla): a la
 derecha hasta x 96 por el atrio, hacia arriba por el atrio poniente (sin reja al sur, como el real)
@@ -393,9 +396,10 @@ churros, **gazpacho** detrás de la Catedral y hacia San Agustín, **elotes** co
 
 ## 8. Tarea 3 · Interacción y feedback
 
-Hoy se puede: caminar con colisión fina; **sentarse en 176 lugares** (bancas, cubos, la orilla de
+Hoy se puede: caminar con colisión fina; **sentarse en 206 lugares** (bancas, cubos, la orilla de
 las fuentes de frente y de lado, las bancas curvas del kiosko, las sillas de las mesas del Portal
-Allende) y en las 8 sillas del Café; **leer 7 placas**; entrar al Café. En táctil, la acción es la
+Allende y, desde la v4, el bordillo de las jardineras de la Melchor Ocampo: dos al frente y tres al
+costado de cada una) y en las 8 sillas del Café; **leer 7 placas**; entrar al Café. En táctil, la acción es la
 estrella del HUD; con teclado, «E».
 
 **El ambiente** (`apps/web/src/game/ambiente/`, `phaser/ambiente.ts` y `phaser/noche.ts`) es del
@@ -429,8 +433,9 @@ silencio).
 
 **Lo que sigue, de más a menos valor:**
 
-1. **Más lugares para sentarse:** los escalones del atrio, los bordes de las jardineras de la
-   Melchor Ocampo.
+1. **Más lugares para sentarse:** ~~los bordes de las jardineras de la Melchor Ocampo~~ **hecho**
+   (v4: la jardinera se dibuja al fondo, como las bancas de canto, para que quien se sienta de lado
+   quede encima). Faltan **los escalones del atrio**: ver §13 antes de empezar.
 2. **Adornos de temporada** por la fecha del servidor (septiembre: banderas; noviembre: catrinas y
    cempasúchil; diciembre: nochebuenas).
 3. **Audio** (campanas, pregones, fuegos, agua): pide ADR.
@@ -542,6 +547,14 @@ Todo con fuentes en `docs/plaza/investigacion.md`. Lo esencial:
 - La Catedral no se abre: la sala interior será otro mapa con su portal (como el Café).
 - La frase de la losa de los Liberales viene de la prensa (Quadratín, 2022): si encuentras una
   fuente primaria (foto de la losa), confírmala.
+- **Los escalones del atrio no están dibujados y no está claro dónde van.** La investigación dice
+  que «unos escalones lo elevan sobre la calle» y que hay **4 escalones en la puerta trasera** (§1;
+  foto 10, `catedral_reja_puerta_atrio.jpg`: calle de adoquín hexagonal y guarnición roja enfrente).
+  Ese «portón trasero» no corresponde con claridad a ningún portón del mapa: la reja sur, sobre
+  Allende, no tiene portón; el suroriente (y 27 de la reja oriente) da a la explanada de la Ocampo, no
+  a una calle, y delante tiene la fila de cubos y macetones. Antes de dibujar escalones: bajar la
+  foto (`node scripts/plaza/referencias.mts`), decidir qué portón es y si el atrio frente a Madero
+  lleva su escalón corrido. Sentarse ahí sería lo natural, pero no se confirmó que la gente lo haga.
 
 ---
 

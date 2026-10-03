@@ -58,8 +58,8 @@ describe('integridad del mundo', () => {
     expect(validateWorld()).toEqual([]);
   });
 
-  it('la Plaza es la v3, al doble de la v2: 208 × 98 tiles con colisión fina', () => {
-    expect(PLAZA.version).toBe(3);
+  it('la Plaza es la v4 (la v3 al doble de la v2, con más asientos): 208 × 98 con colisión fina', () => {
+    expect(PLAZA.version).toBe(4);
     expect(PLAZA.width).toBe(208);
     expect(PLAZA.height).toBe(98);
     expect(PLAZA.cellsPerTile).toBe(4);
@@ -250,6 +250,29 @@ describe('asientos y letreros', () => {
       expect(seatOf(PLAZA, `fuente-armas-${i}-borde-izquierda`)?.facing).toBe('left');
       expect(seatOf(PLAZA, `fuente-armas-${i}-borde-derecha`)?.facing).toBe('right');
     }
+  });
+
+  it('en el bordillo de las jardineras de la Melchor Ocampo: dos lugares al frente y tres al costado', () => {
+    const grid = buildCollisionGrid(PLAZA);
+    const jardineras = PLAZA.objects.filter(
+      (o) => o.kind === 'jardinera' && o.id.startsWith('jardinera-ocampo-'),
+    );
+    expect(jardineras).toHaveLength(6);
+    for (const j of jardineras) {
+      const lugares = PLAZA.seats.filter((s) => s.object === j.id);
+      const frente = lugares.filter((s) => s.facing === 'down');
+      const costado = lugares.filter((s) => s.facing === 'right');
+      expect(frente).toHaveLength(2);
+      expect(costado).toHaveLength(3);
+      // Al frente se levanta hacia Madero; de lado, hacia la explanada (no hacia Morelos).
+      for (const s of frente) expect(s.exit.y).toBeGreaterThan(j.y + j.h);
+      for (const s of costado) expect(s.exit.x).toBeGreaterThan(j.x + j.w);
+      // La jardinera sigue estorbando: se sienta uno en el bordillo, no se camina por encima.
+      expect(bloqueado(grid, j.x + j.w / 2, j.y + j.h / 2)).toBe(true);
+    }
+    // Los macetones de junto a la reja no tienen asientos.
+    const macetones = PLAZA.objects.filter((o) => o.variant === 'maceton').map((o) => o.id);
+    expect(PLAZA.seats.filter((s) => macetones.includes(s.object))).toEqual([]);
   });
 
   it('bajo los arcos del Portal Allende, cada mesa de café trae sus dos sillas', () => {

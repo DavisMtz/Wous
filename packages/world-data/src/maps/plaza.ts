@@ -27,7 +27,8 @@ import { groundBuilder } from './builder.ts';
  * hasta García Obeso, el Portal Aldama, la Cerrada de San Agustín y el Portal
  * Allende con el Café y sus mesas bajo los arcos. Abajo, Madero.
  *
- * Versión 3: el doble de grande que la v2 (ADR-0014).
+ * Versión 3: el doble de grande que la v2 (ADR-0014). Versión 4: se sienta uno
+ * también en el bordillo de las jardineras de la Melchor Ocampo.
  */
 
 const W = 208;
@@ -703,6 +704,41 @@ const jardineras: MapObject[] = [39.5, 45.5, 51.5, 57.5, 63.5, 69.5].map((y, i) 
   h: 4,
   variant: i % 2 === 0 ? 'naranjo' : 'bugambilia',
 }));
+
+/**
+ * En el bordillo de cantera de las jardineras (investigacion.md §4: «jardineras
+ * rectangulares con bordillo de cantera») se sienta la gente: dos lugares al
+ * frente, mirando hacia Madero, y tres en el costado que da a la explanada.
+ * El arte las manda al fondo para que quien se sienta de lado quede encima.
+ */
+function bordeDeJardinera(j: MapObject): Seat[] {
+  const frente = j.y + j.h + 0.08;
+  const costado = j.x + j.w - 0.12;
+  return [
+    ...[0.6, 1.8].map(
+      (dx, i): Seat => ({
+        id: `${j.id}-frente-${i + 1}`,
+        x: j.x + dx,
+        y: frente,
+        facing: 'down',
+        exit: { x: j.x + dx, y: frente + 0.55 },
+        object: j.id,
+        lift: 3,
+      }),
+    ),
+    ...[0.9, 2, 3.1].map(
+      (dy, i): Seat => ({
+        id: `${j.id}-costado-${i + 1}`,
+        x: costado,
+        y: j.y + dy,
+        facing: 'right',
+        exit: { x: j.x + j.w + 0.55, y: j.y + dy },
+        object: j.id,
+        lift: 3,
+      }),
+    ),
+  ];
+}
 
 /**
  * Donde estuvo el Árbol de los Liberales (una acacia que ya no existe) queda
@@ -1444,7 +1480,7 @@ const fuentesConBorde = [...armasFuentes, fuenteJuarez];
 
 export const PLAZA: MapDef = {
   id: 'plaza',
-  version: 3,
+  version: 4,
   name: 'La Plaza',
   width: W,
   height: H,
@@ -1516,6 +1552,7 @@ export const PLAZA: MapDef = {
     ...bancas.flatMap(lugaresDe),
     ...fuentesConBorde.flatMap((f) => bordeDeFuente(f)),
     ...mesasDePortal.flatMap(sillasDePortal),
+    ...jardineras.flatMap(bordeDeJardinera),
     // En la orilla de la pileta de Ocampo, a los lados de la placa.
     ...[-1.7, 1.7].map(
       (dx, i): Seat => ({
